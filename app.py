@@ -469,8 +469,9 @@ with st.form("story_form"):
         character_notes = st.text_area("Character / visual continuity notes (optional)", placeholder="Main character's age, hair, clothes, colors, companions...")
         scene_words = st.slider("Words per scene", min_value=20, max_value=90, value=45, step=5)
         text_size = st.slider("PDF story text size", min_value=8, max_value=16, value=11)
-    resume_existing = st.checkbox("Resume the latest incomplete story generation", value=False)
-    submitted = st.form_submit_button("✨ Generate story + 50 scenes", type="primary", use_container_width=True)
+    resume_existing = st.checkbox("Resume the latest saved story", value=False)
+    st.caption("First, the app creates style references and three sample scenes. You approve them before the remaining illustrations are generated.")
+    submitted = st.form_submit_button("✨ Create story + visual samples", type="primary", use_container_width=True)
 
 if submitted:
     if not CF_ACCOUNT or not CF_TOKEN:
@@ -486,7 +487,7 @@ if submitted:
                     raise RuntimeError("No saved story was found to resume. Start a new story first.")
                 outdir = candidates[-1]
                 story = json.loads((outdir / "story.json").read_text(encoding="utf-8"))
-                st.info(f"Resuming saved story: {outdir.name}")
+                st.info(f"Preparing visual review for saved story: {outdir.name}")
                 style = story.get("illustration_style", STYLE_LOCK)
                 audience = story.get("audience", "Family / all ages")
                 trim = story.get("trim_size", trim)
@@ -506,45 +507,88 @@ if submitted:
 
             scenes_dir = outdir / "scenes"
             scenes_dir.mkdir(parents=True, exist_ok=True)
-            st.session_state["last_outdir"] = str(outdir)
-
-            with st.status("Preparing consistent visual references...", expanded=True) as status:
+            with st.status("Creating the style and character references...", expanded=True) as status:
                 references = create_reference_images(story, outdir)
-                status.update(label="Reference images ready. Generating missing scenes...", state="running")
-                progress = st.progress(0.0)
-                note = st.empty()
-                completed = 0
-                for index, scene in enumerate(story["scenes"], 1):
-                    path = scenes_dir / f"scene_{index:03d}.png"
+                status.update(label="Generating three sample scenes for your approval...", state="running")
+                sample_numbers = sorted(set([1, min(10, len(story["scenes"])), min(25, len(story["scenes"]))]))
+                for number in sample_numbers:
+                    scene = story["scenes"][number - 1]
+                    path = scenes_dir / f"scene_{number:03d}.png"
                     if path.exists() and path.stat().st_size > 0:
+                        continue
+                    st.write(f"Creating sample scene {number}: {scene.get('heading', '')}")
+                    cf_image(build_scene_prompt(story, scene, style), path, reference_images=references)
+                status.update(label="Visual samples are ready for your review.", state="complete")
+
+            st.session_state["pending_review_dir"] = str(outdir)
+            st.session_state["last_outdir"] = str(outdir)
+            st.success("Your story and three sample illustrations are ready. Review them below before generating the remaining scenes.")
+        except Exception as exc:
+            st.error(f"Preparation stopped: {exc}")
+            st.info("Saved story data, reference images and completed samples remain in the output folder. You can choose resume and try again.")
+
+
+if "pending_review_dir" in st.session_state:
+    review_dir = Path(st.session_state["pending_review_dir"])
+    story_path = review_dir / "story.json"
+    if story_path.exists():
+        review_story = json.loads(story_path.read_text(encoding="utf-8"))
+        st.header("Review your story's visual style")
+        st.write("Check that the style, character designs and camera direction feel consistent. The app will not generate the remaining scenes until you approve.")
+        preview_cols = st.columns(3)
+        preview_items = [
+            ("style_reference.png", "Master style reference"),
+            ("character_reference_sheet.png", "Selected character reference"),
+            ("scenes/scene_001.png", "Sample scene 1"),
+        ]
+        for col, (relative_path, label) in zip(preview_cols, preview_items):
+            image_path = review_dir / relative_path
+            with col:
+                st.caption(label)
+                if image_path.exists():
+                    st.image(str(image_path), use_container_width=True)
+                else:
+                    st.warning(f"Not created yet: {label}")
+        extra_cols = st.columns(2)
+        for col, number in zip(extra_cols, [10, 25]):
+            image_path = review_dir / "scenes" / f"scene_{number:03d}.png"
+            with col:
+                st.caption(f"Sample scene {number}")
+                if image_path.exists():
+                    st.image(str(image_path), use_container_width=True)
+        if st.button("Approve visual style and generate all 50 illustrations", type="primary", use_container_width=True):
+            try:
+                references = [review_dir / "style_reference.png", review_dir / "character_reference_sheet.png"]
+                scenes_dir = review_dir / "scenes"
+                with st.status("Generating the remaining illustrations and publishing files...", expanded=True) as status:
+                    progress = st.progress(0.0)
+                    note = st.empty()
+                    completed = 0
+                    for index, scene in enumerate(review_story["scenes"], 1):
+                        image_path = scenes_dir / f"scene_{index:03d}.png"
+                        if image_path.exists() and image_path.stat().st_size > 0:
+                            completed += 1
+                            progress.progress(completed / 50)
+                            continue
+                        note.write(f"Generating scene {index}/50: {scene.get('heading', '')}")
+                        cf_image(build_scene_prompt(review_story, scene, STYLE_LOCK), image_path, reference_images=references)
                         completed += 1
                         progress.progress(completed / 50)
-                        continue
-                    note.write(f"Generating scene {index}/50: {scene.get('heading', '')}")
-                    prompt = build_scene_prompt(story, scene, style)
-                    cf_image(prompt, path, reference_images=references)
-                    completed += 1
-                    progress.progress(completed / 50)
-                    time.sleep(0.15)
-
-                status.update(label="All 50 illustrations ready. Building publishing files...", state="running")
-                build_pdf(story, scenes_dir, outdir / "storybook_interior.pdf", trim, False, text_size)
-                make_kindle_html(story, scenes_dir, outdir / "kindle_story.html")
-                make_listing(story, outdir)
-                write_checklist(outdir)
-                create_contact_sheet(scenes_dir, outdir / "scene_contact_sheet.jpg")
-                status.update(label="Storybook files created!", state="complete")
-
-            st.success(f"Finished! Files are in: {outdir}")
-            st.session_state["story"] = story
-            st.session_state["last_outdir"] = str(outdir)
-        except Exception as exc:
-            st.error(f"Generation stopped: {exc}")
-            st.info(
-                "Completed scene images and reference sheets remain saved. "
-                "Choose 'Resume the latest incomplete story generation' and submit again "
-                "to continue without regenerating existing scene images."
-            )
+                        time.sleep(0.15)
+                    status.update(label="All illustrations are ready. Building book files...", state="running")
+                    saved_trim = review_story.get("trim_size", list(TRIM_SIZES.keys())[0])
+                    build_pdf(review_story, scenes_dir, review_dir / "storybook_interior.pdf", saved_trim, False, 11)
+                    make_kindle_html(review_story, scenes_dir, review_dir / "kindle_story.html")
+                    make_listing(review_story, review_dir)
+                    write_checklist(review_dir)
+                    create_contact_sheet(scenes_dir, review_dir / "scene_contact_sheet.jpg")
+                    status.update(label="Storybook files created!", state="complete")
+                st.session_state["last_outdir"] = str(review_dir)
+                st.session_state.pop("pending_review_dir", None)
+                st.success(f"Finished! Files are in: {review_dir}")
+            except Exception as exc:
+                st.error(f"Generation stopped: {exc}")
+                st.info("Completed images remain saved. Click approve again to resume; existing scene images will be skipped.")
 
 if "last_outdir" in st.session_state:
     outdir = Path(st.session_state["last_outdir"])
