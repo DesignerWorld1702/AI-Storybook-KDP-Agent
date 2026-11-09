@@ -163,12 +163,27 @@ def cf_image(prompt, dest, width=1024, height=1024, reference_images=None):
         raise RuntimeError("Cloudflare credentials missing. Edit the .env file first.")
 
     url = f"https://api.cloudflare.com/client/v4/accounts/{CF_ACCOUNT}/ai/run/{IMAGE_MODEL}"
+    reference_images = reference_images or []
+    if len(reference_images) >= 2:
+        reference_guidance = (
+            "Use reference image 0 for the exact illustration rendering style and colour treatment. "
+            "Use reference image 1 only as the identity guide for the named characters; "
+            "include only characters explicitly present in this scene. "
+            "Preserve stable faces, hair, eyes, proportions and clothing. "
+        )
+    elif len(reference_images) == 1:
+        reference_guidance = (
+            "Use reference image 0 as the exact illustration style and colour reference. "
+            "Follow the character descriptions in the prompt; do not invent a character identity from the style reference. "
+        )
+    else:
+        reference_guidance = (
+            "No reference images are supplied for this generation. Follow the visual style and character descriptions in the prompt exactly. "
+        )
+
     full_prompt = (
         prompt
-        + "\nUse reference image 0 for the exact illustration rendering style and colour treatment. "
-        + "Use reference image 1 only as the identity guide for the named characters; "
-        + "include only characters explicitly present in this scene. "
-        + "Preserve stable faces, hair, eyes, proportions and clothing. "
+        + "\n" + reference_guidance
         + "Vary camera direction and physical action according to the scene description. "
         + "Illustration only. No text, typography, captions, letters, logos or watermark."
     )
@@ -180,7 +195,6 @@ def cf_image(prompt, dest, width=1024, height=1024, reference_images=None):
         "height": (None, str(height)),
     }
     image_buffers = []
-    reference_images = reference_images or []
     if len(reference_images) > 4:
         raise ValueError("Maximum four reference images are supported.")
 
@@ -491,6 +505,7 @@ if submitted:
                 style = story.get("illustration_style", STYLE_LOCK)
                 audience = story.get("audience", "Family / all ages")
                 trim = story.get("trim_size", trim)
+                text_size = story.get("pdf_text_size", text_size)
                 author = story.get("author", author)
             else:
                 run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -501,6 +516,7 @@ if submitted:
                 story["genre"] = genre
                 story["illustration_style"] = style
                 story["trim_size"] = trim
+                story["pdf_text_size"] = text_size
                 (outdir / "story.json").write_text(
                     json.dumps(story, indent=2, ensure_ascii=False), encoding="utf-8"
                 )
@@ -577,7 +593,7 @@ if "pending_review_dir" in st.session_state:
                         time.sleep(0.15)
                     status.update(label="All illustrations are ready. Building book files...", state="running")
                     saved_trim = review_story.get("trim_size", list(TRIM_SIZES.keys())[0])
-                    build_pdf(review_story, scenes_dir, review_dir / "storybook_interior.pdf", saved_trim, False, 11)
+                    build_pdf(review_story, scenes_dir, review_dir / "storybook_interior.pdf", saved_trim, False, review_story.get("pdf_text_size", 11))
                     make_kindle_html(review_story, scenes_dir, review_dir / "kindle_story.html")
                     make_listing(review_story, review_dir)
                     write_checklist(review_dir)
