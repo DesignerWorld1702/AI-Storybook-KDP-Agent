@@ -63,6 +63,25 @@ def extract_json(text):
         raise ValueError("The text model did not return valid JSON. Try again or use a different text model.")
     return json.loads(text[start:end+1])
 
+DEFAULT_CHARACTER_POOL = """
+REUSABLE CHARACTER POOL — select only those needed by this standalone story; never force the full cast into every book.
+ADULT HUMANS:
+Adam (27): dark chestnut slightly wavy hair, grey-hazel eyes, vertical scar at outer left eyebrow, tall lean athletic build; charcoal jacket and dark shirt; strategic thinker.
+Zayn (24): tousled black hair, amber-brown eyes, small mole below right eye, slim athletic build; olive utility jacket; inventive problem-solver.
+Rayan (28): short textured dark-brown hair, deep-brown eyes, thin diagonal chin scar, broad athletic build; brown expedition jacket; bold adventurer.
+Noah (26): straight black side-parted hair, blue-grey eyes, crescent birthmark near right temple, lean build; black long coat; observant investigator.
+Aira (25): long espresso-brown hair, hazel-green eyes, beauty mark below left side of mouth, athletic build; burgundy jacket; decisive leader.
+Zara (23): shoulder-length layered black hair, dark-brown eyes, notch in left eyebrow, slim athletic build; black leather jacket; sharp detective.
+Hania (22): medium soft chestnut hair, warm dark-hazel eyes, freckles across nose, petite-average build; beige jacket and teal top; empathetic analyst.
+Meher (29): dark auburn-black hair tied back, steel-brown eyes, diagonal scar on right cheek, athletic build; forest-green field jacket; survival expert.
+FANTASY CREATURES — optional, rare supporting roles:
+Drako: intelligent proud dragon with obsidian scales, bronze undertones, amber eyes, bronze-black horns, large dark wings and a glowing ancient chest symbol.
+Grim: three-foot moss-green goblin with yellow eyes, pointed ears, one bent ear and a collection of old keys; clever trickster.
+Lumi: gentle wise unicorn with pearl-white coat, silver mane, icy-blue eyes, crystal horn and star mark on forehead.
+Bamboo: clever loyal black-and-white panda with brown eyes, crescent mark on right shoulder and explorer satchel.
+Keep each selected character's defining face, hair, eye colour, marks, proportions and signature clothing stable throughout the book. Names and roles may be changed for a standalone story if the user asks, but do not silently alter the canonical appearance when using this pool.
+"""
+
 STYLE_LOCK = (
     "Unified 2D cinematic anime realism: hand-painted feature-film illustration, "
     "semi-realistic adult anatomy and expressive faces, natural proportions, "
@@ -79,7 +98,7 @@ Genre emphasis: {genre}
 Audience: family / all ages.
 Visual style (LOCKED): {STYLE_LOCK}
 Title hint: {title_hint or "invent a memorable title"}.
-Character notes / reusable character pool: {character_notes or "Create 2-3 original young-adult human protagonists with distinctive, repeatable visual traits."}
+Character notes / reusable character pool: {character_notes or DEFAULT_CHARACTER_POOL}
 
 CAST RULES:
 - The main protagonists must be humans in their 20s, not children or teenagers.
@@ -308,18 +327,19 @@ def build_pdf(story, images_dir, pdf_path, trim, bleed, text_size):
         y = panel_h - 0.30*inch
         for line in title_lines:
             c.drawString(margin, y, line); y -= 16
-        c.setFont("Helvetica", text_size)
-        text_lines = wrap_text(scene["text"], "Helvetica", text_size, max_width, c)
-        available_lines = max(1, int((y - 0.18*inch) / (text_size*1.35)))
+        page_text_size = text_size
+        c.setFont("Helvetica", page_text_size)
+        text_lines = wrap_text(scene["text"], "Helvetica", page_text_size, max_width, c)
+        available_lines = max(1, int((y - 0.18*inch) / (page_text_size*1.35)))
         if len(text_lines) > available_lines:
-            # Fit the text panel conservatively without silently shrinking below 8pt.
-            while len(text_lines) > available_lines and text_size > 8:
-                text_size -= 0.5
-                c.setFont("Helvetica", text_size)
-                text_lines = wrap_text(scene["text"], "Helvetica", text_size, max_width, c)
-                available_lines = max(1, int((y - 0.18*inch) / (text_size*1.35)))
+            # Fit this page conservatively without shrinking below 8pt or affecting later pages.
+            while len(text_lines) > available_lines and page_text_size > 8:
+                page_text_size -= 0.5
+                c.setFont("Helvetica", page_text_size)
+                text_lines = wrap_text(scene["text"], "Helvetica", page_text_size, max_width, c)
+                available_lines = max(1, int((y - 0.18*inch) / (page_text_size*1.35)))
         for line in text_lines[:available_lines]:
-            c.drawString(margin, y, line); y -= text_size*1.35
+            c.drawString(margin, y, line); y -= page_text_size*1.35
         c.setFont("Helvetica", 7)
         c.setFillColorRGB(0.35,0.35,0.38)
         c.drawRightString(W-margin, 0.14*inch, str(scene["number"]))
@@ -467,6 +487,10 @@ if submitted:
                 outdir = candidates[-1]
                 story = json.loads((outdir / "story.json").read_text(encoding="utf-8"))
                 st.info(f"Resuming saved story: {outdir.name}")
+                style = story.get("illustration_style", STYLE_LOCK)
+                audience = story.get("audience", "Family / all ages")
+                trim = story.get("trim_size", trim)
+                author = story.get("author", author)
             else:
                 run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
                 outdir = OUTROOT / run_id
