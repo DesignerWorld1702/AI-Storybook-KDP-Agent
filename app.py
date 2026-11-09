@@ -52,6 +52,22 @@ def cf_text(prompt, max_tokens=7000):
             text = choices[0].get("message", {}).get("content", "")
     if not text:
         raise RuntimeError("Text model response did not contain text. Check the selected text model's API response format.")
+
+    # Cloudflare models may return either plain text or a structured object.
+    # Normalize common nested response shapes before parsing the story JSON.
+    if isinstance(text, dict):
+        for key in ("response", "output", "text", "content"):
+            candidate = text.get(key)
+            if isinstance(candidate, str) and candidate.strip():
+                text = candidate
+                break
+        else:
+            text = json.dumps(text, ensure_ascii=False)
+    elif isinstance(text, list):
+        text = json.dumps(text, ensure_ascii=False)
+    elif not isinstance(text, str):
+        text = str(text)
+
     return text.strip()
 
 def extract_json(text):
