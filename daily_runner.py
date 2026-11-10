@@ -94,6 +94,11 @@ def build_one_book(book_date, config):
             story["scheduled_date"] = book_date.isoformat()
             story_path.write_text(json.dumps(story, indent=2, ensure_ascii=False), encoding="utf-8")
 
+        if not story.get("character_registry") or not story.get("principal_villain"):
+            raise RuntimeError(
+                "This saved story predates the character-continuity system. "
+                "It must be regenerated as a new scheduled book; the existing files were preserved."
+            )
         references = engine.create_reference_images(story, outdir)
         scenes_dir = outdir / "scenes"
         scenes_dir.mkdir(exist_ok=True)
@@ -103,9 +108,12 @@ def build_one_book(book_date, config):
                 continue
             if image_path.exists():
                 image_path.unlink()
+            scene_refs = engine.scene_reference_images(
+                story, scene, outdir, references[0]
+            )
             engine.cf_image(
                 engine.build_scene_prompt(story, scene, engine.STYLE_LOCK),
-                image_path, reference_images=references
+                image_path, reference_images=scene_refs
             )
             if not valid_image(image_path):
                 raise RuntimeError(f"Scene {index} image did not pass file validation.")
