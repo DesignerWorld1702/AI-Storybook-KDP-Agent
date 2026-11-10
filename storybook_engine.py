@@ -143,9 +143,22 @@ Audience: family / all ages. Main protagonists must be humans in their 20s.
 Visual style (LOCKED): {STYLE_LOCK}
 Title hint: {title_hint or "invent a memorable title"}.
 Character notes / reusable character pool: {character_notes or DEFAULT_CHARACTER_POOL}
-Humans drive the plot. Use only characters needed for this standalone story.
-Fantasy creatures are rare supporting characters. Keep selected characters' faces,
-hair, eyes, distinguishing marks, proportions and clothing consistent.
+Humans drive the plot. Build a lively ensemble: several clear main protagonists plus
+supporting characters who join, leave, form alliances, disagree, and reveal secrets
+naturally as the adventure unfolds. Do not force every pool character into the story.
+Include exactly ONE principal villain with a consequential role, distinctive personality,
+clear motive, methods, and a meaningful connection to the central conflict. The villain
+may be a reusable identity from a villain pool, but create a fresh story-specific costume,
+equipment, styling and visual presentation for this book. Keep that new design unchanged
+throughout this book. Fantasy creatures remain rare supporting roles.
+CRITICAL VISUAL-CONTINUITY RULE: every recurring character, including minor/supporting
+characters and the villain, must have a stable visual identity. Define a character_registry
+with one entry per selected character: name, role, importance ("protagonist",
+"supporting", "villain", or "creature"), and a highly specific visual_bible covering
+adult age, face shape/features, skin tone, hair, eye colour, body/build, height impression,
+identifying marks, exact clothing, accessories and colour palette. Do not vary these
+features between scenes unless an explicit story event changes them. Every scene's
+characters_present must use exact registry names and include only visible characters.
 Use cinematic shot variety, purposeful action, gaze, expressions, lighting and depth.
 Avoid copyrighted characters, existing franchises and imitation of living artists.
 """
@@ -171,7 +184,11 @@ Return ONLY valid JSON, no markdown, with this exact shape:
  "keywords":["seven distinct short search phrases"],
  "categories":["suggested broad category 1","suggested broad category 2"],
  "audience":"Family / all ages",
- "character_bible":"Detailed visual bibles for only the characters selected",
+ "character_registry":[
+   {{"name":"Exact character name","role":"story role","importance":"protagonist/supporting/villain/creature","visual_bible":"Complete fixed visual identity; for the villain include this book's unique costume and equipment design"}}
+ ],
+ "principal_villain":"Exact name of the single principal villain",
+ "character_bible":"Repeat each registry entry's complete visual_bible verbatim under its exact name",
  "art_direction":"Consistent palette, lighting and world atmosphere",
  "outline":[{{"number":1,"beat":"..."}}]
 }}
@@ -180,6 +197,22 @@ Exactly 50 outline entries. Keep metadata concise.
         plan = extract_json(cf_text(outline_prompt, max_tokens=5000), "book metadata and 50-scene outline")
         if len(plan.get("outline", [])) != 50:
             raise ValueError(f"Expected 50 outline entries but received {len(plan.get('outline', []))}.")
+        registry = plan.get("character_registry", [])
+        if not isinstance(registry, list) or not registry:
+            raise ValueError("Story plan is missing its character_registry.")
+        names = [str(item.get("name", "")).strip() for item in registry if isinstance(item, dict)]
+        if len(names) != len(registry) or any(not name for name in names) or len(set(names)) != len(names):
+            raise ValueError("Character registry has missing or duplicate character names.")
+        villain_name = str(plan.get("principal_villain", "")).strip()
+        villain_entries = [item for item in registry if item.get("importance") == "villain"]
+        if not villain_name or villain_name not in names or len(villain_entries) != 1 or villain_entries[0]["name"] != villain_name:
+            raise ValueError("Every book must define exactly one registered principal villain.")
+        if not any(item.get("importance") == "protagonist" for item in registry):
+            raise ValueError("Story must define at least one main protagonist.")
+        plan["character_bible"] = "\\n\\n".join(
+            f"{item['name']} — {item.get('role', '')}: {item.get('visual_bible', '')}"
+            for item in registry
+        )
         if plan_path:
             plan_path.write_text(json.dumps(plan, indent=2, ensure_ascii=False), encoding="utf-8")
 
@@ -202,6 +235,9 @@ Exactly 50 outline entries. Keep metadata concise.
             batch_outline = outline[first - 1:last]
             batch_prompt = common + f"""
 Book title: {plan.get("title", title_hint or "Untitled")}
+Character registry (canonical identities; never rename or redesign within this book):
+{json.dumps(plan.get("character_registry", []), ensure_ascii=False)}
+Principal villain: {plan.get("principal_villain", "")}
 Character bible: {plan.get("character_bible", "")}
 Art direction: {plan.get("art_direction", "")}
 Full story outline for continuity:
@@ -258,6 +294,13 @@ No extra keys, no markdown fences, no text outside JSON.
             for key in ("shot_type", "camera_angle", "composition", "action_pose", "gaze", "expression", "lighting"):
                 scene.setdefault(key, "")
             scene.setdefault("characters_present", [])
+            known_names = {item["name"] for item in plan.get("character_registry", [])}
+            visible_names = scene.get("characters_present", [])
+            if not isinstance(visible_names, list):
+                raise ValueError(f"Scene {number} characters_present must be a list.")
+            unknown_names = [name for name in visible_names if name not in known_names]
+            if unknown_names:
+                raise ValueError(f"Scene {number} uses unregistered character names: {unknown_names}")
             scenes.append(scene)
 
     plan.pop("outline", None)
@@ -350,8 +393,36 @@ def cf_image(prompt, dest, width=1024, height=1024, reference_images=None):
             buffer.close()
 
 
+def character_reference_path(outdir, character_name):
+    safe = re.sub(r"[^A-Za-z0-9_-]+", "_", character_name).strip("_")
+    return Path(outdir) / "character_refs" / f"{safe}.png"
+
+
+def scene_reference_images(story, scene, outdir, style_ref):
+    """Return style reference plus up to three scene-specific identity portraits."""
+    registry = story.get("character_registry", [])
+    by_name = {item.get("name"): item for item in registry}
+    refs = [style_ref]
+    for name in scene.get("characters_present", []):
+        item = by_name.get(name)
+        if not item:
+            continue
+        path = character_reference_path(outdir, name)
+        if path.exists():
+            refs.append(path)
+        if len(refs) == 4:
+            break
+    return refs
+
+
 def build_scene_prompt(story, scene, style):
-    cast = ", ".join(scene.get("characters_present", [])) or "only the characters required by this scene"
+    cast_names = scene.get("characters_present", [])
+    cast = ", ".join(cast_names) or "no named character; environment-focused scene"
+    registry = {item.get("name"): item for item in story.get("character_registry", [])}
+    scene_bibles = "\\n".join(
+        f"{name}: {registry[name].get('visual_bible', '')}"
+        for name in cast_names if name in registry
+    )
     direction = (
         f"Shot: {scene.get('shot_type', 'cinematic medium shot')}. "
         f"Camera: {scene.get('camera_angle', 'eye-level')}. "
@@ -363,8 +434,13 @@ def build_scene_prompt(story, scene, style):
     )
     return (
         f"Art direction: {story.get('art_direction', STYLE_LOCK)}. "
-        f"Character bible: {story.get('character_bible', '')}. "
+        f"Global character bible: {story.get('character_bible', '')}. "
         f"Characters visible in this scene: {cast}. "
+        f"Exact visual identities required for this scene: {scene_bibles}. "
+        "Match each recurring character's face, hair, eye colour, skin tone, proportions, "
+        "identifying marks, clothing and accessories exactly. Do not merge identities or "
+        "substitute one character for another. Any costume change must be explicitly stated "
+        "in the scene's story context. "
         f"{direction} Scene {scene.get('number')}: {scene.get('visual_prompt', '')}. "
         f"Style lock: {STYLE_LOCK}. "
         "Create one cinematic movie frame with clear foreground/background depth, "
@@ -378,6 +454,8 @@ def create_reference_images(story, outdir):
     scenes_dir.mkdir(parents=True, exist_ok=True)
     style_ref = outdir / "style_reference.png"
     cast_ref = outdir / "character_reference_sheet.png"
+    character_refs_dir = outdir / "character_refs"
+    character_refs_dir.mkdir(parents=True, exist_ok=True)
 
     if not style_ref.exists():
         style_prompt = (
@@ -403,6 +481,27 @@ def create_reference_images(story, outdir):
         )
         cf_image(cast_prompt, cast_ref, reference_images=[style_ref])
 
+    # Generate one dedicated identity portrait per selected recurring character.
+    # These are reused in every scene where that character appears.
+    registry = story.get("character_registry", [])
+    for item in registry:
+        name = str(item.get("name", "")).strip()
+        if not name:
+            continue
+        portrait_path = character_reference_path(outdir, name)
+        if portrait_path.exists() and portrait_path.stat().st_size > 1024:
+            continue
+        portrait_prompt = (
+            f"Create a single-character full-body identity reference portrait of {name}. "
+            f"Story role: {item.get('role', '')}. Importance: {item.get('importance', '')}. "
+            f"CANONICAL VISUAL IDENTITY — follow exactly and do not improvise: "
+            f"{item.get('visual_bible', '')}. "
+            "Show one figure only, head and entire body visible, front three-quarter view, "
+            "neutral standing pose, clear face and identifying marks, uncluttered muted background. "
+            "This is a continuity model sheet, not an action scene. Preserve exact face, hairstyle, "
+            "eye colour, proportions, outfit, accessories and colours. " + STYLE_LOCK
+        )
+        cf_image(portrait_prompt, portrait_path, reference_images=[style_ref])
     return [style_ref, cast_ref]
 
 def wrap_text(text, font_name, font_size, max_width, c):
