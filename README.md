@@ -19,6 +19,15 @@ A local Windows-first starter app that creates an original 50-scene illustrated 
 - Amazon KDP requires disclosure of AI-generated content when applicable. Review current KDP policy and disclose accurately.
 - The app does not upload/publish without your explicit review and final action in KDP.
 
+## Permanent character identity library
+
+- Permanent visual models live under `character_library/models/<visual_id>/` with an `identity.json` record and an optional local `reference.png`.
+- The immutable identity record describes face, facial proportions, skin tone, hair, eyes, body proportions and permanent marks. Story names, personalities, occupations, relationships, costumes and accessories are created anew for each book.
+- A model is selected only when it fits the plot; the library is not a fixed ensemble and characters are not forced into every story.
+- When a saved reference image is available locally, the illustration pipeline uses it as a physical-identity reference and explicitly tells the image model to follow the current book's costume instead of copying the reference outfit.
+- Story-specific cast names are recorded under `character_library/story_cast/` so future books can avoid reusing previous names.
+- Image references remain on the local computer unless the owner intentionally adds them to a private or public repository. Never commit `.env` credentials.
+
 ## Illustration quality and resolution
 
 - The daily runner now selects a high-resolution scene image size (default maximum side: 1536 px) that matches the printable art-panel aspect ratio for the selected trim size. This is sharper than the earlier 1024 px default and avoids unnecessary cropping.
