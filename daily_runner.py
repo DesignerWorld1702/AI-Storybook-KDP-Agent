@@ -153,9 +153,11 @@ def run_due_jobs(force=False):
         save_state(state)
         completed += 1
         next_date += timedelta(days=1)
-        if next_date <= due_through:
+        if next_date <= due_through and completed >= max(1, int(config.get("max_books_per_run", 1))):
             logging.info("More missed dates remain in the catch-up queue; the next task trigger will process the next one.")
             break
+        if next_date <= due_through:
+            time.sleep(int(config["catchup_pause_seconds"]))
     logging.info("Completed %s scheduled book(s).", completed)
     return 0
 
