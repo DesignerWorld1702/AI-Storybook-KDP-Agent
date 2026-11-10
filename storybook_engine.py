@@ -13,6 +13,7 @@ ROOT = Path(__file__).parent
 load_dotenv(ROOT / ".env")
 OUTROOT = ROOT / "output"
 OUTROOT.mkdir(exist_ok=True)
+CHARACTER_LIBRARY_ROOT = ROOT / "character_library"
 
 CF_ACCOUNT = os.getenv("CLOUDFLARE_ACCOUNT_ID", "").strip()
 CF_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
@@ -43,8 +44,34 @@ def scene_image_dimensions(trim, max_side=None):
     return width, height
 
 
+def load_character_library():
+    """Load permanent visual identities and optional local reference images."""
+    models = []
+    models_dir = CHARACTER_LIBRARY_ROOT / "models"
+    if not models_dir.exists():
+        return models
+    for identity_path in sorted(models_dir.glob("*/identity.json")):
+        try:
+            identity = json.loads(identity_path.read_text(encoding="utf-8"))
+            visual_id = str(identity.get("visual_id") or identity_path.parent.name).strip()
+            if visual_id:
+                identity["_reference_path"] = str(identity_path.parent / identity.get("reference_image", "reference.png"))
+                models.append(identity)
+        except (OSError, ValueError, TypeError):
+            continue
+    return models
+
+
+def library_reference_path(visual_id):
+    for model in load_character_library():
+        if model.get("visual_id") == visual_id:
+            path = Path(model["_reference_path"])
+            return path if path.is_file() and path.stat().st_size > 1024 else None
+    return None
+
+
 def reference_guidance_for_images(reference_images):
-    """Describe each reference image by its actual role and character filename."""
+    """Describe style and physical-identity references."""
     if not reference_images:
         return (
             "No reference images are supplied. Follow the visual style and character "
@@ -56,8 +83,7 @@ def reference_guidance_for_images(reference_images):
     for index, image_path in enumerate(reference_images[1:], start=1):
         character_name = Path(image_path).stem.replace("_", " ").strip()
         guidance.append(
-            f"Use reference image {index} only as the identity guide for {character_name}; "
-            "do not copy or merge another character's face, hair, clothing or accessories. "
+            f"Use reference image {index} only as the physical-identity guide for {character_name}: preserve face, facial proportions, skin tone, hair identity, eye shape/colour, body proportions and permanent marks. Ignore reference clothing and accessories when the story prompt specifies a different costume. Never merge identities. "
         )
     if len(reference_images) == 1:
         guidance.append(
@@ -162,7 +188,7 @@ Drako: intelligent proud dragon with obsidian scales, bronze undertones, amber e
 Grim: three-foot moss-green goblin with yellow eyes, pointed ears, one bent ear and a collection of old keys; clever trickster.
 Lumi: gentle wise unicorn with pearl-white coat, silver mane, icy-blue eyes, crystal horn and star mark on forehead.
 Bamboo: clever loyal black-and-white panda with brown eyes, crescent mark on right shoulder and explorer satchel.
-Keep each selected character's defining face, hair, eye colour, marks, proportions and signature clothing stable throughout the book. Names and roles may be changed for a standalone story if the user asks, but do not silently alter the canonical appearance when using this pool.
+Treat these as visual starting points, not a fixed cast. Create fresh story-specific names, roles, personalities and backgrounds for every book; do not reuse pool names as story names. Keep physical traits and permanent marks stable when reusing a saved visual model. Design a new costume for each book and keep it consistent within that book.
 """
 
 STYLE_LOCK = (
@@ -187,7 +213,9 @@ Audience: family / all ages. Main protagonists must be humans in their 20s.
 Visual style (LOCKED): {STYLE_LOCK}
 Title hint: {title_hint or "invent a memorable title"}.
 Character notes / reusable character pool: {character_notes or DEFAULT_CHARACTER_POOL}
-Humans drive the plot. Build a lively ensemble: several clear main protagonists plus
+Permanent visual library available to this project:
+{json.dumps([{k: v for k, v in model.items() if not k.startswith("_")} for model in load_character_library()], ensure_ascii=False)}
+Every story must use fresh character names, not reusable pool labels. If visual model visual_001 is selected, give it a new story name while preserving its immutable physical identity. Add a visual_id field to that registry entry. Other characters may be original story-specific designs. Humans drive the plot. Build a lively ensemble: several clear main protagonists plus
 supporting characters who join, leave, form alliances, disagree, and reveal secrets
 naturally as the adventure unfolds. Build at least two clearly defined main protagonists
 and at least three meaningful recurring supporting characters, in addition to the villain.
@@ -276,7 +304,7 @@ Exactly 50 outline entries. Keep metadata concise.
         if batch_path and batch_path.exists():
             try:
                 cached_batch = json.loads(batch_path.read_text(encoding="utf-8"))
-                if len(cached_batch.get("scenes", [])) == last - first + 1:
+                if len(cached_batch.get("scenes", [])) == last - first + 1 and all(isinstance(x, dict) and len(str(x.get("text", "")).split()) >= 35 and x.get("heading") and x.get("visual_prompt") for x in cached_batch["scenes"]):
                     batch_scenes = cached_batch["scenes"]
             except Exception:
                 batch_scenes = None
@@ -296,8 +324,7 @@ Specific beats to expand now:
 {json.dumps(batch_outline, ensure_ascii=False)}
 
 Expand ONLY scenes {first} through {last} into detailed illustrated-book scene records.
-Each scene page text should be about {scene_words} words. Make visual prompts cinematic,
-specific and varied. Do not repeat the same camera angle or static talking pose.
+Each scene page text must be 40–55 words (aim for {scene_words}), written as polished narrative prose rather than camera notes. Include concrete action, emotion, sensory detail and purposeful dialogue where natural. Every scene must advance the plot or change a relationship; no recap-only pages, repeated planning conversations, repeated rescues, or filler epilogues. Keep headings distinct. Make visual prompts cinematic, specific and varied. Do not repeat the same camera angle or static talking pose. For characters with visual_id, preserve immutable_identity and permanent marks, but follow story_costume for clothing; costume stays consistent within this book.
 Return ONLY valid JSON with this exact shape:
 {{
  "scenes":[
@@ -339,8 +366,11 @@ No extra keys, no markdown fences, no text outside JSON.
         for offset, scene in enumerate(batch_scenes):
             number = first + offset
             scene["number"] = number
-            if not scene.get("text") or not scene.get("visual_prompt"):
-                raise ValueError(f"Scene {number} is missing text or a visual prompt.")
+            if not scene.get("text") or not scene.get("visual_prompt") or not scene.get("heading"):
+                raise ValueError(f"Scene {number} is missing its heading, text or visual prompt.")
+            word_count = len(str(scene.get("text", "")).split())
+            if word_count < 35 or word_count > 65:
+                raise ValueError(f"Scene {number} page text has {word_count} words; expected 35–65. Regenerate this batch.")
             for key in ("shot_type", "camera_angle", "composition", "action_pose", "gaze", "expression", "lighting"):
                 scene.setdefault(key, "")
             scene.setdefault("characters_present", [])
@@ -438,6 +468,15 @@ def character_reference_path(outdir, character_name):
     return Path(outdir) / "character_refs" / f"{safe}.png"
 
 
+def character_reference_for_entry(outdir, item):
+    visual_id = item.get("visual_id")
+    if visual_id:
+        permanent = library_reference_path(visual_id)
+        if permanent:
+            return permanent
+    return character_reference_path(outdir, item.get("name", ""))
+
+
 def scene_reference_images(story, scene, outdir, style_ref):
     """Return style reference plus up to three scene-specific identity portraits."""
     registry = story.get("character_registry", [])
@@ -452,7 +491,7 @@ def scene_reference_images(story, scene, outdir, style_ref):
         item = by_name.get(name)
         if not item:
             continue
-        path = character_reference_path(outdir, name)
+        path = character_reference_for_entry(outdir, item)
         if path.exists():
             refs.append(path)
         if len(refs) == 4:
@@ -482,10 +521,7 @@ def build_scene_prompt(story, scene, style):
         f"Global character bible: {story.get('character_bible', '')}. "
         f"Characters visible in this scene: {cast}. "
         f"Exact visual identities required for this scene: {scene_bibles}. "
-        "Match each recurring character's face, hair, eye colour, skin tone, proportions, "
-        "identifying marks, clothing and accessories exactly. Do not merge identities or "
-        "substitute one character for another. Any costume change must be explicitly stated "
-        "in the scene's story context. "
+        "Match each recurring character's face, facial proportions, hair identity, eye shape/colour, skin tone, body proportions and permanent marks exactly. Do not merge identities or substitute one character for another. Clothing and accessories must follow this book's story_costume, not the permanent reference image; keep the story costume consistent unless the scene explicitly shows a change. "
         f"{direction} Scene {scene.get('number')}: {scene.get('visual_prompt', '')}. "
         f"Style lock: {STYLE_LOCK}. "
         "Create one cinematic movie frame with clear foreground/background depth, "
@@ -543,7 +579,9 @@ def create_reference_images(story, outdir):
             continue
         if appearances.get(name, 0) < 2 and item.get("importance") != "villain":
             continue
-        portrait_path = character_reference_path(outdir, name)
+        portrait_path = character_reference_for_entry(outdir, item)
+        if item.get("visual_id") and library_reference_path(item.get("visual_id")):
+            continue
         if portrait_path.exists() and portrait_path.stat().st_size > 1024:
             continue
         portrait_prompt = (
