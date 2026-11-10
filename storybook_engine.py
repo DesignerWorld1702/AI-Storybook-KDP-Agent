@@ -129,9 +129,12 @@ STYLE_LOCK = (
     "childish cartoon, photorealism, or a mixture of unrelated art styles."
 )
 
-def make_story(genre, style, audience, title_hint, character_notes, scene_words):
-    # Generate a compact 50-scene outline first, then expand it in five smaller
-    # batches. This avoids asking a small text model for one enormous JSON reply.
+def make_story(genre, style, audience, title_hint, character_notes, scene_words, workdir=None):
+    """Create a 50-scene story, caching the outline and each small scene batch."""
+    workdir = Path(workdir) if workdir else None
+    if workdir:
+        workdir.mkdir(parents=True, exist_ok=True)
+    plan_path = workdir / "story_plan.json" if workdir else None
     common = f"""
 Create an original illustrated feature-film story.
 Story direction: mystery, suspense, thriller, adventure and restrained fantasy.
@@ -140,17 +143,25 @@ Audience: family / all ages. Main protagonists must be humans in their 20s.
 Visual style (LOCKED): {STYLE_LOCK}
 Title hint: {title_hint or "invent a memorable title"}.
 Character notes / reusable character pool: {character_notes or DEFAULT_CHARACTER_POOL}
-
 Humans drive the plot. Use only characters needed for this standalone story.
 Fantasy creatures are rare supporting characters. Keep selected characters' faces,
 hair, eyes, distinguishing marks, proportions and clothing consistent.
 Use cinematic shot variety, purposeful action, gaze, expressions, lighting and depth.
 Avoid copyrighted characters, existing franchises and imitation of living artists.
 """
-    outline_prompt = common + f"""
+    plan = None
+    if plan_path and plan_path.exists():
+        try:
+            cached = json.loads(plan_path.read_text(encoding="utf-8"))
+            if len(cached.get("outline", [])) == 50:
+                plan = cached
+        except Exception:
+            plan = None
+
+    if plan is None:
+        outline_prompt = common + f"""
 First create the book metadata and a concise outline of exactly 50 sequential scenes.
-Each outline entry must have only "number" and "beat"; beat is one or two sentences
-describing the important action and how it advances the beginning, middle or ending.
+Each outline entry must have only "number" and "beat"; beat is one or two sentences.
 Return ONLY valid JSON, no markdown, with this exact shape:
 {{
  "title":"...",
@@ -166,24 +177,40 @@ Return ONLY valid JSON, no markdown, with this exact shape:
 }}
 Exactly 50 outline entries. Keep metadata concise.
 """
-    plan = extract_json(cf_text(outline_prompt, max_tokens=5000))
-    outline = plan.get("outline", [])
-    if len(outline) != 50:
-        raise ValueError(f"Expected 50 outline entries but received {len(outline)}.")
+        plan = extract_json(cf_text(outline_prompt, max_tokens=5000), "book metadata and 50-scene outline")
+        if len(plan.get("outline", [])) != 50:
+            raise ValueError(f"Expected 50 outline entries but received {len(plan.get('outline', []))}.")
+        if plan_path:
+            plan_path.write_text(json.dumps(plan, indent=2, ensure_ascii=False), encoding="utf-8")
 
+    outline = plan["outline"]
     scenes = []
-    for first in range(1, 51, 10):
-        last = min(first + 9, 50)
-        batch_outline = outline[first - 1:last]
-        batch_prompt = common + f"""
+    # Five scenes per request keeps responses smaller and makes recovery granular.
+    for first in range(1, 51, 5):
+        last = min(first + 4, 50)
+        batch_path = workdir / f"scene_batch_{first:02d}_{last:02d}.json" if workdir else None
+        batch_scenes = None
+        if batch_path and batch_path.exists():
+            try:
+                cached_batch = json.loads(batch_path.read_text(encoding="utf-8"))
+                if len(cached_batch.get("scenes", [])) == last - first + 1:
+                    batch_scenes = cached_batch["scenes"]
+            except Exception:
+                batch_scenes = None
+
+        if batch_scenes is None:
+            batch_outline = outline[first - 1:last]
+            batch_prompt = common + f"""
 Book title: {plan.get("title", title_hint or "Untitled")}
 Character bible: {plan.get("character_bible", "")}
 Art direction: {plan.get("art_direction", "")}
 Full story outline for continuity:
 {json.dumps(outline, ensure_ascii=False)}
+Specific beats to expand now:
+{json.dumps(batch_outline, ensure_ascii=False)}
 
 Expand ONLY scenes {first} through {last} into detailed illustrated-book scene records.
-Each scene page text should be about {scene_words} words. Make the visual prompts cinematic,
+Each scene page text should be about {scene_words} words. Make visual prompts cinematic,
 specific and varied. Do not repeat the same camera angle or static talking pose.
 Return ONLY valid JSON with this exact shape:
 {{
@@ -207,13 +234,22 @@ Return ONLY valid JSON with this exact shape:
 Return exactly {last - first + 1} scenes, numbered {first} through {last}, in order.
 No extra keys, no markdown fences, no text outside JSON.
 """
-        batch_data = extract_json(cf_text(batch_prompt, max_tokens=4500))
-        batch_scenes = batch_data.get("scenes", [])
-        expected = last - first + 1
-        if len(batch_scenes) != expected:
-            raise ValueError(
-                f"Scene batch {first}-{last}: expected {expected} scenes but received {len(batch_scenes)}."
+            batch_data = extract_json(
+                cf_text(batch_prompt, max_tokens=3000),
+                f"scene batch {first} through {last}"
             )
+            batch_scenes = batch_data.get("scenes", [])
+            if len(batch_scenes) != last - first + 1:
+                raise ValueError(
+                    f"Scene batch {first}-{last}: expected {last - first + 1} scenes "
+                    f"but received {len(batch_scenes)}."
+                )
+            if batch_path:
+                batch_path.write_text(
+                    json.dumps({"scenes": batch_scenes}, indent=2, ensure_ascii=False),
+                    encoding="utf-8"
+                )
+
         for offset, scene in enumerate(batch_scenes):
             number = first + offset
             scene["number"] = number
