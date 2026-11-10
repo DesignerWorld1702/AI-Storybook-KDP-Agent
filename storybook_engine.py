@@ -285,7 +285,7 @@ Return ONLY valid JSON, no markdown, with this exact shape:
  "categories":["suggested broad category 1","suggested broad category 2"],
  "audience":"Family / all ages",
  "character_registry":[
-   {{"name":"Fresh story-specific name","visual_id":"visual_001 or null","role":"story role","importance":"protagonist/supporting/villain/creature","immutable_identity":"physical traits and permanent marks","story_costume":"this book's clothing and accessories","visual_bible":"complete physical identity plus story costume"}}
+   {{"name":"Fresh story-specific name","visual_id":null,"role":"story role","importance":"protagonist/supporting/villain/creature","immutable_identity":"physical traits and permanent marks","story_costume":"this book's clothing and accessories","visual_bible":"complete physical identity plus story costume"}}
  ],
  "principal_villain":"Exact name of the single principal villain",
  "character_bible":"Repeat each registry entry's complete visual_bible verbatim under its exact name",
