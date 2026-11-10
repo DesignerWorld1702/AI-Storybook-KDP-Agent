@@ -6,6 +6,8 @@ from storybook_engine import (
     build_scene_prompt,
     character_reference_path,
     scene_reference_images,
+    scene_image_dimensions,
+    reference_guidance_for_images,
 )
 
 
@@ -54,6 +56,23 @@ class CharacterContinuityTests(unittest.TestCase):
         self.assertIn("short copper hair, grey eyes, mustard coat", prompt)
         self.assertIn("silver mask", prompt)
         self.assertIn("Do not merge identities", prompt)
+
+    def test_scene_dimensions_are_high_resolution_and_match_page_art_ratio(self):
+        width, height = scene_image_dimensions("8.5 × 8.5 in — square picture book")
+        self.assertEqual(max(width, height), 1536)
+        self.assertEqual(width % 16, 0)
+        self.assertEqual(height % 16, 0)
+        self.assertLessEqual(width * height, 4_000_000)
+        self.assertAlmostEqual(width / height, 8.5 / (8.5 * 0.75), delta=0.02)
+
+    def test_reference_guidance_maps_each_portrait_to_its_character(self):
+        guidance = reference_guidance_for_images([
+            Path("style_reference.png"),
+            Path("character_refs/Aira.png"),
+            Path("character_refs/The_Warden.png"),
+        ])
+        self.assertIn("reference image 1 only as the identity guide for Aira", guidance)
+        self.assertIn("reference image 2 only as the identity guide for The Warden", guidance)
 
     def test_scene_references_include_recurring_supporting_cast_and_villain(self):
         with tempfile.TemporaryDirectory() as tmp:
