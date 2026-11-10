@@ -400,17 +400,18 @@ No extra keys, no markdown fences, no text outside JSON.
                     f"Scene batch {first}-{last}: expected {last - first + 1} scenes "
                     f"but received {len(batch_scenes)}."
                 )
-            if batch_path:
-                batch_path.write_text(
-                    json.dumps({"scenes": batch_scenes}, indent=2, ensure_ascii=False),
-                    encoding="utf-8"
-                )
-
         for offset, scene in enumerate(batch_scenes):
             number = first + offset
             scene["number"] = number
-            if not scene.get("text") or not scene.get("visual_prompt") or not scene.get("heading"):
-                raise ValueError(f"Scene {number} is missing its heading, text or visual prompt.")
+            if not scene.get("text") or not scene.get("heading"):
+                raise ValueError(f"Scene {number} is missing its heading or page text.")
+            if not scene.get("visual_prompt"):
+                beat = outline[number - 1].get("beat", "")
+                scene["visual_prompt"] = (
+                    f"Illustrate this story event clearly and cinematically: {beat}. "
+                    f"Show only the registered characters listed for this scene; use the established "
+                    f"character identities, story costumes and art direction. Scene details: {scene.get('text', '')}"
+                )
             word_count = len(str(scene.get("text", "")).split())
             if word_count < 35 or word_count > 65:
                 raise ValueError(f"Scene {number} page text has {word_count} words; expected 35–65. Regenerate this batch.")
@@ -421,10 +422,29 @@ No extra keys, no markdown fences, no text outside JSON.
             visible_names = scene.get("characters_present", [])
             if not isinstance(visible_names, list):
                 raise ValueError(f"Scene {number} characters_present must be a list.")
+            # Normalize known aliases and remove generic crowd labels that are not registry identities.
+            character_aliases = {"Kaelin": "Kaelin Darkshadow"}
+            generic_labels = {
+                "minions", "guards", "soldiers", "villagers", "townspeople",
+                "crowd", "crowds", "bandits", "enemies"
+            }
+            visible_names = [
+                character_aliases.get(name, name) if isinstance(name, str) else name
+                for name in visible_names
+                if not (isinstance(name, str) and name.strip().lower() in generic_labels)
+            ]
+            scene["characters_present"] = visible_names
             unknown_names = [name for name in visible_names if name not in known_names]
             if unknown_names:
                 raise ValueError(f"Scene {number} uses unregistered character names: {unknown_names}")
             scenes.append(scene)
+
+        # Cache only a fully validated batch so interrupted/invalid responses are regenerated.
+        if batch_path:
+            batch_path.write_text(
+                json.dumps({"scenes": batch_scenes}, indent=2, ensure_ascii=False),
+                encoding="utf-8"
+            )
 
     plan.pop("outline", None)
     plan["scenes"] = scenes
