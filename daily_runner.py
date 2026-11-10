@@ -94,10 +94,15 @@ def build_one_book(book_date, config):
             story["scheduled_date"] = book_date.isoformat()
             story_path.write_text(json.dumps(story, indent=2, ensure_ascii=False), encoding="utf-8")
 
+        if story.get("story_schema_version") != 2:
+            raise RuntimeError(
+                "This saved story uses an older story schema and has been left untouched. "
+                "Create a fresh book date with the updated generator; existing story files and images are preserved."
+            )
         if not story.get("character_registry") or not story.get("principal_villain"):
             raise RuntimeError(
-                "This saved story predates the character-continuity system. "
-                "It must be regenerated as a new scheduled book; the existing files were preserved."
+                "This saved story is missing its character-continuity registry. "
+                "The existing files were preserved."
             )
         references = engine.create_reference_images(story, outdir)
         scene_width, scene_height = engine.scene_image_dimensions(story.get("trim_size", config["trim_size"]))
