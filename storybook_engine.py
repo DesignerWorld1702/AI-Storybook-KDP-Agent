@@ -25,6 +25,50 @@ TRIM_SIZES = {
     "6 × 9 in — standard paperback": (6.0, 9.0),
 }
 
+def scene_image_dimensions(trim, max_side=None):
+    """Choose a high-resolution image size matching the printable art panel."""
+    if trim not in TRIM_SIZES:
+        raise ValueError(f"Unsupported trim size: {trim}")
+    max_side = int(max_side or os.getenv("STORY_IMAGE_MAX_SIDE", "1536"))
+    if max_side < 1024 or max_side > 1920 or max_side % 16:
+        raise ValueError("STORY_IMAGE_MAX_SIDE must be a multiple of 16 from 1024 to 1920.")
+    page_w, page_h = (value * 72 for value in TRIM_SIZES[trim])
+    panel_h = max(1.55 * 72, page_h * 0.25)
+    art_w, art_h = page_w, page_h - panel_h
+    scale = max_side / max(art_w, art_h)
+    width = max(256, int(round((art_w * scale) / 16) * 16))
+    height = max(256, int(round((art_h * scale) / 16) * 16))
+    if width * height > 4_000_000:
+        raise ValueError("Selected scene dimensions exceed FLUX.2 Klein's 4MP output limit.")
+    return width, height
+
+
+def reference_guidance_for_images(reference_images):
+    """Describe each reference image by its actual role and character filename."""
+    if not reference_images:
+        return (
+            "No reference images are supplied. Follow the visual style and character "
+            "descriptions in the prompt exactly. "
+        )
+    guidance = [
+        "Use reference image 0 only for the illustration rendering style and colour treatment. "
+    ]
+    for index, image_path in enumerate(reference_images[1:], start=1):
+        character_name = Path(image_path).stem.replace("_", " ").strip()
+        guidance.append(
+            f"Use reference image {index} only as the identity guide for {character_name}; "
+            "do not copy or merge another character's face, hair, clothing or accessories. "
+        )
+    if len(reference_images) == 1:
+        guidance.append(
+            "Follow the character descriptions in the prompt; do not invent a character identity from the style reference. "
+        )
+    else:
+        guidance.append(
+            "Include only characters explicitly present in this scene and preserve each identity exactly. "
+        )
+    return "".join(guidance)
+
 def cf_headers():
     return {"Authorization": f"Bearer {CF_TOKEN}", "Content-Type": "application/json"}
 
@@ -320,26 +364,16 @@ def cf_image(prompt, dest, width=1024, height=1024, reference_images=None):
 
     url = f"https://api.cloudflare.com/client/v4/accounts/{CF_ACCOUNT}/ai/run/{IMAGE_MODEL}"
     reference_images = reference_images or []
-    if len(reference_images) >= 2:
-        reference_guidance = (
-            "Use reference image 0 for the exact illustration rendering style and colour treatment. "
-            "Use reference image 1 only as the identity guide for the named characters; "
-            "include only characters explicitly present in this scene. "
-            "Preserve stable faces, hair, eyes, proportions and clothing. "
-        )
-    elif len(reference_images) == 1:
-        reference_guidance = (
-            "Use reference image 0 as the exact illustration style and colour reference. "
-            "Follow the character descriptions in the prompt; do not invent a character identity from the style reference. "
-        )
-    else:
-        reference_guidance = (
-            "No reference images are supplied for this generation. Follow the visual style and character descriptions in the prompt exactly. "
-        )
+    reference_guidance = reference_guidance_for_images(reference_images)
 
     full_prompt = (
         prompt
         + "\n" + reference_guidance
+        + "Render with crisp, tack-sharp focus and clearly resolved fine detail. "
+        + "Keep eyes, facial features, hair strands, fabric texture, material edges and environmental details distinct. "
+        + "Use clean silhouettes, precise linework, controlled painterly shading and strong foreground-to-background separation. "
+        + "The main subjects must remain sharply focused; atmospheric depth belongs in the environment, not as blur over faces. "
+        + "No softness, defocus, motion blur, smeared textures, muddy details, low-resolution appearance, or excessive noise. "
         + "Vary camera direction and physical action according to the scene description. "
         + "Illustration only. No text, typography, captions, letters, logos or watermark."
     )
@@ -456,6 +490,9 @@ def build_scene_prompt(story, scene, style):
         f"Style lock: {STYLE_LOCK}. "
         "Create one cinematic movie frame with clear foreground/background depth, "
         "natural anatomy, purposeful character blocking and a visually distinct camera composition. "
+        "Prioritise crisp focus on faces and important story objects, fine but clean linework, "
+        "clearly separated hair strands, readable eyes, defined fabric and surface textures, "
+        "and sharp environmental details without turning the image photorealistic. "
         "Do not add characters who are not in this scene. No words, lettering, logos or watermark."
     )
 
