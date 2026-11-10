@@ -70,6 +70,38 @@ def library_reference_path(visual_id):
     return None
 
 
+def previous_story_character_names():
+    names = set()
+    cast_dir = CHARACTER_LIBRARY_ROOT / "story_cast"
+    if not cast_dir.exists():
+        return []
+    for cast_path in cast_dir.glob("*.json"):
+        try:
+            data = json.loads(cast_path.read_text(encoding="utf-8"))
+            names.update(str(item.get("name", "")).strip() for item in data.get("characters", []) if item.get("name"))
+        except (OSError, ValueError, TypeError):
+            continue
+    return sorted(name for name in names if name)
+
+
+def save_story_cast(story, workdir):
+    if not workdir:
+        return
+    cast_dir = CHARACTER_LIBRARY_ROOT / "story_cast"
+    cast_dir.mkdir(parents=True, exist_ok=True)
+    cast_path = cast_dir / f"{Path(workdir).name}.json"
+    data = {
+        "book_title": story.get("title", ""),
+        "scheduled_folder": Path(workdir).name,
+        "characters": [
+            {"name": item.get("name", ""), "visual_id": item.get("visual_id"),
+             "role": item.get("role", ""), "importance": item.get("importance", "")}
+            for item in story.get("character_registry", [])
+        ]
+    }
+    cast_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
 def reference_guidance_for_images(reference_images):
     """Describe style and physical-identity references."""
     if not reference_images:
@@ -216,7 +248,7 @@ Title hint: {title_hint or "invent a memorable title"}.
 Character notes / reusable character pool: {character_notes or DEFAULT_CHARACTER_POOL}
 Permanent visual library available to this project:
 {json.dumps([{k: v for k, v in model.items() if not k.startswith("_")} for model in load_character_library()], ensure_ascii=False)}
-Every story must use fresh character names, not reusable pool labels. Select permanent visual models only when they naturally fit the plot; do not force any character into a book. If visual model visual_001 is selected, give it a new story name (never "Adam") while preserving its immutable physical identity exactly. Add visual_id: "visual_001" to that registry entry. Other characters may be original story-specific designs. Humans drive the plot. Build a lively ensemble: several clear main protagonists plus
+Every story must use fresh character names, not reusable pool labels, and must avoid all previous story character names listed here: {json.dumps(previous_story_character_names(), ensure_ascii=False)}. Select permanent visual models only when they naturally fit the plot; do not force any character into a book. If visual model visual_001 is selected, give it a new story name (never "Adam") while preserving its immutable physical identity exactly. Add visual_id: "visual_001" to that registry entry. Other characters may be original story-specific designs. Humans drive the plot. Build a lively ensemble: several clear main protagonists plus
 supporting characters who join, leave, form alliances, disagree, and reveal secrets
 naturally as the adventure unfolds. Build at least two clearly defined main protagonists
 and at least three meaningful recurring supporting characters, in addition to the villain.
@@ -397,6 +429,7 @@ No extra keys, no markdown fences, no text outside JSON.
     plan.pop("outline", None)
     plan["scenes"] = scenes
     plan["art_direction"] = f"{STYLE_LOCK}\n{plan.get('art_direction', '')}"
+    save_story_cast(plan, workdir)
     return plan
 
 def cf_image(prompt, dest, width=1024, height=1024, reference_images=None):
