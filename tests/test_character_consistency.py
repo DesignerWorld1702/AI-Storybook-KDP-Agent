@@ -2,6 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import storybook_engine as engine
 from storybook_engine import (
     build_scene_prompt,
     character_reference_path,
@@ -74,6 +75,27 @@ class CharacterContinuityTests(unittest.TestCase):
         self.assertIn("reference image 1 only as the physical-identity guide for Aira", guidance)
         self.assertIn("Ignore reference clothing and accessories", guidance)
         self.assertIn("reference image 2 only as the physical-identity guide for The Warden", guidance)
+
+    def test_permanent_visual_model_reference_is_resolved_by_visual_id(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            model_dir = root / "models" / "visual_001"
+            model_dir.mkdir(parents=True)
+            (model_dir / "identity.json").write_text(
+                '{"visual_id":"visual_001","reference_image":"reference.png"}',
+                encoding="utf-8"
+            )
+            reference = model_dir / "reference.png"
+            reference.write_bytes(b"x" * 2048)
+            original_root = engine.CHARACTER_LIBRARY_ROOT
+            try:
+                engine.CHARACTER_LIBRARY_ROOT = root
+                resolved = engine.character_reference_for_entry(
+                    root / "book", {"name": "New Story Name", "visual_id": "visual_001"}
+                )
+                self.assertEqual(resolved, reference)
+            finally:
+                engine.CHARACTER_LIBRARY_ROOT = original_root
 
     def test_scene_references_include_recurring_supporting_cast_and_villain(self):
         with tempfile.TemporaryDirectory() as tmp:
