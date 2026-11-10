@@ -21,4 +21,4 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       - name: Compile application
-        run: python -m py_compile app.py
+        run: python -m py_compile app.py storybook_engine.py daily_runner.py
