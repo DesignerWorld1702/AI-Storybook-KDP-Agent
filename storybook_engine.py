@@ -225,14 +225,7 @@ clear motive, methods, and a meaningful connection to the central conflict. The 
 may be a reusable identity from a villain pool, but create a fresh story-specific costume,
 equipment, styling and visual presentation for this book. Keep that new design unchanged
 throughout this book. Fantasy creatures remain rare supporting roles.
-CRITICAL VISUAL-CONTINUITY RULE: every recurring character, including minor/supporting
-characters and the villain, must have a stable visual identity. Define a character_registry
-with one entry per selected character: name, role, importance ("protagonist",
-"supporting", "villain", or "creature"), and a highly specific visual_bible covering
-adult age, face shape/features, skin tone, hair, eye colour, body/build, height impression,
-identifying marks, exact clothing, accessories and colour palette. Do not vary these
-features between scenes unless an explicit story event changes them. Every scene's
-characters_present must use exact registry names and include only visible characters.
+CRITICAL VISUAL-CONTINUITY RULE: every recurring character, including supporting characters and the villain, must have a stable physical identity. Give every character a fresh story-specific name for this book; do not reuse names from the reusable pool. Each character_registry entry must include name, role, importance, immutable_identity (face shape/features, skin tone, hair, eye colour, body/build, height impression and permanent marks), story_costume (this book's clothing, accessories and palette), and visual_bible. If a permanent library model is used, include its exact visual_id and preserve its immutable_identity exactly while creating a new story-specific costume. The costume must remain stable throughout this book unless a visible story event changes it. Every scene's characters_present must use exact registry names and include only visible characters.
 Use cinematic shot variety, purposeful action, gaze, expressions, lighting and depth.
 Avoid copyrighted characters, existing franchises and imitation of living artists.
 """
@@ -504,7 +497,7 @@ def build_scene_prompt(story, scene, style):
     cast = ", ".join(cast_names) or "no named character; environment-focused scene"
     registry = {item.get("name"): item for item in story.get("character_registry", [])}
     scene_bibles = "\\n".join(
-        f"{name}: {registry[name].get('visual_bible', '')}"
+        f"{name}: immutable physical identity: {registry[name].get('immutable_identity', registry[name].get('visual_bible', ''))}; this book's costume: {registry[name].get('story_costume', 'follow visual_bible')}; full visual bible: {registry[name].get('visual_bible', '')}"
         for name in cast_names if name in registry
     )
     direction = (
