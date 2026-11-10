@@ -34,6 +34,7 @@ DEFAULT_CONFIG = {
     "scene_words": 45,
     "pdf_text_size": 11,
     "catchup_pause_seconds": 120,
+    "max_books_per_run": 1,
     "first_run_date": date.today().isoformat()
 }
 
@@ -153,7 +154,8 @@ def run_due_jobs(force=False):
         completed += 1
         next_date += timedelta(days=1)
         if next_date <= due_through:
-            time.sleep(int(config["catchup_pause_seconds"]))
+            logging.info("More missed dates remain in the catch-up queue; the next task trigger will process the next one.")
+            break
     logging.info("Completed %s scheduled book(s).", completed)
     return 0
 
