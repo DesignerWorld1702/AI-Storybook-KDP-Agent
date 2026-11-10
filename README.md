@@ -3,7 +3,10 @@
 A local Windows-first starter app that creates an original 50-scene illustrated storybook, generates scene images through Cloudflare Workers AI, places the story text at the bottom of each page, and exports a PDF plus metadata/checklists for Amazon KDP.
 
 ## What it does
-- Creates a story and 50 short scene captions using a Cloudflare Workers AI text model (configurable).
+- Creates a 50-scene story with a clear group of adult protagonists, a substantial supporting ensemble, and exactly one principal villain.
+- Builds a canonical character registry for every selected character, including supporting characters and the villain.
+- Generates dedicated identity portraits for recurring characters and reuses relevant portraits as scene-specific image references.
+- Repeats each visible character's exact visual bible in scene prompts and validates scene character names against the registry.
 - Generates one illustration per scene using a Cloudflare Workers AI image model (configurable).
 - Builds a square/portrait/6x9 PDF with illustration above a readable text panel.
 - Exports scene text, metadata JSON, a KDP listing draft, and a publishing checklist.
@@ -81,5 +84,6 @@ Each run creates a timestamped folder inside `output/` with:
 
 ## Limitations
 - Generating 50 images may exceed free Cloudflare Workers AI quota or have model-specific limits. This app stops on errors and preserves completed scenes so you can resume by rerunning with the same output folder if you implement resume support; the initial version restarts a run.
-- AI-generated characters can drift visually between scenes. Character descriptions are repeated in prompts to improve consistency, but this is not guaranteed.
+- Character continuity is treated as a required quality benchmark: recurring protagonists, supporting characters, creatures and the principal villain receive canonical visual bibles; recurring characters also receive identity portraits reused in scenes where they appear. The villain's costume and styling are designed for each new book, then held consistent within that book.
+- Image models can still produce occasional visual drift. The reference portraits and prompt checks reduce this risk but cannot guarantee pixel-perfect identity; review the contact sheet and regenerate any inconsistent scene before publishing.
 - The included KDP handoff is deliberately user-in-the-loop, not a hidden or unattended publishing bot. There is no claim of a supported public KDP publishing API.
