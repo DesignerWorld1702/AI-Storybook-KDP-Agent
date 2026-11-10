@@ -1,6 +1,7 @@
 """Daily, resumable storybook generation runner for Windows Task Scheduler."""
 import argparse
 import json
+import logging
 import os
 import sys
 import time
@@ -17,6 +18,9 @@ load_dotenv(ROOT / ".env")
 TZ = ZoneInfo("Asia/Karachi")
 OUTROOT = ROOT / "output"
 STATE_DIR = ROOT / "state"
+LOG_DIR = ROOT / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", handlers=[logging.FileHandler(LOG_DIR / "daily_runner.log", encoding="utf-8"), logging.StreamHandler(sys.stdout)])
 STATE_DIR.mkdir(exist_ok=True)
 STATE_FILE = STATE_DIR / "scheduler_state.json"
 CONFIG_FILE = ROOT / "config" / "automation.json"
@@ -120,7 +124,7 @@ def build_one_book(book_date, config):
         status.update({"status": "failed", "updated_at": datetime.now(TZ).isoformat(),
                        "error": str(exc), "traceback": traceback.format_exc()[-8000:]})
         status_path.write_text(json.dumps(status, indent=2), encoding="utf-8")
-        print(f"[FAILED] {book_date}: {exc}", flush=True)
+        logging.exception("Book generation failed for %s: %s", book_date, exc)
         return False
 
 def run_due_jobs(force=False):
@@ -136,13 +140,13 @@ def run_due_jobs(force=False):
     if next_date < date.fromisoformat(config["first_run_date"]):
         next_date = date.fromisoformat(config["first_run_date"])
     if next_date > due_through:
-        print(f"No books due. Next scheduled run: {config['schedule_time']} {config['timezone']}.", flush=True)
+        logging.info("No books due. Next scheduled run: %s %s.", config["schedule_time"], config["timezone"])
         return 0
     completed = 0
     while next_date <= due_through:
-        print(f"Starting scheduled book for {next_date}...", flush=True)
+        logging.info("Starting scheduled book for %s", next_date)
         if not build_one_book(next_date, config):
-            print("Stopping catch-up queue. This date will be retried on the next task run.", flush=True)
+            logging.warning("Stopping catch-up queue. This date will be retried on the next task run.")
             return 1
         state["last_completed_date"] = next_date.isoformat()
         save_state(state)
@@ -150,7 +154,7 @@ def run_due_jobs(force=False):
         next_date += timedelta(days=1)
         if next_date <= due_through:
             time.sleep(int(config["catchup_pause_seconds"]))
-    print(f"Completed {completed} scheduled book(s).", flush=True)
+    logging.info("Completed %s scheduled book(s).", completed)
     return 0
 
 if __name__ == "__main__":
