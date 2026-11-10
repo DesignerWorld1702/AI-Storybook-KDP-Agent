@@ -216,7 +216,7 @@ Title hint: {title_hint or "invent a memorable title"}.
 Character notes / reusable character pool: {character_notes or DEFAULT_CHARACTER_POOL}
 Permanent visual library available to this project:
 {json.dumps([{k: v for k, v in model.items() if not k.startswith("_")} for model in load_character_library()], ensure_ascii=False)}
-Every story must use fresh character names, not reusable pool labels. MUST include permanent visual model visual_001 as one of the human protagonists in every book, but give it a new story name (never "Adam") while preserving its immutable physical identity exactly. Add visual_id: "visual_001" to that registry entry. Other characters may be original story-specific designs. Humans drive the plot. Build a lively ensemble: several clear main protagonists plus
+Every story must use fresh character names, not reusable pool labels. Select permanent visual models only when they naturally fit the plot; do not force any character into a book. If visual model visual_001 is selected, give it a new story name (never "Adam") while preserving its immutable physical identity exactly. Add visual_id: "visual_001" to that registry entry. Other characters may be original story-specific designs. Humans drive the plot. Build a lively ensemble: several clear main protagonists plus
 supporting characters who join, leave, form alliances, disagree, and reveal secrets
 naturally as the adventure unfolds. Build at least two clearly defined main protagonists
 and at least three meaningful recurring supporting characters, in addition to the villain.
@@ -286,8 +286,6 @@ Exactly 50 outline entries. Keep metadata concise.
                 raise ValueError(f"Character {item.get('name')} references unknown visual model: {visual_id}")
             if visual_id and (not item.get("immutable_identity") or not item.get("story_costume")):
                 raise ValueError(f"Character {item.get('name')} must separate immutable_identity from story_costume.")
-        if sum(item.get("visual_id") == "visual_001" for item in registry) != 1:
-            raise ValueError("Every new book must assign permanent visual model visual_001 to exactly one character.")
         if len(names) != len(registry) or any(not name for name in names) or len(set(names)) != len(names):
             raise ValueError("Character registry has missing or duplicate character names.")
         villain_name = str(plan.get("principal_villain", "")).strip()
