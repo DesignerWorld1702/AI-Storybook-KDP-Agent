@@ -17,7 +17,7 @@ OUTROOT.mkdir(exist_ok=True)
 CF_ACCOUNT = os.getenv("CLOUDFLARE_ACCOUNT_ID", "").strip()
 CF_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
 TEXT_MODEL = os.getenv("CLOUDFLARE_TEXT_MODEL", "@cf/meta/llama-3.1-8b-instruct").strip()
-IMAGE_MODEL = os.getenv("CLOUDFLARE_IMAGE_MODEL", "@cf/black-forest-labs/flux-1-schnell").strip()
+IMAGE_MODEL = os.getenv("CLOUDFLARE_IMAGE_MODEL", "@cf/black-forest-labs/flux-2-klein-4b").strip()
 
 TRIM_SIZES = {
     "8.5 × 8.5 in — square picture book": (8.5, 8.5),
@@ -69,14 +69,38 @@ def cf_text(prompt, max_tokens=7000):
 
     return text.strip()
 
-def extract_json(text):
+def _parse_json_once(text):
     text = text.strip()
-    text = re.sub(r"^```(?:json)?\s*", "", text)
-    text = re.sub(r"\s*```$", "", text)
+    text = re.sub(r"^```(?:json)?\\s*", "", text)
+    text = re.sub(r"\\s*```$", "", text)
     start, end = text.find("{"), text.rfind("}")
     if start < 0 or end <= start:
-        raise ValueError("The text model did not return valid JSON. Try again or use a different text model.")
-    return json.loads(text[start:end+1])
+        raise ValueError("The text model did not return a JSON object.")
+    candidate = text[start:end + 1]
+    try:
+        return json.loads(candidate)
+    except json.JSONDecodeError:
+        # Repair the common trailing-comma mistake before asking the model again.
+        candidate = re.sub(r",\\s*([}\\]])", r"\\1", candidate)
+        return json.loads(candidate)
+
+def extract_json(text, repair_context="story data"):
+    try:
+        return _parse_json_once(text)
+    except (ValueError, json.JSONDecodeError) as original_error:
+        repair_prompt = (
+            "Repair the malformed JSON below. Return ONLY one valid JSON object. "
+            "Preserve all keys and story content. Do not summarize or use markdown. "
+            "Context: " + repair_context + ".\\n\\n" + text
+        )
+        repaired = cf_text(repair_prompt, max_tokens=6000)
+        try:
+            return _parse_json_once(repaired)
+        except Exception as repair_error:
+            raise ValueError(
+                "JSON generation failed and automatic repair could not validate it. "
+                f"Original error: {original_error}. Repair error: {repair_error}"
+            ) from repair_error
 
 DEFAULT_CHARACTER_POOL = """
 REUSABLE CHARACTER POOL — select only those needed by this standalone story; never force the full cast into every book.
