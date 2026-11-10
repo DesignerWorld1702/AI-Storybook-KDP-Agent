@@ -71,8 +71,8 @@ def cf_text(prompt, max_tokens=7000):
 
 def _parse_json_once(text):
     text = text.strip()
-    text = re.sub(r"^```(?:json)?\\s*", "", text)
-    text = re.sub(r"\\s*```$", "", text)
+    text = re.sub(r"^```(?:json)?\s*", "", text)
+    text = re.sub(r"\s*```$", "", text)
     start, end = text.find("{"), text.rfind("}")
     if start < 0 or end <= start:
         raise ValueError("The text model did not return a JSON object.")
@@ -81,7 +81,7 @@ def _parse_json_once(text):
         return json.loads(candidate)
     except json.JSONDecodeError:
         # Repair the common trailing-comma mistake before asking the model again.
-        candidate = re.sub(r",\\s*([}\\]])", r"\\1", candidate)
+        candidate = re.sub(r",\s*([}\]])", r"\1", candidate)
         return json.loads(candidate)
 
 def extract_json(text, repair_context="story data"):
@@ -91,7 +91,7 @@ def extract_json(text, repair_context="story data"):
         repair_prompt = (
             "Repair the malformed JSON below. Return ONLY one valid JSON object. "
             "Preserve all keys and story content. Do not summarize or use markdown. "
-            "Context: " + repair_context + ".\\n\\n" + text
+            "Context: " + repair_context + ".\n\n" + text
         )
         repaired = cf_text(repair_prompt, max_tokens=6000)
         try:
