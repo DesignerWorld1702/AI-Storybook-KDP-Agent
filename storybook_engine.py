@@ -166,7 +166,7 @@ Avoid copyrighted characters, existing franchises and imitation of living artist
     if plan_path and plan_path.exists():
         try:
             cached = json.loads(plan_path.read_text(encoding="utf-8"))
-            if len(cached.get("outline", [])) == 50:
+            if len(cached.get("outline", [])) == 50 and cached.get("character_registry") and cached.get("principal_villain"):
                 plan = cached
         except Exception:
             plan = None
