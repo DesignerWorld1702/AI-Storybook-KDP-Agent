@@ -409,7 +409,12 @@ def scene_reference_images(story, scene, outdir, style_ref):
     registry = story.get("character_registry", [])
     by_name = {item.get("name"): item for item in registry}
     refs = [style_ref]
-    for name in scene.get("characters_present", []):
+    priority = {"villain": 0, "protagonist": 1, "supporting": 2, "creature": 3}
+    scene_names = sorted(
+        scene.get("characters_present", []),
+        key=lambda name: priority.get(by_name.get(name, {}).get("importance"), 4)
+    )
+    for name in scene_names:
         item = by_name.get(name)
         if not item:
             continue
