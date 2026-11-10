@@ -100,6 +100,8 @@ def build_one_book(book_date, config):
                 "It must be regenerated as a new scheduled book; the existing files were preserved."
             )
         references = engine.create_reference_images(story, outdir)
+        scene_width, scene_height = engine.scene_image_dimensions(story.get("trim_size", config["trim_size"]))
+        logging.info("Scene illustration resolution: %s x %s", scene_width, scene_height)
         scenes_dir = outdir / "scenes"
         scenes_dir.mkdir(exist_ok=True)
         for index, scene in enumerate(story["scenes"], 1):
@@ -113,7 +115,8 @@ def build_one_book(book_date, config):
             )
             engine.cf_image(
                 engine.build_scene_prompt(story, scene, engine.STYLE_LOCK),
-                image_path, reference_images=scene_refs
+                image_path, width=scene_width, height=scene_height,
+                reference_images=scene_refs
             )
             if not valid_image(image_path):
                 raise RuntimeError(f"Scene {index} image did not pass file validation.")
