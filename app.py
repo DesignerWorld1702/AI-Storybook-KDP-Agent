@@ -107,29 +107,28 @@ STYLE_LOCK = (
 )
 
 def make_story(genre, style, audience, title_hint, character_notes, scene_words):
-    prompt = f"""
-Create an original illustrated feature-film story with exactly 50 sequential scenes.
+    # Generate a compact 50-scene outline first, then expand it in five smaller
+    # batches. This avoids asking a small text model for one enormous JSON reply.
+    common = f"""
+Create an original illustrated feature-film story.
 Story direction: mystery, suspense, thriller, adventure and restrained fantasy.
 Genre emphasis: {genre}
-Audience: family / all ages.
+Audience: family / all ages. Main protagonists must be humans in their 20s.
 Visual style (LOCKED): {STYLE_LOCK}
 Title hint: {title_hint or "invent a memorable title"}.
 Character notes / reusable character pool: {character_notes or DEFAULT_CHARACTER_POOL}
 
-CAST RULES:
-- The main protagonists must be humans in their 20s, not children or teenagers.
-- Humans drive the plot and remain the central focus.
-- Use only the characters required by this particular story. Do not force every character from a reusable pool into every book.
-- Fantasy creatures are rare supporting characters, not the main cast; include one only when the plot genuinely needs it.
-- Describe each selected character with stable face, hair, eye, body, clothing and distinguishing details.
-- Stories may be standalone and may introduce new characters.
-
-CINEMATIC DIRECTION:
-Every scene must have intentional film direction and visual variety. Vary wide establishing shots, medium shots, close-ups, extreme close-ups, low/high angles, overhead views, side profiles, over-the-shoulder views, rear views and dynamic action compositions. Characters must not simply face forward and talk in every scene. Specify physical action, pose, gaze direction, expression, camera placement, foreground/background depth, lighting and atmosphere. Keep rendering style and character identity consistent while varying camera composition.
-
-Each scene has page text of about {scene_words} words, suitable for an illustrated book.
-Avoid copyrighted characters, existing franchises, and imitation of living artists.
-Return ONLY valid JSON, no markdown fences, with this exact shape:
+Humans drive the plot. Use only characters needed for this standalone story.
+Fantasy creatures are rare supporting characters. Keep selected characters' faces,
+hair, eyes, distinguishing marks, proportions and clothing consistent.
+Use cinematic shot variety, purposeful action, gaze, expressions, lighting and depth.
+Avoid copyrighted characters, existing franchises and imitation of living artists.
+"""
+    outline_prompt = common + f"""
+First create the book metadata and a concise outline of exactly 50 sequential scenes.
+Each outline entry must have only "number" and "beat"; beat is one or two sentences
+describing the important action and how it advances the beginning, middle or ending.
+Return ONLY valid JSON, no markdown, with this exact shape:
 {{
  "title":"...",
  "subtitle":"...",
@@ -138,41 +137,74 @@ Return ONLY valid JSON, no markdown fences, with this exact shape:
  "keywords":["seven distinct short search phrases"],
  "categories":["suggested broad category 1","suggested broad category 2"],
  "audience":"Family / all ages",
- "character_bible":"Detailed visual bibles for only the characters selected for this story",
- "art_direction":"The locked style plus this book's consistent palette, lighting and world atmosphere",
+ "character_bible":"Detailed visual bibles for only the characters selected",
+ "art_direction":"Consistent palette, lighting and world atmosphere",
+ "outline":[{{"number":1,"beat":"..."}}]
+}}
+Exactly 50 outline entries. Keep metadata concise.
+"""
+    plan = extract_json(cf_text(outline_prompt, max_tokens=5000))
+    outline = plan.get("outline", [])
+    if len(outline) != 50:
+        raise ValueError(f"Expected 50 outline entries but received {len(outline)}.")
+
+    scenes = []
+    for first in range(1, 51, 10):
+        last = min(first + 9, 50)
+        batch_outline = outline[first - 1:last]
+        batch_prompt = common + f"""
+Book title: {plan.get("title", title_hint or "Untitled")}
+Character bible: {plan.get("character_bible", "")}
+Art direction: {plan.get("art_direction", "")}
+Full story outline for continuity:
+{json.dumps(outline, ensure_ascii=False)}
+
+Expand ONLY scenes {first} through {last} into detailed illustrated-book scene records.
+Each scene page text should be about {scene_words} words. Make the visual prompts cinematic,
+specific and varied. Do not repeat the same camera angle or static talking pose.
+Return ONLY valid JSON with this exact shape:
+{{
  "scenes":[
-   {{
-    "number":1,
-    "heading":"short scene heading",
-    "text":"page text",
-    "shot_type":"wide / medium / close-up / detail / overhead / other",
-    "camera_angle":"low / high / eye-level / overhead / dutch / other",
-    "composition":"foreground, subject placement, background and depth",
-    "action_pose":"specific physical action and body pose",
-    "gaze":"where each visible character is looking",
-    "expression":"specific emotion visible on face/body",
-    "lighting":"cinematic lighting and atmosphere",
-    "characters_present":["character names actually visible"],
-    "visual_prompt":"Detailed scene illustration prompt"
-   }}
+  {{
+   "number":{first},
+   "heading":"short scene heading",
+   "text":"page text",
+   "shot_type":"wide / medium / close-up / detail / overhead / other",
+   "camera_angle":"low / high / eye-level / overhead / dutch / other",
+   "composition":"foreground, subject placement, background and depth",
+   "action_pose":"specific physical action and body pose",
+   "gaze":"where each visible character is looking",
+   "expression":"specific emotion visible on face/body",
+   "lighting":"cinematic lighting and atmosphere",
+   "characters_present":["character names actually visible"],
+   "visual_prompt":"Detailed scene illustration prompt"
+  }}
  ]
 }}
-Requirements: exactly 50 scenes; no extra keys; coherent beginning-middle-end; scene text must not contain page numbers; no text, lettering, logos or watermarks in images. The author field should be "Your Author Name" unless supplied by the user.
+Return exactly {last - first + 1} scenes, numbered {first} through {last}, in order.
+No extra keys, no markdown fences, no text outside JSON.
 """
-    data = extract_json(cf_text(prompt, max_tokens=11000))
-    scenes = data.get("scenes", [])
-    if len(scenes) != 50:
-        raise ValueError(f"Expected 50 scenes but received {len(scenes)}.")
-    for i, scene in enumerate(scenes, 1):
-        scene["number"] = i
-        if not scene.get("text") or not scene.get("visual_prompt"):
-            raise ValueError(f"Scene {i} is missing text or a visual prompt.")
-        for key in ("shot_type", "camera_angle", "composition", "action_pose", "gaze", "expression", "lighting"):
-            scene.setdefault(key, "")
-        scene.setdefault("characters_present", [])
-    data["art_direction"] = f"{STYLE_LOCK}\n{data.get('art_direction', '')}"
-    return data
+        batch_data = extract_json(cf_text(batch_prompt, max_tokens=4500))
+        batch_scenes = batch_data.get("scenes", [])
+        expected = last - first + 1
+        if len(batch_scenes) != expected:
+            raise ValueError(
+                f"Scene batch {first}-{last}: expected {expected} scenes but received {len(batch_scenes)}."
+            )
+        for offset, scene in enumerate(batch_scenes):
+            number = first + offset
+            scene["number"] = number
+            if not scene.get("text") or not scene.get("visual_prompt"):
+                raise ValueError(f"Scene {number} is missing text or a visual prompt.")
+            for key in ("shot_type", "camera_angle", "composition", "action_pose", "gaze", "expression", "lighting"):
+                scene.setdefault(key, "")
+            scene.setdefault("characters_present", [])
+            scenes.append(scene)
 
+    plan.pop("outline", None)
+    plan["scenes"] = scenes
+    plan["art_direction"] = f"{STYLE_LOCK}\n{plan.get('art_direction', '')}"
+    return plan
 
 def cf_image(prompt, dest, width=1024, height=1024, reference_images=None):
     if not CF_ACCOUNT or not CF_TOKEN:
