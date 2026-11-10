@@ -252,7 +252,7 @@ Return ONLY valid JSON, no markdown, with this exact shape:
  "categories":["suggested broad category 1","suggested broad category 2"],
  "audience":"Family / all ages",
  "character_registry":[
-   {{"name":"Exact character name","role":"story role","importance":"protagonist/supporting/villain/creature","visual_bible":"Complete fixed visual identity; for the villain include this book's unique costume and equipment design"}}
+   {{"name":"Fresh story-specific name","visual_id":"visual_001 or null","role":"story role","importance":"protagonist/supporting/villain/creature","immutable_identity":"physical traits and permanent marks","story_costume":"this book's clothing and accessories","visual_bible":"complete physical identity plus story costume"}}
  ],
  "principal_villain":"Exact name of the single principal villain",
  "character_bible":"Repeat each registry entry's complete visual_bible verbatim under its exact name",
@@ -268,6 +268,13 @@ Exactly 50 outline entries. Keep metadata concise.
         if not isinstance(registry, list) or not registry:
             raise ValueError("Story plan is missing its character_registry.")
         names = [str(item.get("name", "")).strip() for item in registry if isinstance(item, dict)]
+        known_visual_ids = {model.get("visual_id") for model in load_character_library()}
+        for item in registry:
+            visual_id = item.get("visual_id")
+            if visual_id and visual_id not in known_visual_ids:
+                raise ValueError(f"Character {item.get('name')} references unknown visual model: {visual_id}")
+            if visual_id and (not item.get("immutable_identity") or not item.get("story_costume")):
+                raise ValueError(f"Character {item.get('name')} must separate immutable_identity from story_costume.")
         if len(names) != len(registry) or any(not name for name in names) or len(set(names)) != len(names):
             raise ValueError("Character registry has missing or duplicate character names.")
         villain_name = str(plan.get("principal_villain", "")).strip()
