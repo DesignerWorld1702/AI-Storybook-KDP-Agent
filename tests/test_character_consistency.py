@@ -71,8 +71,9 @@ class CharacterContinuityTests(unittest.TestCase):
             Path("character_refs/Aira.png"),
             Path("character_refs/The_Warden.png"),
         ])
-        self.assertIn("reference image 1 only as the identity guide for Aira", guidance)
-        self.assertIn("reference image 2 only as the identity guide for The Warden", guidance)
+        self.assertIn("reference image 1 only as the physical-identity guide for Aira", guidance)
+        self.assertIn("Ignore reference clothing and accessories", guidance)
+        self.assertIn("reference image 2 only as the physical-identity guide for The Warden", guidance)
 
     def test_scene_references_include_recurring_supporting_cast_and_villain(self):
         with tempfile.TemporaryDirectory() as tmp:
