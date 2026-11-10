@@ -23,9 +23,9 @@ The Streamlit app remains an optional manual dashboard. The independent `daily_r
 1. Keep your Cloudflare credentials in the local `.env` file. Never upload it to GitHub.
 2. Install the project dependencies with `python -m pip install -r requirements.txt`.
 3. Run `python daily_runner.py --run-now` once to test the unattended pipeline immediately.
-4. After the test succeeds, right-click `install_scheduler.ps1` and run it with PowerShell (or run it from an ordinary PowerShell window). It registers a Windows Task Scheduler task for 8:00 PM and Windows startup.
+4. After the test succeeds, right-click `install_scheduler.ps1` and run it with PowerShell (or run it from an ordinary PowerShell window). It registers a Windows Task Scheduler task for 8:00 PM and Windows logon. If the PC was asleep, the task is configured to wake it when supported.
 5. The runner stores progress in `state/scheduler_state.json`, writes each book under `output/YYYYMMDD_daily_story/`, and resumes from valid scene images after interruptions.
-6. If the PC was off for scheduled days, the startup trigger processes overdue dates sequentially. A failed date stays at the head of the queue and is retried on the next task run.
+6. If the PC was off for scheduled days, the startup trigger processes overdue dates sequentially, one book per task trigger by default to limit quota spikes. A failed date stays at the head of the queue and is retried on the next task run. Change `max_books_per_run` in the automation config if you intentionally want a larger catch-up batch.
 
 Configuration is created on first run at `config/automation.json`. You can edit the author, genre rotation, trim size, schedule, and catch-up pause there. The time zone is Asia/Karachi.
 
