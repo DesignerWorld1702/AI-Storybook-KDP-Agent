@@ -19,6 +19,15 @@ A local Windows-first starter app that creates an original 50-scene illustrated 
 - Amazon KDP requires disclosure of AI-generated content when applicable. Review current KDP policy and disclose accurately.
 - The app does not upload/publish without your explicit review and final action in KDP.
 
+## Illustration quality and resolution
+
+- The daily runner now selects a high-resolution scene image size (default maximum side: 1536 px) that matches the printable art-panel aspect ratio for the selected trim size. This is sharper than the earlier 1024 px default and avoids unnecessary cropping.
+- Change `STORY_IMAGE_MAX_SIDE` in the local `.env` only if needed; it must be a multiple of 16 from 1024 to 1920. Larger images use more inference resources and may affect quota or cost.
+- Scene prompts explicitly request crisp focus, defined facial features, hair strands, fabric/material textures, clean edges, and reduced blur.
+- Each scene reference portrait is identified by character name in the prompt, rather than treating several portraits as one generic identity sheet.
+- FLUX.2 Klein 4B is a speed-oriented distilled model with a fixed four-step process on Workers AI; increasing output dimensions cannot guarantee perfect detail. The project does not pretend to guarantee zero blur. Inspect the contact sheet and regenerate weak scenes before publishing.
+- A 512 × 512 test image is only a low-resolution connectivity test; it is not representative of the daily runner's final scene dimensions.
+
 ## Daily automatic generation (Windows)
 
 The Streamlit app remains an optional manual dashboard. The independent `daily_runner.py` creates books without opening a browser.
