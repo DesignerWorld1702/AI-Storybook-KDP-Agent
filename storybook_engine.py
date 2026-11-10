@@ -145,7 +145,9 @@ Title hint: {title_hint or "invent a memorable title"}.
 Character notes / reusable character pool: {character_notes or DEFAULT_CHARACTER_POOL}
 Humans drive the plot. Build a lively ensemble: several clear main protagonists plus
 supporting characters who join, leave, form alliances, disagree, and reveal secrets
-naturally as the adventure unfolds. Do not force every pool character into the story.
+naturally as the adventure unfolds. Build at least two clearly defined main protagonists
+and at least three meaningful recurring supporting characters, in addition to the villain.
+Do not force every pool character into the story.
 Include exactly ONE principal villain with a consequential role, distinctive personality,
 clear motive, methods, and a meaningful connection to the central conflict. The villain
 may be a reusable identity from a villain pool, but create a fresh story-specific costume,
@@ -207,8 +209,12 @@ Exactly 50 outline entries. Keep metadata concise.
         villain_entries = [item for item in registry if item.get("importance") == "villain"]
         if not villain_name or villain_name not in names or len(villain_entries) != 1 or villain_entries[0]["name"] != villain_name:
             raise ValueError("Every book must define exactly one registered principal villain.")
-        if not any(item.get("importance") == "protagonist" for item in registry):
-            raise ValueError("Story must define at least one main protagonist.")
+        protagonist_count = sum(item.get("importance") == "protagonist" for item in registry)
+        supporting_count = sum(item.get("importance") == "supporting" for item in registry)
+        if protagonist_count < 2:
+            raise ValueError("Story must define a group of at least two main protagonists.")
+        if supporting_count < 3:
+            raise ValueError("Story must define at least three meaningful supporting characters.")
         plan["character_bible"] = "\\n\\n".join(
             f"{item['name']} — {item.get('role', '')}: {item.get('visual_bible', '')}"
             for item in registry
@@ -481,12 +487,19 @@ def create_reference_images(story, outdir):
         )
         cf_image(cast_prompt, cast_ref, reference_images=[style_ref])
 
-    # Generate one dedicated identity portrait per selected recurring character.
-    # These are reused in every scene where that character appears.
+    # Generate identity portraits for every recurring character, including supporting
+    # characters and the villain. One-scene characters are described in prompts but do
+    # not consume an extra reference-image generation.
     registry = story.get("character_registry", [])
+    appearances = {}
+    for scene in story.get("scenes", []):
+        for visible_name in scene.get("characters_present", []):
+            appearances[visible_name] = appearances.get(visible_name, 0) + 1
     for item in registry:
         name = str(item.get("name", "")).strip()
         if not name:
+            continue
+        if appearances.get(name, 0) < 2 and item.get("importance") != "villain":
             continue
         portrait_path = character_reference_path(outdir, name)
         if portrait_path.exists() and portrait_path.stat().st_size > 1024:
