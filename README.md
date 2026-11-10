@@ -16,6 +16,25 @@ A local Windows-first starter app that creates an original 50-scene illustrated 
 - Amazon KDP requires disclosure of AI-generated content when applicable. Review current KDP policy and disclose accurately.
 - The app does not upload/publish without your explicit review and final action in KDP.
 
+## Daily automatic generation (Windows)
+
+The Streamlit app remains an optional manual dashboard. The independent `daily_runner.py` creates books without opening a browser.
+
+1. Keep your Cloudflare credentials in the local `.env` file. Never upload it to GitHub.
+2. Install the project dependencies with `python -m pip install -r requirements.txt`.
+3. Run `python daily_runner.py --run-now` once to test the unattended pipeline immediately.
+4. After the test succeeds, right-click `install_scheduler.ps1` and run it with PowerShell (or run it from an ordinary PowerShell window). It registers a Windows Task Scheduler task for 8:00 PM and Windows startup.
+5. The runner stores progress in `state/scheduler_state.json`, writes each book under `output/YYYYMMDD_daily_story/`, and resumes from valid scene images after interruptions.
+6. If the PC was off for scheduled days, the startup trigger processes overdue dates sequentially. A failed date stays at the head of the queue and is retried on the next task run.
+
+Configuration is created on first run at `config/automation.json`. You can edit the author, genre rotation, trim size, schedule, and catch-up pause there. The time zone is Asia/Karachi.
+
+**Important:** The first automatic test should be run manually with `--run-now` before installing the schedule. A 50-image book may exceed a free Cloudflare quota or incur usage charges. Check the account's limits before leaving daily generation unattended.
+
+## KDP workflow boundary
+
+The runner automatically prepares the interior PDF, Kindle HTML source, listing drafts, and checklist. It does not sign into Amazon, bypass account verification, or press the final publish button. KDP has no general public self-service publishing API for this project to rely on, so actual account submission and publication remain subject to KDP's supported interface and account controls. The HTML output is a source manuscript, not a validated Kindle EPUB. The print interior is not a full-wrap cover.
+
 ## Requirements
 - Windows 10/11, Python 3.11 or newer.
 - Cloudflare account with Workers AI enabled and an account ID + API token.
@@ -46,7 +65,7 @@ Create a token with the minimum permissions needed for Workers AI usage. Keep cr
 CLOUDFLARE_ACCOUNT_ID=replace_me
 CLOUDFLARE_API_TOKEN=replace_me
 CLOUDFLARE_TEXT_MODEL=@cf/meta/llama-3.1-8b-instruct
-CLOUDFLARE_IMAGE_MODEL=@cf/black-forest-labs/flux-1-schnell
+CLOUDFLARE_IMAGE_MODEL=@cf/black-forest-labs/flux-2-klein-4b
 ```
 If a model is unavailable, change it to a model currently listed in your Cloudflare Workers AI dashboard/docs.
 
