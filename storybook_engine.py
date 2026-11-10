@@ -81,7 +81,8 @@ def reference_guidance_for_images(reference_images):
         "Use reference image 0 only for the illustration rendering style and colour treatment. "
     ]
     for index, image_path in enumerate(reference_images[1:], start=1):
-        character_name = Path(image_path).stem.replace("_", " ").strip()
+        image_path = Path(image_path)
+        character_name = (image_path.parent.name if image_path.stem == "reference" else image_path.stem).replace("_", " ").strip()
         guidance.append(
             f"Use reference image {index} only as the physical-identity guide for {character_name}: preserve face, facial proportions, skin tone, hair identity, eye shape/colour, body proportions and permanent marks. Ignore reference clothing and accessories when the story prompt specifies a different costume. Never merge identities. "
         )
@@ -215,7 +216,7 @@ Title hint: {title_hint or "invent a memorable title"}.
 Character notes / reusable character pool: {character_notes or DEFAULT_CHARACTER_POOL}
 Permanent visual library available to this project:
 {json.dumps([{k: v for k, v in model.items() if not k.startswith("_")} for model in load_character_library()], ensure_ascii=False)}
-Every story must use fresh character names, not reusable pool labels. If visual model visual_001 is selected, give it a new story name while preserving its immutable physical identity. Add a visual_id field to that registry entry. Other characters may be original story-specific designs. Humans drive the plot. Build a lively ensemble: several clear main protagonists plus
+Every story must use fresh character names, not reusable pool labels. MUST include permanent visual model visual_001 as one of the human protagonists in every book, but give it a new story name (never "Adam") while preserving its immutable physical identity exactly. Add visual_id: "visual_001" to that registry entry. Other characters may be original story-specific designs. Humans drive the plot. Build a lively ensemble: several clear main protagonists plus
 supporting characters who join, leave, form alliances, disagree, and reveal secrets
 naturally as the adventure unfolds. Build at least two clearly defined main protagonists
 and at least three meaningful recurring supporting characters, in addition to the villain.
@@ -285,6 +286,8 @@ Exactly 50 outline entries. Keep metadata concise.
                 raise ValueError(f"Character {item.get('name')} references unknown visual model: {visual_id}")
             if visual_id and (not item.get("immutable_identity") or not item.get("story_costume")):
                 raise ValueError(f"Character {item.get('name')} must separate immutable_identity from story_costume.")
+        if sum(item.get("visual_id") == "visual_001" for item in registry) != 1:
+            raise ValueError("Every new book must assign permanent visual model visual_001 to exactly one character.")
         if len(names) != len(registry) or any(not name for name in names) or len(set(names)) != len(names):
             raise ValueError("Character registry has missing or duplicate character names.")
         villain_name = str(plan.get("principal_villain", "")).strip()
