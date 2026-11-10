@@ -79,7 +79,7 @@ def build_one_book(book_date, config):
             genre = genres[(book_date - date.fromisoformat(config["first_run_date"])).days % len(genres)]
             story = engine.make_story(
                 genre, engine.STYLE_LOCK, "Family / all ages",
-                "", engine.DEFAULT_CHARACTER_POOL, int(config["scene_words"])
+                "", engine.DEFAULT_CHARACTER_POOL, int(config["scene_words"]), workdir=outdir
             )
             story["author"] = config["author"]
             story["genre"] = genre
