@@ -130,10 +130,12 @@ def build_one_book(book_date, config):
                 raise RuntimeError(f"Scene {index} image did not pass file validation.")
             time.sleep(0.2)
 
-        engine.build_pdf(story, scenes_dir, outdir / "storybook_interior.pdf",
+        pages_dir = outdir / "pages"
+        engine.build_page_images(story, scenes_dir, pages_dir, story["trim_size"])
+        engine.build_pdf(story, pages_dir, outdir / "storybook_interior.pdf",
                          story["trim_size"], False, story["pdf_text_size"])
-        engine.make_kindle_html(story, scenes_dir, outdir / "kindle_story.html")
-        build_fixed_layout_epub(story, scenes_dir, outdir / "kindle_story.epub")
+        engine.make_kindle_html(story, pages_dir, outdir / "kindle_story.html")
+        build_fixed_layout_epub(story, pages_dir, outdir / "kindle_story.epub")
         engine.make_listing(story, outdir)
         engine.write_checklist(outdir)
         engine.create_contact_sheet(scenes_dir, outdir / "scene_contact_sheet.jpg")
