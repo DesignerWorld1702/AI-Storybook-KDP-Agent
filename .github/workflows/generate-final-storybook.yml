@@ -61,14 +61,14 @@ jobs:
           status = json.loads(status_file.read_text(encoding="utf-8")) if status_file.exists() else {}
           print("Book folder:", book)
           print("Status:", status.get("status", "unknown"))
-          for name in ["story.json", "storybook_interior.pdf", "kindle_story.html",
+          for name in ["story.json", "storybook_interior.pdf", "kindle_story.html", "kindle_story.epub",
                        "kdp_listing_draft.json", "kdp_listing_draft.txt",
                        "publishing_checklist.txt", "scene_contact_sheet.jpg"]:
               path = book / name
               print(f"{name}: {'present' if path.exists() else 'missing'}")
           scenes = list((book / "scenes").glob("scene_*.png")) if (book / "scenes").exists() else []
           print("Scene illustrations:", len(scenes), "/ 50")
-          if status.get("status") != "completed" or len(scenes) != 50:
+          if status.get("status") != "completed" or len(scenes) != 50 or not (book / "kindle_story.epub").is_file():
               sys.exit(1)
           PY
 
