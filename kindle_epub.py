@@ -79,7 +79,7 @@ p { font-size:1em; line-height:1.3; margin:0; text-align:center; }
         book.writestr("EPUB/nav.xhtml", nav)
 
         package = f"""<?xml version="1.0" encoding="UTF-8"?>
-<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid" xml:lang="{html.escape(language)}">
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid" prefix="rendition: http://www.idpf.org/vocab/rendition/#" xml:lang="{html.escape(language)}">
 <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
 <dc:identifier id="bookid">{book_id}</dc:identifier><dc:title>{html.escape(title)}</dc:title><dc:creator>{html.escape(author)}</dc:creator><dc:language>{html.escape(language)}</dc:language><meta property="dcterms:modified">{modified}</meta>
 <meta property="rendition:layout">pre-paginated</meta><meta property="rendition:orientation">auto</meta><meta property="rendition:spread">none</meta>
