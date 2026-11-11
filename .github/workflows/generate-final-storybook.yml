@@ -1,0 +1,84 @@
+name: Generate final 50-scene storybook
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate-book:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Check out canonical project
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install project dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Verify Cloudflare credentials are present
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          python - <<'PY'
+          import os
+          assert os.environ.get("CLOUDFLARE_ACCOUNT_ID", "").strip(), "CLOUDFLARE_ACCOUNT_ID secret is missing."
+          assert os.environ.get("CLOUDFLARE_API_TOKEN", "").strip(), "CLOUDFLARE_API_TOKEN secret is missing."
+          print("Cloudflare credentials are available. Secret values are not displayed.")
+          PY
+
+      - name: Generate one complete 50-scene book
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_TEXT_MODEL: "@cf/meta/llama-3.1-8b-instruct"
+          CLOUDFLARE_IMAGE_MODEL: "@cf/black-forest-labs/flux-2-klein-4b"
+          STORY_IMAGE_MAX_SIDE: "1536"
+        run: python daily_runner.py --run-now
+
+      - name: Verify final book files
+        if: always()
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json, sys
+          root = Path("output")
+          folders = sorted(p for p in root.glob("*_daily_story") if p.is_dir()) if root.exists() else []
+          if not folders:
+              print("No book output folder was created.")
+              sys.exit(1)
+          book = folders[-1]
+          status_file = book / "job_status.json"
+          status = json.loads(status_file.read_text(encoding="utf-8")) if status_file.exists() else {}
+          print("Book folder:", book)
+          print("Status:", status.get("status", "unknown"))
+          for name in ["story.json", "storybook_interior.pdf", "kindle_story.html",
+                       "kdp_listing_draft.json", "kdp_listing_draft.txt",
+                       "publishing_checklist.txt", "scene_contact_sheet.jpg"]:
+              path = book / name
+              print(f"{name}: {'present' if path.exists() else 'missing'}")
+          scenes = list((book / "scenes").glob("scene_*.png")) if (book / "scenes").exists() else []
+          print("Scene illustrations:", len(scenes), "/ 50")
+          if status.get("status") != "completed" or len(scenes) != 50:
+              sys.exit(1)
+          PY
+
+      - name: Upload generated book package
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-storybook-package
+          path: |
+            output/
+            logs/
+          if-no-files-found: warn
+          retention-days: 14
