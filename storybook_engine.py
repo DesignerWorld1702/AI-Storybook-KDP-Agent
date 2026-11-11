@@ -922,65 +922,107 @@ def wrap_text(text, font_name, font_size, max_width, c):
     if line: lines.append(line)
     return lines
 
+def _page_font(size, bold=False):
+    candidates = (
+        ["/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", "C:/Windows/Fonts/arialbd.ttf"]
+        if bold else
+        ["/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "C:/Windows/Fonts/arial.ttf"]
+    )
+    for candidate in candidates:
+        if Path(candidate).is_file():
+            return ImageFont.truetype(candidate, size=size)
+    return ImageFont.load_default()
+
+
+def build_page_images(story, scenes_dir, pages_dir, trim):
+    """Place readable story text in a translucent black box over the bottom of each image."""
+    page_w, page_h = TRIM_SIZES[trim]
+    scale = 1536 / max(page_w, page_h)
+    target_size = (int(round(page_w * scale)), int(round(page_h * scale)))
+    pages_dir = Path(pages_dir)
+    pages_dir.mkdir(parents=True, exist_ok=True)
+    for scene in story["scenes"]:
+        source = Path(scenes_dir) / f"scene_{scene['number']:03d}.png"
+        target = pages_dir / f"page_{scene['number']:03d}.png"
+        with Image.open(source) as opened:
+            page = ImageOps.fit(opened.convert("RGB"), target_size, method=Image.Resampling.LANCZOS)
+        width, height = page.size
+        pad = max(30, int(width * 0.032))
+        box_top = int(height * 0.70)
+        overlay = Image.new("RGBA", page.size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
+        draw.rounded_rectangle(
+            (pad, box_top, width - pad, height - pad),
+            radius=max(18, int(width * 0.018)),
+            fill=(0, 0, 0, 150)
+        )
+        heading_font = _page_font(max(24, int(width * 0.026)), bold=True)
+        body_font = _page_font(max(22, int(width * 0.022)), bold=False)
+        inner_width = width - 2 * (pad + int(width * 0.025))
+
+        def wrap_pixels(value, font):
+            lines, current = [], ""
+            for word in str(value).split():
+                trial = word if not current else current + " " + word
+                if draw.textbbox((0, 0), trial, font=font)[2] <= inner_width:
+                    current = trial
+                else:
+                    if current:
+                        lines.append(current)
+                    current = word
+            if current:
+                lines.append(current)
+            return lines
+
+        heading_lines = wrap_pixels(scene.get("heading", ""), heading_font)
+        body_lines = wrap_pixels(scene.get("text", ""), body_font)
+        line_height = int(body_font.size * 1.32)
+        heading_height = int(heading_font.size * 1.3) if heading_lines else 0
+        available = height - pad - box_top - int(height * 0.045) - heading_height
+        max_lines = max(1, int(available / line_height))
+        if len(body_lines) > max_lines:
+            raise ValueError(
+                f"Scene {scene['number']} needs {len(body_lines)} caption lines but only "
+                f"{max_lines} fit. Shorten the text before publishing."
+            )
+        x = pad + int(width * 0.025)
+        y = box_top + int(height * 0.025)
+        if heading_lines:
+            draw.text((x, y), heading_lines[0], font=heading_font, fill=(255, 224, 145, 255))
+            y += heading_height + int(height * 0.008)
+        for line in body_lines:
+            draw.text((x, y), line, font=body_font, fill=(255, 255, 255, 255))
+            y += line_height
+        page = Image.alpha_composite(page.convert("RGBA"), overlay).convert("RGB")
+        page.save(target, "PNG", optimize=True)
+    return pages_dir
+
+
 def build_pdf(story, images_dir, pdf_path, trim, bleed, text_size):
     w_in, h_in = TRIM_SIZES[trim]
-    # Interior PDF is trim-sized. Bleed is intentionally not added automatically:
-    # KDP bleed needs precise image extension and margin handling for the selected template.
-    W, H = w_in*inch, h_in*inch
-    c = canvas.Canvas(str(pdf_path), pagesize=(W,H), pageCompression=1)
-    scenes = story["scenes"]
-    margin = 0.38*inch
-    panel_h = max(1.55*inch, H*0.25)
-    for scene in scenes:
-        img_path = images_dir / f"scene_{scene['number']:03d}.png"
-        im = Image.open(img_path).convert("RGB")
-        # Full-width art area; image cropped to fit the upper part of the page.
-        art_h = H-panel_h
-        target = (int(W*2), int(art_h*2))
-        im = ImageOps.fit(im, target, method=Image.Resampling.LANCZOS, centering=(0.5,0.45))
-        buf = io.BytesIO()
-        im.save(buf, format="JPEG", quality=94)
+    W, H = w_in * inch, h_in * inch
+    c = canvas.Canvas(str(pdf_path), pagesize=(W, H), pageCompression=1)
+    for scene in story["scenes"]:
+        img_path = Path(images_dir) / f"page_{scene['number']:03d}.png"
+        with Image.open(img_path) as im:
+            buf = io.BytesIO()
+            im.convert("RGB").save(buf, format="JPEG", quality=95)
         buf.seek(0)
-        c.drawImage(ImageReader(buf), 0, panel_h, width=W, height=art_h, preserveAspectRatio=False, mask="auto")
-        c.setFillColorRGB(1,1,1)
-        c.rect(0, 0, W, panel_h, fill=1, stroke=0)
-        c.setFillColorRGB(0.12,0.12,0.15)
-        c.setFont("Helvetica-Bold", 13)
-        heading = scene.get("heading", f"Scene {scene['number']}")
-        max_width = W - 2*margin
-        title_lines = wrap_text(heading, "Helvetica-Bold", 13, max_width, c)[:2]
-        y = panel_h - 0.30*inch
-        for line in title_lines:
-            c.drawString(margin, y, line); y -= 16
-        page_text_size = text_size
-        c.setFont("Helvetica", page_text_size)
-        text_lines = wrap_text(scene["text"], "Helvetica", page_text_size, max_width, c)
-        available_lines = max(1, int((y - 0.18*inch) / (page_text_size*1.35)))
-        if len(text_lines) > available_lines:
-            # Fit this page conservatively without shrinking below 8pt or affecting later pages.
-            while len(text_lines) > available_lines and page_text_size > 8:
-                page_text_size -= 0.5
-                c.setFont("Helvetica", page_text_size)
-                text_lines = wrap_text(scene["text"], "Helvetica", page_text_size, max_width, c)
-                available_lines = max(1, int((y - 0.18*inch) / (page_text_size*1.35)))
-        for line in text_lines[:available_lines]:
-            c.drawString(margin, y, line); y -= page_text_size*1.35
-        c.setFont("Helvetica", 7)
-        c.setFillColorRGB(0.35,0.35,0.38)
-        c.drawRightString(W-margin, 0.14*inch, str(scene["number"]))
+        c.drawImage(ImageReader(buf), 0, 0, width=W, height=H, preserveAspectRatio=False, mask="auto")
         c.showPage()
     c.save()
 
 def make_kindle_html(story, images_dir, out_path):
-    title = escape(story.get("title","Untitled"))
-    html = ["""<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>"""+title+"""</title>
-<style>body{font-family:Georgia,serif;max-width:720px;margin:2rem auto;padding:0 1rem;line-height:1.55}h1,h2{text-align:center}figure{margin:1rem 0}img{max-width:100%;height:auto;display:block;margin:auto}figcaption{margin-top:.8rem}</style></head><body>"""]
-    html.append(f"<h1>{title}</h1><h2>{escape(story.get('subtitle',''))}</h2><p style='text-align:center'>By {escape(story.get('author','Your Author Name'))}</p>")
-    for s in story["scenes"]:
-        p = images_dir / f"scene_{s['number']:03d}.png"
-        html.append(f"<section><h2>{escape(s.get('heading',''))}</h2><figure><img src='scenes/{p.name}' alt='{escape(s.get('heading','Scene'))}'/><figcaption>{escape(s['text'])}</figcaption></figure></section>")
+    title = escape(story.get("title", "Untitled"))
+    html = ["""<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>""" + title + """</title>
+<style>html,body{margin:0;padding:0;background:#111}body{max-width:900px;margin:auto}img{width:100%;height:auto;display:block}</style></head><body>"""]
+    html.append(f"<h1 style='color:white;text-align:center'>{title}</h1>")
+    for scene in story["scenes"]:
+        page = Path(images_dir) / f"page_{scene['number']:03d}.png"
+        html.append(f"<section><img src='pages/{page.name}' alt='{escape(scene.get('heading', 'Story page'))}'/></section>")
     html.append("</body></html>")
-    out_path.write_text("\n".join(html), encoding="utf-8")
+    Path(out_path).write_text("\\n".join(html), encoding="utf-8")
+
 
 def create_contact_sheet(images_dir, out_path):
     paths = sorted(images_dir.glob("scene_*.png"))
