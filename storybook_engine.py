@@ -472,20 +472,20 @@ No extra keys, no markdown fences, no text outside JSON.
                 last_repair_error = None
                 repaired_text = None
                 previous_attempt_note = ""
-                for repair_attempt in range(1, 4):
+                for repair_attempt in range(1, 6):
                     repair_prompt = (
                         "Rewrite the following illustrated storybook page as polished narrative prose "
-                        "of 40–55 words (never fewer than 35). Preserve the exact events, facts, "
+                        "of 45–55 words (never fewer than 35). Preserve the exact events, facts, "
                         "characters, emotional beat, and continuity. Do not add a new event, heading, "
                         "label, or explanation. Do not summarize. Count the words before answering. "
                         "Return only the page paragraph.\n\n"
                         f"Book: {plan.get('title', 'Untitled')}\n"
                         f"Scene {number}: {scene.get('heading', '')}\n"
-                        f"Required length: 40–55 words.\n"
+                        f"Required length: 45–55 words. You MUST write at least 40 words.\n"
                         f"{previous_attempt_note}"
                         f"Original page text ({len(source_text.split())} words): {source_text}"
                     )
-                    candidate = cf_text(repair_prompt, max_tokens=400)
+                    candidate = cf_text(repair_prompt, max_tokens=700)
                     candidate = candidate.strip().strip('"').strip()
                     candidate_count = len(candidate.split())
                     if 35 <= candidate_count <= 65:
@@ -499,7 +499,7 @@ No extra keys, no markdown fences, no text outside JSON.
                 if repaired_text is None:
                     raise ValueError(
                         f"Scene {number} page text could not be repaired to 35–65 words "
-                        f"after 3 attempts ({last_repair_error})."
+                        f"after 5 attempts ({last_repair_error})."
                     )
                 scene["text"] = repaired_text
                 logging.info("Repaired scene %s page text to %s words.", number, len(repaired_text.split()))
