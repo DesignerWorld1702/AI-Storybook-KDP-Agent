@@ -30,7 +30,7 @@ DEFAULT_CONFIG = {
     "timezone": "Asia/Karachi",
     "missed_run_policy": "catchup",
     "author": "Fahad Asif",
-    "genre_cycle": ["Fantasy adventure", "Mystery and suspense", "Fantasy adventure", "Science fiction"],
+    "genre_cycle": ["Real-world crime suspense thriller", "Fantasy mystery suspense thriller", "Real-world psychological crime thriller", "Fantasy dark suspense thriller"],
     "trim_size": "8.5 × 8.5 in — square picture book",
     "scene_words": 45,
     "pdf_text_size": 11,
