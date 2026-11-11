@@ -425,7 +425,8 @@ Specific beats to expand now:
 {json.dumps(batch_outline, ensure_ascii=False)}
 
 Expand ONLY scenes {first} through {last} into detailed illustrated-book scene records.
-Each scene page text must be 40–55 words (aim for {scene_words}), written as polished narrative prose rather than camera notes. Include concrete action, emotion, sensory detail and purposeful dialogue where natural. Every scene must advance the plot or change a relationship; no recap-only pages, repeated planning conversations, repeated rescues, or filler epilogues. Keep headings distinct. Make visual prompts cinematic, specific and varied. Do not repeat the same camera angle or static talking pose. For characters with visual_id, preserve immutable_identity and permanent marks, but follow story_costume for clothing; costume stays consistent within this book.
+Each scene page text must be 40–55 words (aim for {scene_words}), written in simple, natural English. Use common words, clear sentence order and short sentences. Avoid fancy vocabulary, vague dramatic filler and repeated phrases. Include concrete action, emotion and useful dialogue. Every scene must move the plot forward; no recap-only pages, repeated planning conversations, repeated rescues or filler endings.
+For every illustration, write a director's shot plan: camera position, shot size, camera angle, nearest character, body orientation of EACH visible character, exact eyeline target of EACH visible character, foreground/background layers, and why this angle tells the story. Use varied film coverage across the book. In dialogue, speaker looks at listener and listener looks at speaker. Use over-the-shoulder, reverse, profile, rear-view and side views often. Avoid front-facing group poses and repeated eye-level medium shots. Do not repeat the same camera setup in nearby scenes. For characters with visual_id, preserve immutable_identity and permanent marks, but follow story_costume for clothing; costume stays consistent within this book.
 Return ONLY valid JSON with this exact shape:
 {{
  "scenes":[
@@ -705,6 +706,32 @@ def scene_reference_images(story, scene, outdir, style_ref):
     return refs
 
 
+def director_camera_brief(scene):
+    """Cycle through motivated movie-shot setups to prevent repeated front portraits."""
+    number = int(scene.get("number", 1))
+    cast = scene.get("characters_present", [])
+    setups = [
+        "Extreme wide establishing view from behind the location; people small in frame, environment tells the story.",
+        "Over-the-shoulder dialogue shot from behind the listener; speaker looks toward listener, not lens.",
+        "Reverse close-up from beside the listener; speaker in three-quarter profile, eyes aimed just off lens at listener.",
+        "Side-profile two-shot; both characters face each other with clear connected eyelines.",
+        "Rear three-quarter view behind the main character as they watch the action ahead.",
+        "Low-angle action shot from near floor level; characters look toward the threat or event.",
+        "High-angle view from above and off to one side; characters focus on a clue or object below.",
+        "Insert detail of hands, evidence or a meaningful object; faces absent or secondary.",
+        "Side tracking view as characters move through a layered foreground and background.",
+        "Wide master shot from behind one character toward others across the room; nobody looks at lens.",
+        "Dutch-angle reaction shot from beside the action; gaze points toward the cause of danger.",
+        "Motivated 360-degree orbit viewpoint at an unusual rear/side position; characters focus on each other or the event."
+    ]
+    setup = setups[(number - 1) % len(setups)]
+    if len(cast) <= 1 and number % 12 in (1, 3, 8):
+        setup += " Keep the lone character turned away, in profile, or looking into the environment; not a front portrait."
+    if len(cast) >= 2:
+        setup += " Dialogue eyelines connect character-to-character. Speaker looks at listener; listener looks at speaker. Never both stare at camera."
+    return setup
+
+
 def build_scene_prompt(story, scene, style):
     cast_names = scene.get("characters_present", [])
     cast = ", ".join(cast_names) or "no named character; environment-focused scene"
@@ -727,17 +754,13 @@ def build_scene_prompt(story, scene, style):
         f"Global character bible: {story.get('character_bible', '')}. "
         f"Characters visible in this scene: {cast}. "
         f"Exact visual identities required for this scene: {scene_bibles}. "
-        "Match each recurring character's face, facial proportions, hair identity, eye shape/colour, skin tone, body proportions and permanent marks exactly. Do not merge identities or substitute one character for another. Clothing and accessories must follow this book's story_costume, not the permanent reference image; keep the story costume consistent unless the scene explicitly shows a change. "
+        "Match every recurring character's face, facial proportions, hair, eye shape/colour, skin tone, body proportions and permanent marks exactly. Never merge or substitute identities. Clothing follows this book's story_costume and stays consistent unless the story shows a change. "
+        f"DIRECTOR'S CAMERA BRIEF: {director_camera_brief(scene)} "
         f"{direction} Scene {scene.get('number')}: {scene.get('visual_prompt', '')}. "
-        f"Style lock: {STYLE_LOCK}. "
-        "Create one cinematic movie frame with clear foreground/background depth, "
-        "natural anatomy, purposeful character blocking and a visually distinct camera composition. "
-        "Prioritise crisp focus on faces and important story objects, fine but clean linework, "
-        "clearly separated hair strands, readable eyes, defined fabric and surface textures, "
-        "and sharp environmental details without turning the image photorealistic. "
+        "Blocking and eyeline rules: characters face and look toward the person they address, the object they handle, or the action they follow. Do not make characters face the viewer by default. No front-facing lineup, cast portrait, or everyone looking into the lens. Use natural backs, profiles, over-the-shoulder views and off-camera eyelines when the shot calls for them. "
+        f"Style lock: {STYLE_LOCK}. Create one composed feature-film frame with strong foreground, midground and background depth, motivated camera placement, natural anatomy and believable physical action. Preserve each character's exact identity and costume across all scenes; only camera angle, pose and expression may change. "
         "Do not add characters who are not in this scene. No words, lettering, logos or watermark."
     )
-
 
 def create_reference_images(story, outdir):
     scenes_dir = outdir / "scenes"
