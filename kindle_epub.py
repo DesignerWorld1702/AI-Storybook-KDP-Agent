@@ -47,10 +47,10 @@ body { font-family: serif; }
         spine = []
         nav_items = []
         for i, scene in enumerate(scenes, 1):
-            img_path = images_dir / f"scene_{i:03d}.png"
+            image_name = f"page_{i:03d}.png"
+            img_path = images_dir / image_name
             if not img_path.is_file():
-                raise FileNotFoundError(f"Missing illustration for EPUB page {i}: {img_path}")
-            image_name = f"scene_{i:03d}.png"
+                raise FileNotFoundError(f"Missing integrated page image for EPUB page {i}: {img_path}")
             page_name = f"page_{i:03d}.xhtml"
             heading = html.escape(str(scene.get("heading") or f"Scene {i}"))
             alt = html.escape(heading)
