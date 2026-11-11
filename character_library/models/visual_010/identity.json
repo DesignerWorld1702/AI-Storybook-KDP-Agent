@@ -1,0 +1,21 @@
+{
+  "visual_id": "visual_010",
+  "library_name": "Grim Base Model",
+  "reference_image": "reference.png",
+  "character_name": "Grim",
+  "immutable_identity": "Fantasy creature: clever trickster goblin, approximately 3 feet tall, compact wiry build, moss-green skin, bright yellow eyes, long pointed ears with one distinctly bent ear, expressive intelligent face, and a small ring of old keys at the belt. Believable anatomy, tactile skin and worn practical accessories; mischievous but not frightening or childish. Keep bent ear, eye colour and body scale permanent.",
+  "changeable_story_identity": {
+    "personality": "May be adapted to the story while respecting core species/identity",
+    "occupation": "May change",
+    "background": "May change",
+    "relationships": "May change",
+    "story_role": "May change",
+    "clothing": "May change for each book; remain consistent within that book",
+    "accessories": "May change for each book; remain consistent within that book"
+  },
+  "reference_image_spec": {
+    "composition": "single-character full-body reference portrait, front three-quarter view, face clearly readable, neutral standing pose, uncluttered muted background",
+    "style": "cinematic anime realism, grounded anatomy, natural expressions, realistic materials, restrained purposeful fantasy, polished hand-painted feature-film illustration",
+    "exclusions": "no text, labels, panels, logos, watermark, chibi proportions, oversized eyes, plastic skin, photorealism"
+  }
+}
