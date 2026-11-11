@@ -329,14 +329,28 @@ Exactly 50 outline entries. Keep metadata concise.
                 last_outline_error = exc
                 if outline_attempt == 3:
                     break
+                duplicate_rows = []
+                if "beats" in locals() and isinstance(locals().get("beats"), list):
+                    duplicate_rows = [
+                        {"scene": index + 1, "beat": outline[index].get("beat", "")}
+                        for index, beat in enumerate(beats)
+                        if beats.count(beat) > 1 and index < len(outline)
+                    ]
                 outline_prompt += f"""
 
 IMPORTANT RETRY {outline_attempt}: The previous outline failed validation because: {exc}
-Create a substantially different and more specific 50-scene outline.
-Do not repeat an event with slightly different wording. Every scene must cause a new
-plot development, reveal evidence, change a relationship, introduce a consequence,
-or move the characters to a meaningfully different situation. Vary the action and
-setting across all 50 beats. Keep the 50 sequential scene numbers and full JSON schema.
+Duplicate or repeated scene entries that MUST be replaced with genuinely different events:
+{json.dumps(duplicate_rows, ensure_ascii=False)}
+Structure the story as five distinct acts of ten scenes each:
+Scenes 1-10: establish protagonists, goal, world, inciting mystery and first danger.
+Scenes 11-20: investigation, new allies, conflicting clues and a costly setback.
+Scenes 21-30: deepen the mystery, reveal a betrayal or reversal, change the plan.
+Scenes 31-40: escalate danger, expose the villain's method and force a major sacrifice.
+Scenes 41-50: decisive confrontation, consequences, emotional resolution and a memorable final image.
+Do not restate the same clue, chase, discovery, argument or travel event in multiple scenes.
+Every scene must have a distinct physical action and a new consequence that changes what happens next.
+If a scene number is listed above, replace its beat entirely; do not paraphrase it.
+Keep all 50 sequential numbers and return the complete original JSON schema only.
 """
         if last_outline_error is not None:
             raise ValueError(
