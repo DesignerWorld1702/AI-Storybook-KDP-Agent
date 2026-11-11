@@ -32,15 +32,11 @@ def build_fixed_layout_epub(story: dict, images_dir: Path, output_path: Path) ->
 </container>""")
 
         css = """
-html, body { margin:0; padding:0; width:100%; height:100%; }
-body { font-family: serif; background:#fff; }
+html, body { margin:0; padding:0; width:100%; height:100%; background:#111; }
+body { font-family: serif; }
 .page { box-sizing:border-box; width:100%; height:100%; min-height:100vh;
-        display:flex; flex-direction:column; page-break-after:always; overflow:hidden; }
-.art { width:100%; height:74%; object-fit:contain; display:block; margin:0 auto; }
-.copy { box-sizing:border-box; height:26%; padding:3.5% 6%; overflow:hidden;
-        display:flex; flex-direction:column; justify-content:center; }
-h1 { font-size:1.25em; line-height:1.15; margin:0 0 .45em; text-align:center; }
-p { font-size:1em; line-height:1.3; margin:0; text-align:center; }
+        page-break-after:always; overflow:hidden; }
+.art { width:100%; height:100%; object-fit:contain; display:block; margin:0 auto; }
 """
         book.writestr("EPUB/styles/book.css", css)
 
@@ -57,13 +53,12 @@ p { font-size:1em; line-height:1.3; margin:0; text-align:center; }
             image_name = f"scene_{i:03d}.png"
             page_name = f"page_{i:03d}.xhtml"
             heading = html.escape(str(scene.get("heading") or f"Scene {i}"))
-            text = html.escape(str(scene.get("text") or ""))
             alt = html.escape(heading)
             xhtml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="{html.escape(language)}">
 <head><title>{heading}</title><meta charset="utf-8"/><meta name="viewport" content="width=1600,height=1600"/><link rel="stylesheet" type="text/css" href="../styles/book.css"/></head>
-<body><section class="page"><img class="art" src="../images/{image_name}" alt="{alt}"/><div class="copy"><h1>{heading}</h1><p>{text}</p></div></section></body></html>"""
+<body><section class="page"><img class="art" src="../images/{image_name}" alt="{alt}"/></section></body></html>"""
             book.writestr(f"EPUB/text/{page_name}", xhtml)
             book.write(img_path, f"EPUB/images/{image_name}", compress_type=zipfile.ZIP_DEFLATED)
             manifest.append(f'<item id="page{i}" href="text/{page_name}" media-type="application/xhtml+xml"/>')
