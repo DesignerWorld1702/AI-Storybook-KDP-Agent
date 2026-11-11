@@ -272,90 +272,71 @@ Avoid copyrighted characters, existing franchises and imitation of living artist
             plan = None
 
     if plan is None:
-        outline_prompt = common + f"""
-First create the book metadata and a concise outline of exactly 50 sequential scenes.
-Each outline entry must have only "number" and "beat"; beat is one or two sentences.
-Return ONLY valid JSON, no markdown, with this exact shape:
-{{
+        metadata_prompt = common + """
+Create ONLY the book metadata and character registry for an original illustrated feature-film story.
+Return one compact valid JSON object, no markdown, with these keys:
+{
  "title":"...",
  "subtitle":"...",
  "author":"Your Author Name",
- "description":"A compelling 100-180 word book description",
+ "description":"A compelling 100-140 word book description",
  "keywords":["seven distinct short search phrases"],
  "categories":["suggested broad category 1","suggested broad category 2"],
  "audience":"Family / all ages",
  "character_registry":[
-   {{"name":"Fresh story-specific name","visual_id":null,"role":"story role","importance":"protagonist/supporting/villain/creature","immutable_identity":"physical traits and permanent marks","story_costume":"this book's clothing and accessories","visual_bible":"complete physical identity plus story costume"}}
+  {"name":"Fresh story-specific name","visual_id":null,"role":"story role","importance":"protagonist/supporting/villain/creature","immutable_identity":"physical traits and permanent marks","story_costume":"this book's clothing and accessories","visual_bible":"complete physical identity plus story costume"}
  ],
  "principal_villain":"Exact name of the single principal villain",
- "character_bible":"Repeat each registry entry's complete visual_bible verbatim under its exact name",
- "art_direction":"Consistent palette, lighting and world atmosphere",
- "outline":[{{"number":1,"beat":"..."}}]
-}}
-Exactly 50 outline entries. Keep metadata concise.
+ "art_direction":"Consistent palette, lighting and world atmosphere"
+}
+Keep the registry concise: two protagonists, three recurring supporting characters and exactly one villain. Add optional creatures only if essential. Never include an outline or extra keys.
 """
-        # Retry outline generation when the model returns repetitive or malformed beats.
-        # Keep the quality gate strict; ask for a genuinely different outline instead of
-        # silently accepting duplicated scenes.
+        plan = extract_json(cf_text(metadata_prompt, max_tokens=2600), "compact book metadata and character registry")
+        if not isinstance(plan, dict):
+            raise ValueError("Book metadata response was not a JSON object.")
+
+        outline_prompt = common + """
+Create a fresh, original 50-scene cinematic story outline for the metadata and characters already established.
+Return EXACTLY 50 numbered lines as plain text, not JSON, not markdown bullets.
+Format every line exactly: 01 | one or two sentences describing one distinct event.
+Use 8-18 words per scene. No quotation marks, no JSON, no headings, no blank lines.
+Five acts: scenes 1-10 setup and inciting mystery; 11-20 investigation and setback;
+21-30 revelation and changed plan; 31-40 escalation and sacrifice; 41-50 confrontation and resolution.
+Every scene must introduce a new physical action and consequence. Never repeat a chase,
+clue discovery, argument, journey, or other event with slightly changed wording.
+"""
         last_outline_error = None
+        parsed_outline = None
         for outline_attempt in range(1, 4):
-            try:
-                plan = extract_json(
-                    cf_text(outline_prompt, max_tokens=6500),
-                    "book metadata and 50-scene outline"
-                )
-                outline = plan.get("outline", [])
-                if not isinstance(outline, list) or len(outline) != 50:
-                    raise ValueError(
-                        f"Expected 50 outline entries but received {len(outline) if isinstance(outline, list) else 'a non-list value'}."
-                    )
-                expected_numbers = list(range(1, 51))
-                if any(not isinstance(entry, dict) for entry in outline):
-                    raise ValueError("Every outline entry must be a JSON object.")
-                actual_numbers = [entry.get("number") for entry in outline]
-                if actual_numbers != expected_numbers:
-                    raise ValueError("Outline scenes must be numbered sequentially from 1 to 50.")
-                beats = [
-                    re.sub(r"[^a-z0-9 ]", "", str(entry.get("beat", "")).lower()).strip()
-                    for entry in outline
-                ]
-                if any(len(beat.split()) < 8 for beat in beats):
-                    raise ValueError("Every outline beat must describe a meaningful story event, not a fragment.")
-                if len(set(beats)) < 45:
-                    raise ValueError("Outline contains repeated or near-identical beats.")
-                last_outline_error = None
-                break
-            except (ValueError, TypeError, KeyError) as exc:
-                last_outline_error = exc
-                if outline_attempt == 3:
+            raw_outline = cf_text(outline_prompt, max_tokens=2400)
+            rows = []
+            for line in raw_outline.splitlines():
+                match = re.match(r"^\s*(\d{1,2})\s*[|.)-]\s*(.+?)\s*$", line)
+                if match:
+                    rows.append({"number": int(match.group(1)), "beat": match.group(2).strip()})
+            if len(rows) == 50 and [item["number"] for item in rows] == list(range(1, 51)):
+                beats = [re.sub(r"[^a-z0-9 ]", "", item["beat"].lower()).strip() for item in rows]
+                if all(len(beat.split()) >= 8 for beat in beats) and len(set(beats)) >= 45:
+                    parsed_outline = rows
                     break
-                duplicate_rows = []
-                if "beats" in locals() and isinstance(locals().get("beats"), list):
-                    duplicate_rows = [
-                        {"scene": index + 1, "beat": outline[index].get("beat", "")}
-                        for index, beat in enumerate(beats)
-                        if beats.count(beat) > 1 and index < len(outline)
-                    ]
+                last_outline_error = "Outline contains short or repeated scene beats."
+            else:
+                last_outline_error = f"Expected 50 numbered lines; parsed {len(rows)}."
+            if outline_attempt < 3:
                 outline_prompt += f"""
 
-IMPORTANT RETRY {outline_attempt}: The previous outline failed validation because: {exc}
-Duplicate or repeated scene entries that MUST be replaced with genuinely different events:
-{json.dumps(duplicate_rows, ensure_ascii=False)}
-Structure the story as five distinct acts of ten scenes each:
-Scenes 1-10: establish protagonists, goal, world, inciting mystery and first danger.
-Scenes 11-20: investigation, new allies, conflicting clues and a costly setback.
-Scenes 21-30: deepen the mystery, reveal a betrayal or reversal, change the plan.
-Scenes 31-40: escalate danger, expose the villain's method and force a major sacrifice.
-Scenes 41-50: decisive confrontation, consequences, emotional resolution and a memorable final image.
-Do not restate the same clue, chase, discovery, argument or travel event in multiple scenes.
-Every scene must have a distinct physical action and a new consequence that changes what happens next.
-If a scene number is listed above, replace its beat entirely; do not paraphrase it.
-Keep all 50 sequential numbers and return the complete original JSON schema only.
+RETRY {outline_attempt}: {last_outline_error}
+Return all 50 lines again, using the exact two-digit number | event format.
+Replace repeated scenes with new actions, discoveries, decisions and consequences.
+Do not add JSON, quotation marks, headings or explanatory text.
 """
-        if last_outline_error is not None:
-            raise ValueError(
-                f"Outline validation failed after 3 attempts: {last_outline_error}"
-            ) from last_outline_error
+        if parsed_outline is None:
+            raise ValueError(f"Outline generation failed after 3 attempts: {last_outline_error}")
+        plan["outline"] = parsed_outline
+        plan["character_bible"] = "\n".join(
+            f'{item.get("name", "")}: {item.get("visual_bible", "")}'
+            for item in plan.get("character_registry", []) if isinstance(item, dict)
+        )
         plan["story_schema_version"] = 2
         registry = plan.get("character_registry", [])
         if not isinstance(registry, list) or not registry:
