@@ -248,6 +248,7 @@ Title hint: {title_hint or "invent a memorable title"}.
 Character notes / reusable character pool: {character_notes or DEFAULT_CHARACTER_POOL}
 Permanent visual library available to this project:
 {json.dumps([{k: v for k, v in model.items() if not k.startswith("_")} for model in load_character_library()], ensure_ascii=False)}
+STRICT VISUAL MODEL RULE: The only valid visual_id values are the IDs listed in the permanent visual library above. In this repository that currently means visual_001 only. Never invent visual_002, visual_003, or any other ID. Use visual_id: null for every original character. Use visual_001 only if its exact saved physical identity genuinely fits the plot. Never assign a library ID merely because a character is an adult human.
 Every story must use fresh character names, not reusable pool labels, and must avoid all previous story character names listed here: {json.dumps(previous_story_character_names(), ensure_ascii=False)}. Select permanent visual models only when they naturally fit the plot; do not force any character into a book. If visual model visual_001 is selected, give it a new story name (never "Adam") while preserving its immutable physical identity exactly. Add visual_id: "visual_001" to that registry entry. Other characters may be original story-specific designs. Humans drive the plot. Build a lively ensemble: several clear main protagonists plus
 supporting characters who join, leave, form alliances, disagree, and reveal secrets
 naturally as the adventure unfolds. Build at least two clearly defined main protagonists
@@ -346,8 +347,15 @@ Do not add JSON, quotation marks, headings or explanatory text.
         for item in registry:
             visual_id = item.get("visual_id")
             if visual_id and visual_id not in known_visual_ids:
-                raise ValueError(f"Character {item.get('name')} references unknown visual model: {visual_id}")
-            if visual_id and (not item.get("immutable_identity") or not item.get("story_costume")):
+                # The text model sometimes invents visual IDs. Treat those as
+                # original characters instead of binding them to a nonexistent identity.
+                logging.warning(
+                    "Character %s referenced unavailable visual model %s; "
+                    "clearing the invalid ID and generating an original identity.",
+                    item.get("name"), visual_id
+                )
+                item["visual_id"] = None
+            if item.get("visual_id") and (not item.get("immutable_identity") or not item.get("story_costume")):
                 raise ValueError(f"Character {item.get('name')} must separate immutable_identity from story_costume.")
         if len(names) != len(registry) or any(not name for name in names) or len(set(names)) != len(names):
             raise ValueError("Character registry has missing or duplicate character names.")
