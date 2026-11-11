@@ -466,28 +466,36 @@ No extra keys, no markdown fences, no text outside JSON.
             if word_count < 35 or word_count > 65:
                 # Repair an out-of-range page locally instead of failing the whole book.
                 # Keep the existing scene's events, characters and tone; only revise its prose.
-                original_text = str(scene.get("text", "")).strip()
+                # Keep the full original page unchanged across retries. Previously, each
+                # too-short response replaced the source, causing later repairs to shrink further.
+                source_text = str(scene.get("text", "")).strip()
                 last_repair_error = None
                 repaired_text = None
+                previous_attempt_note = ""
                 for repair_attempt in range(1, 4):
                     repair_prompt = (
                         "Rewrite the following illustrated storybook page as polished narrative prose "
-                        "of 40–55 words. Preserve the exact events, facts, characters, emotional beat, "
-                        "and continuity. Do not add a new event, heading, label, or explanation. "
+                        "of 40–55 words (never fewer than 35). Preserve the exact events, facts, "
+                        "characters, emotional beat, and continuity. Do not add a new event, heading, "
+                        "label, or explanation. Do not summarize. Count the words before answering. "
                         "Return only the page paragraph.\n\n"
                         f"Book: {plan.get('title', 'Untitled')}\n"
                         f"Scene {number}: {scene.get('heading', '')}\n"
-                        f"Current page text ({word_count} words): {original_text}"
+                        f"Required length: 40–55 words.\n"
+                        f"{previous_attempt_note}"
+                        f"Original page text ({len(source_text.split())} words): {source_text}"
                     )
-                    candidate = cf_text(repair_prompt, max_tokens=220)
+                    candidate = cf_text(repair_prompt, max_tokens=400)
                     candidate = candidate.strip().strip('"').strip()
                     candidate_count = len(candidate.split())
                     if 35 <= candidate_count <= 65:
                         repaired_text = candidate
                         break
                     last_repair_error = f"repair {repair_attempt} returned {candidate_count} words"
-                    original_text = candidate or original_text
-                    word_count = len(original_text.split())
+                    previous_attempt_note = (
+                        f"Your previous attempt contained {candidate_count} words and was invalid. "
+                        "Rewrite the complete original page at the required length; do not shorten it.\\n"
+                    )
                 if repaired_text is None:
                     raise ValueError(
                         f"Scene {number} page text could not be repaired to 35–65 words "
