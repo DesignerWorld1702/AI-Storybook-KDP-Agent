@@ -97,7 +97,7 @@ def build_one_book(book_date, config):
             story["scheduled_date"] = book_date.isoformat()
             story_path.write_text(json.dumps(story, indent=2, ensure_ascii=False), encoding="utf-8")
 
-        if story.get("story_schema_version") != 3:
+        if story.get("story_schema_version") != 4:
             raise RuntimeError(
                 "This saved story uses an older story schema and has been left untouched. "
                 "Create a fresh book date with the updated generator; existing story files and images are preserved."
