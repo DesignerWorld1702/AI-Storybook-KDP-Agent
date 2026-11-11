@@ -71,6 +71,7 @@ jobs:
           CLOUDFLARE_TEXT_MODEL: "@cf/meta/llama-3.1-8b-instruct"
           CLOUDFLARE_IMAGE_MODEL: "@cf/black-forest-labs/flux-2-klein-4b"
           STORY_IMAGE_MAX_SIDE: "1536"
+          TZ: "Asia/Karachi"
         run: python daily_runner.py --run-now
 
       - name: Save generated permanent character references to main
