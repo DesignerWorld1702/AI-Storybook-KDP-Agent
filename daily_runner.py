@@ -77,6 +77,8 @@ def build_one_book(book_date, config):
     status = {"scheduled_date": book_date.isoformat(), "status": "running", "updated_at": datetime.now(TZ).isoformat()}
     status_path.write_text(json.dumps(status, indent=2), encoding="utf-8")
     try:
+        logging.info("Checking the permanent 12-character reference library...")
+        engine.ensure_character_library_references()
         story_path = outdir / "story.json"
         if story_path.exists():
             story = json.loads(story_path.read_text(encoding="utf-8"))
