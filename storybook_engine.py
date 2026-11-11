@@ -452,7 +452,37 @@ No extra keys, no markdown fences, no text outside JSON.
                 )
             word_count = len(str(scene.get("text", "")).split())
             if word_count < 35 or word_count > 65:
-                raise ValueError(f"Scene {number} page text has {word_count} words; expected 35–65. Regenerate this batch.")
+                # Repair an out-of-range page locally instead of failing the whole book.
+                # Keep the existing scene's events, characters and tone; only revise its prose.
+                original_text = str(scene.get("text", "")).strip()
+                last_repair_error = None
+                repaired_text = None
+                for repair_attempt in range(1, 4):
+                    repair_prompt = (
+                        "Rewrite the following illustrated storybook page as polished narrative prose "
+                        "of 40–55 words. Preserve the exact events, facts, characters, emotional beat, "
+                        "and continuity. Do not add a new event, heading, label, or explanation. "
+                        "Return only the page paragraph.\n\n"
+                        f"Book: {plan.get('title', 'Untitled')}\n"
+                        f"Scene {number}: {scene.get('heading', '')}\n"
+                        f"Current page text ({word_count} words): {original_text}"
+                    )
+                    candidate = cf_text(repair_prompt, max_tokens=220)
+                    candidate = candidate.strip().strip('"').strip()
+                    candidate_count = len(candidate.split())
+                    if 35 <= candidate_count <= 65:
+                        repaired_text = candidate
+                        break
+                    last_repair_error = f"repair {repair_attempt} returned {candidate_count} words"
+                    original_text = candidate or original_text
+                    word_count = len(original_text.split())
+                if repaired_text is None:
+                    raise ValueError(
+                        f"Scene {number} page text could not be repaired to 35–65 words "
+                        f"after 3 attempts ({last_repair_error})."
+                    )
+                scene["text"] = repaired_text
+                logging.info("Repaired scene %s page text to %s words.", number, len(repaired_text.split()))
             for key in ("shot_type", "camera_angle", "composition", "action_pose", "gaze", "expression", "lighting"):
                 scene.setdefault(key, "")
             scene.setdefault("characters_present", [])
