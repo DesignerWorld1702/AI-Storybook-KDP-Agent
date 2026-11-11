@@ -1,4 +1,4 @@
-import os, json, re, time, base64, io, textwrap, logging
+import os, json, re, time, base64, io, textwrap, logging, difflib
 from datetime import datetime
 from pathlib import Path
 import requests
