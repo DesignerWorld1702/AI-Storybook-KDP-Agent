@@ -507,7 +507,7 @@ No extra keys, no markdown fences, no text outside JSON.
                 aliases = [library_model.get("character_name"), library_model.get("library_name")]
                 for alias in aliases:
                     if isinstance(alias, str) and alias.strip():
-                        clean_alias = re.sub(r"\\s+Base Model$", "", alias.strip(), flags=re.IGNORECASE)
+                        clean_alias = re.sub(r"\s+Base Model$", "", alias.strip(), flags=re.IGNORECASE)
                         character_aliases[alias.strip().casefold()] = story_name
                         character_aliases[clean_alias.casefold()] = story_name
             generic_labels = {
