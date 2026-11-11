@@ -526,6 +526,29 @@ No extra keys, no markdown fences, no text outside JSON.
                     character_aliases.get(clean_name, character_aliases.get(clean_name.casefold(), clean_name))
                 )
             visible_names = list(dict.fromkeys(normalized_names))
+            # Repair small model spelling drift only when there is exactly one
+            # unambiguous registered-name match. Never silently accept a new cast member.
+            corrected_names = []
+            for visible_name in visible_names:
+                if visible_name in known_names:
+                    corrected_names.append(visible_name)
+                    continue
+                candidates = [
+                    registered_name for registered_name in known_names
+                    if abs(len(visible_name.casefold()) - len(registered_name.casefold())) <= 1
+                    and difflib.SequenceMatcher(
+                        None, visible_name.casefold(), registered_name.casefold()
+                    ).ratio() >= 0.86
+                ]
+                if len(candidates) == 1:
+                    logging.warning(
+                        "Correcting near-match scene character name %r to registered name %r.",
+                        visible_name, candidates[0]
+                    )
+                    corrected_names.append(candidates[0])
+                else:
+                    corrected_names.append(visible_name)
+            visible_names = list(dict.fromkeys(corrected_names))
             scene["characters_present"] = visible_names
             unknown_names = [name for name in visible_names if name not in known_names]
             if unknown_names:
