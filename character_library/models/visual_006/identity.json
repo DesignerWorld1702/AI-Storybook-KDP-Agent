@@ -1,0 +1,21 @@
+{
+  "visual_id": "visual_006",
+  "library_name": "Zara Base Model",
+  "reference_image": "reference.png",
+  "character_name": "Zara",
+  "immutable_identity": "Adult female, 23. Shoulder-length layered black hair, dark-brown eyes, a small permanent notch in the left eyebrow, slim athletic build, alert expressive face. Detective and quick observer. Reference outfit: fitted black leather jacket with understated practical layers. Keep eyebrow notch and all facial proportions fixed.",
+  "changeable_story_identity": {
+    "personality": "May be adapted to the story while respecting core species/identity",
+    "occupation": "May change",
+    "background": "May change",
+    "relationships": "May change",
+    "story_role": "May change",
+    "clothing": "May change for each book; remain consistent within that book",
+    "accessories": "May change for each book; remain consistent within that book"
+  },
+  "reference_image_spec": {
+    "composition": "single-character full-body reference portrait, front three-quarter view, face clearly readable, neutral standing pose, uncluttered muted background",
+    "style": "cinematic anime realism, grounded anatomy, natural expressions, realistic materials, restrained purposeful fantasy, polished hand-painted feature-film illustration",
+    "exclusions": "no text, labels, panels, logos, watermark, chibi proportions, oversized eyes, plastic skin, photorealism"
+  }
+}
