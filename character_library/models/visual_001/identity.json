@@ -1,0 +1,25 @@
+{
+  "visual_id": "visual_001",
+  "library_name": "Adam Base Model",
+  "reference_image": "reference.png",
+  "immutable_identity": {
+    "hair": "Dark chestnut, naturally wavy",
+    "eyes": "Grey-hazel",
+    "permanent_mark": "Vertical scar at the outer left eyebrow",
+    "build": "Tall, lean, athletic",
+    "face_identity": "Preserve the facial identity, facial proportions, bone structure, and distinctive features shown in reference.png.",
+    "body_identity": "Preserve the same height impression, body proportions, and athletic build shown in reference.png.",
+    "skin_tone": "Match reference.png.",
+    "permanent_marks": "Never remove, relocate, or invent permanent scars, moles, freckles, or birthmarks."
+  },
+  "changeable_story_identity": {
+    "name": "May change for each book",
+    "personality": "May change",
+    "occupation": "May change",
+    "background": "May change",
+    "relationships": "May change",
+    "story_role": "May change",
+    "clothing": "May change for each book; remain consistent within that book",
+    "accessories": "May change for each book; remain consistent within that book"
+  }
+}

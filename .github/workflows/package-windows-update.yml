@@ -1,0 +1,71 @@
+name: Package safe Windows update
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+      - name: Build safe overlay package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $root = Join-Path $PWD "windows_update"
+          $payload = Join-Path $root "payload"
+          New-Item -ItemType Directory -Force -Path $payload | Out-Null
+          Copy-Item "storybook_engine.py" $payload
+          Copy-Item "daily_runner.py" $payload
+          Copy-Item "README.md" $payload
+          New-Item -ItemType Directory -Force -Path (Join-Path $payload "character_library/models/visual_001") | Out-Null
+          Copy-Item "character_library/models/visual_001/identity.json" (Join-Path $payload "character_library/models/visual_001/identity.json")
+          @'
+          $ErrorActionPreference = "Stop"
+          $projectRoot = (Get-Location).Path
+          foreach ($required in @("storybook_engine.py", "daily_runner.py")) {
+              if (-not (Test-Path (Join-Path $projectRoot $required))) {
+                  throw "Run this script from the root of your existing AI Storybook project. Missing: $required"
+              }
+          }
+          $payload = Join-Path $PSScriptRoot "payload"
+          if (-not (Test-Path $payload)) { throw "Update payload folder is missing." }
+          $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
+          $backup = Join-Path $projectRoot "backup_before_github_update_$stamp"
+          New-Item -ItemType Directory -Force -Path $backup | Out-Null
+          $files = @(
+              "storybook_engine.py",
+              "daily_runner.py",
+              "README.md",
+              "character_library/models/visual_001/identity.json"
+          )
+          foreach ($relative in $files) {
+              $target = Join-Path $projectRoot $relative
+              if (Test-Path $target) {
+                  $backupTarget = Join-Path $backup $relative
+                  New-Item -ItemType Directory -Force -Path (Split-Path $backupTarget) | Out-Null
+                  Copy-Item $target $backupTarget -Force
+              }
+              $source = Join-Path $payload $relative
+              if (Test-Path $source) {
+                  New-Item -ItemType Directory -Force -Path (Split-Path $target) | Out-Null
+                  Copy-Item $source $target -Force
+              }
+          }
+          Write-Host "Update applied. Backup created at: $backup"
+          Write-Host "Your .env, output folder, reference.png, and other character-library files were not changed."
+          '@ | Set-Content -Path (Join-Path $root "apply_update.ps1") -Encoding UTF8
+          Compress-Archive -Path (Join-Path $root "*") -DestinationPath (Join-Path $PWD "AI-Storybook-Windows-Update.zip") -Force
+      - name: Upload safe update ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI-Storybook-Windows-Update
+          path: AI-Storybook-Windows-Update.zip
+          retention-days: 14

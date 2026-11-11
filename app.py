@@ -52,6 +52,22 @@ def cf_text(prompt, max_tokens=7000):
             text = choices[0].get("message", {}).get("content", "")
     if not text:
         raise RuntimeError("Text model response did not contain text. Check the selected text model's API response format.")
+
+    # Cloudflare models may return either plain text or a structured object.
+    # Normalize common nested response shapes before parsing the story JSON.
+    if isinstance(text, dict):
+        for key in ("response", "output", "text", "content"):
+            candidate = text.get(key)
+            if isinstance(candidate, str) and candidate.strip():
+                text = candidate
+                break
+        else:
+            text = json.dumps(text, ensure_ascii=False)
+    elif isinstance(text, list):
+        text = json.dumps(text, ensure_ascii=False)
+    elif not isinstance(text, str):
+        text = str(text)
+
     return text.strip()
 
 def extract_json(text):
@@ -63,69 +79,170 @@ def extract_json(text):
         raise ValueError("The text model did not return valid JSON. Try again or use a different text model.")
     return json.loads(text[start:end+1])
 
+DEFAULT_CHARACTER_POOL = """
+REUSABLE CHARACTER POOL — select only those needed by this standalone story; never force the full cast into every book.
+ADULT HUMANS:
+Adam (27): dark chestnut slightly wavy hair, grey-hazel eyes, vertical scar at outer left eyebrow, tall lean athletic build; charcoal jacket and dark shirt; strategic thinker.
+Zayn (24): tousled black hair, amber-brown eyes, small mole below right eye, slim athletic build; olive utility jacket; inventive problem-solver.
+Rayan (28): short textured dark-brown hair, deep-brown eyes, thin diagonal chin scar, broad athletic build; brown expedition jacket; bold adventurer.
+Noah (26): straight black side-parted hair, blue-grey eyes, crescent birthmark near right temple, lean build; black long coat; observant investigator.
+Aira (25): long espresso-brown hair, hazel-green eyes, beauty mark below left side of mouth, athletic build; burgundy jacket; decisive leader.
+Zara (23): shoulder-length layered black hair, dark-brown eyes, notch in left eyebrow, slim athletic build; black leather jacket; sharp detective.
+Hania (22): medium soft chestnut hair, warm dark-hazel eyes, freckles across nose, petite-average build; beige jacket and teal top; empathetic analyst.
+Meher (29): dark auburn-black hair tied back, steel-brown eyes, diagonal scar on right cheek, athletic build; forest-green field jacket; survival expert.
+FANTASY CREATURES — optional, rare supporting roles:
+Drako: intelligent proud dragon with obsidian scales, bronze undertones, amber eyes, bronze-black horns, large dark wings and a glowing ancient chest symbol.
+Grim: three-foot moss-green goblin with yellow eyes, pointed ears, one bent ear and a collection of old keys; clever trickster.
+Lumi: gentle wise unicorn with pearl-white coat, silver mane, icy-blue eyes, crystal horn and star mark on forehead.
+Bamboo: clever loyal black-and-white panda with brown eyes, crescent mark on right shoulder and explorer satchel.
+Keep each selected character's defining face, hair, eye colour, marks, proportions and signature clothing stable throughout the book. Names and roles may be changed for a standalone story if the user asks, but do not silently alter the canonical appearance when using this pool.
+"""
+
+STYLE_LOCK = (
+    "Unified 2D cinematic anime realism: hand-painted feature-film illustration, "
+    "semi-realistic adult anatomy and expressive faces, natural proportions, "
+    "consistent fine linework, painterly cel shading, detailed believable materials "
+    "and environments, controlled cinematic colour grading. Never 3D CGI, chibi, "
+    "childish cartoon, photorealism, or a mixture of unrelated art styles."
+)
+
 def make_story(genre, style, audience, title_hint, character_notes, scene_words):
-    prompt = f"""
-Create an original illustrated book story and exactly 50 sequential scenes.
-Genre: {genre}
-Illustration style: {style}
-Intended audience: {audience}
-Title hint (may be blank): {title_hint or "invent a memorable title"}
-Character / continuity notes: {character_notes or "invent 1-3 memorable characters and describe their appearance consistently"}
-Each scene must be visually drawable, advance the plot, and have one short page text suitable for placing under the illustration (about {scene_words} words).
-Avoid copyrighted characters, existing franchises, and imitation of living artists.
-Return ONLY valid JSON with this exact shape:
+    # Generate a compact 50-scene outline first, then expand it in five smaller
+    # batches. This avoids asking a small text model for one enormous JSON reply.
+    common = f"""
+Create an original illustrated feature-film story.
+Story direction: mystery, suspense, thriller, adventure and restrained fantasy.
+Genre emphasis: {genre}
+Audience: family / all ages. Main protagonists must be humans in their 20s.
+Visual style (LOCKED): {STYLE_LOCK}
+Title hint: {title_hint or "invent a memorable title"}.
+Character notes / reusable character pool: {character_notes or DEFAULT_CHARACTER_POOL}
+
+Humans drive the plot. Use only characters needed for this standalone story.
+Fantasy creatures are rare supporting characters. Keep selected characters' faces,
+hair, eyes, distinguishing marks, proportions and clothing consistent.
+Use cinematic shot variety, purposeful action, gaze, expressions, lighting and depth.
+Avoid copyrighted characters, existing franchises and imitation of living artists.
+"""
+    outline_prompt = common + f"""
+First create the book metadata and a concise outline of exactly 50 sequential scenes.
+Each outline entry must have only "number" and "beat"; beat is one or two sentences
+describing the important action and how it advances the beginning, middle or ending.
+Return ONLY valid JSON, no markdown, with this exact shape:
 {{
  "title":"...",
  "subtitle":"...",
- "author":"Author Name",
+ "author":"Your Author Name",
  "description":"A compelling 100-180 word book description",
  "keywords":["seven distinct short search phrases"],
  "categories":["suggested broad category 1","suggested broad category 2"],
- "audience":"...",
- "character_bible":"Detailed visual descriptions of each recurring character and key props",
- "art_direction":"Consistent visual style and palette",
+ "audience":"Family / all ages",
+ "character_bible":"Detailed visual bibles for only the characters selected",
+ "art_direction":"Consistent palette, lighting and world atmosphere",
+ "outline":[{{"number":1,"beat":"..."}}]
+}}
+Exactly 50 outline entries. Keep metadata concise.
+"""
+    plan = extract_json(cf_text(outline_prompt, max_tokens=5000))
+    outline = plan.get("outline", [])
+    if len(outline) != 50:
+        raise ValueError(f"Expected 50 outline entries but received {len(outline)}.")
+
+    scenes = []
+    for first in range(1, 51, 10):
+        last = min(first + 9, 50)
+        batch_outline = outline[first - 1:last]
+        batch_prompt = common + f"""
+Book title: {plan.get("title", title_hint or "Untitled")}
+Character bible: {plan.get("character_bible", "")}
+Art direction: {plan.get("art_direction", "")}
+Full story outline for continuity:
+{json.dumps(outline, ensure_ascii=False)}
+
+Expand ONLY scenes {first} through {last} into detailed illustrated-book scene records.
+Each scene page text should be about {scene_words} words. Make the visual prompts cinematic,
+specific and varied. Do not repeat the same camera angle or static talking pose.
+Return ONLY valid JSON with this exact shape:
+{{
  "scenes":[
-   {{"number":1,"heading":"short scene heading","text":"page text","visual_prompt":"Detailed illustration prompt with character descriptions, action, environment, lighting, framing, and no lettering in the image"}}
+  {{
+   "number":{first},
+   "heading":"short scene heading",
+   "text":"page text",
+   "shot_type":"wide / medium / close-up / detail / overhead / other",
+   "camera_angle":"low / high / eye-level / overhead / dutch / other",
+   "composition":"foreground, subject placement, background and depth",
+   "action_pose":"specific physical action and body pose",
+   "gaze":"where each visible character is looking",
+   "expression":"specific emotion visible on face/body",
+   "lighting":"cinematic lighting and atmosphere",
+   "characters_present":["character names actually visible"],
+   "visual_prompt":"Detailed scene illustration prompt"
+  }}
  ]
 }}
-Requirements: exactly 50 scenes; no extra keys; scene text must not contain page numbers; all scenes form a coherent beginning-middle-end story; no text, lettering, logos or watermarks in images. The author field should be "Your Author Name" unless the user provided one.
+Return exactly {last - first + 1} scenes, numbered {first} through {last}, in order.
+No extra keys, no markdown fences, no text outside JSON.
 """
-    data = extract_json(cf_text(prompt, max_tokens=9000))
-    scenes = data.get("scenes", [])
-    if len(scenes) != 50:
-        raise ValueError(f"Expected 50 scenes but received {len(scenes)}. Try generating again.")
-    for i, s in enumerate(scenes, 1):
-        s["number"] = i
-        if not s.get("text") or not s.get("visual_prompt"):
-            raise ValueError(f"Scene {i} is missing text or a visual prompt.")
-    return data
+        batch_data = extract_json(cf_text(batch_prompt, max_tokens=4500))
+        batch_scenes = batch_data.get("scenes", [])
+        expected = last - first + 1
+        if len(batch_scenes) != expected:
+            raise ValueError(
+                f"Scene batch {first}-{last}: expected {expected} scenes but received {len(batch_scenes)}."
+            )
+        for offset, scene in enumerate(batch_scenes):
+            number = first + offset
+            scene["number"] = number
+            if not scene.get("text") or not scene.get("visual_prompt"):
+                raise ValueError(f"Scene {number} is missing text or a visual prompt.")
+            for key in ("shot_type", "camera_angle", "composition", "action_pose", "gaze", "expression", "lighting"):
+                scene.setdefault(key, "")
+            scene.setdefault("characters_present", [])
+            scenes.append(scene)
 
+    plan.pop("outline", None)
+    plan["scenes"] = scenes
+    plan["art_direction"] = f"{STYLE_LOCK}\n{plan.get('art_direction', '')}"
+    return plan
 
 def cf_image(prompt, dest, width=1024, height=1024, reference_images=None):
     if not CF_ACCOUNT or not CF_TOKEN:
         raise RuntimeError("Cloudflare credentials missing. Edit the .env file first.")
 
     url = f"https://api.cloudflare.com/client/v4/accounts/{CF_ACCOUNT}/ai/run/{IMAGE_MODEL}"
+    reference_images = reference_images or []
+    if len(reference_images) >= 2:
+        reference_guidance = (
+            "Use reference image 0 for the exact illustration rendering style and colour treatment. "
+            "Use reference image 1 only as the identity guide for the named characters; "
+            "include only characters explicitly present in this scene. "
+            "Preserve stable faces, hair, eyes, proportions and clothing. "
+        )
+    elif len(reference_images) == 1:
+        reference_guidance = (
+            "Use reference image 0 as the exact illustration style and colour reference. "
+            "Follow the character descriptions in the prompt; do not invent a character identity from the style reference. "
+        )
+    else:
+        reference_guidance = (
+            "No reference images are supplied for this generation. Follow the visual style and character descriptions in the prompt exactly. "
+        )
 
     full_prompt = (
         prompt
-        + "\nMaintain the exact visual identity of all supplied reference images. "
-        + "Preserve the same 2D cinematic anime rendering, linework, shading, "
-        + "character identity and colour treatment. "
-        + "Create a cinematic movie frame with natural character poses and camera direction. "
+        + "\n" + reference_guidance
+        + "Vary camera direction and physical action according to the scene description. "
         + "Illustration only. No text, typography, captions, letters, logos or watermark."
     )
 
-    data = {
-        "prompt": full_prompt,
-        "width": str(width),
-        "height": str(height)
+    # FLUX.2 Klein requires multipart form data even when no reference images are supplied.
+    multipart = {
+        "prompt": (None, full_prompt),
+        "width": (None, str(width)),
+        "height": (None, str(height)),
     }
-
-    files = {}
-    reference_images = reference_images or []
     image_buffers = []
-
     if len(reference_images) > 4:
         raise ValueError("Maximum four reference images are supported.")
 
@@ -134,59 +251,100 @@ def cf_image(prompt, dest, width=1024, height=1024, reference_images=None):
             with Image.open(image_path) as source:
                 im = source.convert("RGB")
                 im.thumbnail((511, 511), Image.Resampling.LANCZOS)
-
                 buffer = io.BytesIO()
                 im.save(buffer, format="PNG")
-                buffer.seek(0)
                 image_buffers.append(buffer)
-
-                files[f"input_image_{index}"] = (
+                multipart[f"input_image_{index}"] = (
                     f"reference_{index}.png",
                     buffer.getvalue(),
-                    "image/png"
+                    "image/png",
                 )
 
-        r = requests.post(
+        response = requests.post(
             url,
             headers={"Authorization": f"Bearer {CF_TOKEN}"},
-            data=data,
-            files=files if files else None,
-            timeout=240
+            files=multipart,
+            timeout=240,
         )
-
-        if not r.ok:
+        if not response.ok:
             raise RuntimeError(
-                f"Cloudflare image request failed ({r.status_code}): {r.text[:1000]}"
+                f"Cloudflare image request failed ({response.status_code}): {response.text[:1000]}"
             )
 
-        ctype = r.headers.get("content-type", "")
-        raw = r.content
-
-        if "json" in ctype:
-            obj = r.json()
+        raw = response.content
+        if "json" in response.headers.get("content-type", ""):
+            obj = response.json()
             result = obj.get("result", {})
-
-            if isinstance(result, dict):
-                val = result.get("image")
-                if val:
-                    raw = base64.b64decode(val)
-                else:
-                    raise RuntimeError("Image response did not contain an image.")
+            if isinstance(result, dict) and result.get("image"):
+                raw = base64.b64decode(result["image"])
             elif isinstance(result, str):
                 raw = base64.b64decode(result)
             else:
-                raise RuntimeError("Unexpected Cloudflare image response.")
+                raise RuntimeError("Cloudflare image response did not contain an image.")
 
-        im = Image.open(io.BytesIO(raw)).convert("RGB")
-        im.save(dest, "PNG")
-
-    except Exception as e:
-        raise RuntimeError(f"Image generation or saving failed: {e}")
-
+        image = Image.open(io.BytesIO(raw)).convert("RGB")
+        image.save(dest, "PNG")
+    except Exception as exc:
+        raise RuntimeError(f"Image generation or saving failed: {exc}") from exc
     finally:
         for buffer in image_buffers:
             buffer.close()
 
+
+def build_scene_prompt(story, scene, style):
+    cast = ", ".join(scene.get("characters_present", [])) or "only the characters required by this scene"
+    direction = (
+        f"Shot: {scene.get('shot_type', 'cinematic medium shot')}. "
+        f"Camera: {scene.get('camera_angle', 'eye-level')}. "
+        f"Composition: {scene.get('composition', '')}. "
+        f"Action and pose: {scene.get('action_pose', '')}. "
+        f"Gaze: {scene.get('gaze', '')}. "
+        f"Expression: {scene.get('expression', '')}. "
+        f"Lighting: {scene.get('lighting', '')}. "
+    )
+    return (
+        f"Art direction: {story.get('art_direction', STYLE_LOCK)}. "
+        f"Character bible: {story.get('character_bible', '')}. "
+        f"Characters visible in this scene: {cast}. "
+        f"{direction} Scene {scene.get('number')}: {scene.get('visual_prompt', '')}. "
+        f"Style lock: {STYLE_LOCK}. "
+        "Create one cinematic movie frame with clear foreground/background depth, "
+        "natural anatomy, purposeful character blocking and a visually distinct camera composition. "
+        "Do not add characters who are not in this scene. No words, lettering, logos or watermark."
+    )
+
+
+def create_reference_images(story, outdir):
+    scenes_dir = outdir / "scenes"
+    scenes_dir.mkdir(parents=True, exist_ok=True)
+    style_ref = outdir / "style_reference.png"
+    cast_ref = outdir / "character_reference_sheet.png"
+
+    if not style_ref.exists():
+        style_prompt = (
+            "Create a master visual-style reference image for an original mystery-adventure "
+            "anime feature film: a dramatic ancient mountain city at twilight, cinematic "
+            "composition, believable architecture and natural materials, painterly 2D anime "
+            "realism, semi-realistic detail, elegant consistent linework, restrained cel shading, "
+            "rich but controlled colour grading, atmospheric depth, premium hand-painted film frame. "
+            "No text, no characters, no logos, no watermark. " + STYLE_LOCK
+        )
+        cf_image(style_prompt, style_ref)
+
+    if not cast_ref.exists():
+        cast_prompt = (
+            "Create a clean character identity reference sheet showing ONLY the following "
+            "story characters, each as a separate full-body figure with clear spacing, neutral "
+            "standing pose, consistent scale, front three-quarter view, and a simple muted "
+            "background. Preserve each person's distinctive face, hairstyle, eye colour, body "
+            "type, clothing and identifying marks exactly as described. Do not add extra people, "
+            "creatures, labels, text or panels. Character bible: "
+            + str(story.get("character_bible", "Original young-adult human protagonists"))
+            + ". Render in this exact style: " + STYLE_LOCK
+        )
+        cf_image(cast_prompt, cast_ref, reference_images=[style_ref])
+
+    return [style_ref, cast_ref]
 
 def wrap_text(text, font_name, font_size, max_width, c):
     words = text.split()
@@ -231,18 +389,19 @@ def build_pdf(story, images_dir, pdf_path, trim, bleed, text_size):
         y = panel_h - 0.30*inch
         for line in title_lines:
             c.drawString(margin, y, line); y -= 16
-        c.setFont("Helvetica", text_size)
-        text_lines = wrap_text(scene["text"], "Helvetica", text_size, max_width, c)
-        available_lines = max(1, int((y - 0.18*inch) / (text_size*1.35)))
+        page_text_size = text_size
+        c.setFont("Helvetica", page_text_size)
+        text_lines = wrap_text(scene["text"], "Helvetica", page_text_size, max_width, c)
+        available_lines = max(1, int((y - 0.18*inch) / (page_text_size*1.35)))
         if len(text_lines) > available_lines:
-            # Fit the text panel conservatively without silently shrinking below 8pt.
-            while len(text_lines) > available_lines and text_size > 8:
-                text_size -= 0.5
-                c.setFont("Helvetica", text_size)
-                text_lines = wrap_text(scene["text"], "Helvetica", text_size, max_width, c)
-                available_lines = max(1, int((y - 0.18*inch) / (text_size*1.35)))
+            # Fit this page conservatively without shrinking below 8pt or affecting later pages.
+            while len(text_lines) > available_lines and page_text_size > 8:
+                page_text_size -= 0.5
+                c.setFont("Helvetica", page_text_size)
+                text_lines = wrap_text(scene["text"], "Helvetica", page_text_size, max_width, c)
+                available_lines = max(1, int((y - 0.18*inch) / (page_text_size*1.35)))
         for line in text_lines[:available_lines]:
-            c.drawString(margin, y, line); y -= text_size*1.35
+            c.drawString(margin, y, line); y -= page_text_size*1.35
         c.setFont("Helvetica", 7)
         c.setFillColorRGB(0.35,0.35,0.38)
         c.drawRightString(W-margin, 0.14*inch, str(scene["number"]))
@@ -361,8 +520,10 @@ with st.form("story_form"):
     c1,c2 = st.columns(2)
     with c1:
         genre = st.selectbox("Story genre", ["Fantasy adventure","Children's bedtime story","Mystery and suspense","Romance and emotional story","Science fiction","Fable / animal story"])
-        style = st.selectbox("Illustration style", ["Colorful storybook illustration","Anime / manga","3D animated film look","Cinematic realistic illustration","Watercolor picture book"])
-        audience = st.selectbox("Audience", ["Children ages 4–8","Children ages 8–12","Family / all ages","Young adult","Adult fiction"])
+        style = STYLE_LOCK
+        st.caption("Locked illustration style: unified 2D cinematic anime realism across every page.")
+        audience = "Family / all ages"
+        st.caption("Audience: all ages. Main human protagonists are in their 20s.")
         trim = st.selectbox("Paperback trim size", list(TRIM_SIZES.keys()), index=0)
     with c2:
         title_hint = st.text_input("Title idea (optional)", placeholder="e.g., The Lantern in the Moonwood")
@@ -370,51 +531,128 @@ with st.form("story_form"):
         character_notes = st.text_area("Character / visual continuity notes (optional)", placeholder="Main character's age, hair, clothes, colors, companions...")
         scene_words = st.slider("Words per scene", min_value=20, max_value=90, value=45, step=5)
         text_size = st.slider("PDF story text size", min_value=8, max_value=16, value=11)
-    submitted = st.form_submit_button("✨ Generate story + 50 scenes", type="primary", use_container_width=True)
+    resume_existing = st.checkbox("Resume the latest saved story", value=False)
+    st.caption("First, the app creates style references and three sample scenes. You approve them before the remaining illustrations are generated.")
+    submitted = st.form_submit_button("✨ Create story + visual samples", type="primary", use_container_width=True)
 
 if submitted:
     if not CF_ACCOUNT or not CF_TOKEN:
         st.error("Add CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN to .env, then restart the app.")
     else:
-        run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-        outdir = OUTROOT / run_id
-        scenes_dir = outdir / "scenes"
-        scenes_dir.mkdir(parents=True, exist_ok=True)
-        st.session_state["last_outdir"] = str(outdir)
         try:
-            with st.status("Writing a coherent 50-scene story...", expanded=True) as status:
+            if resume_existing:
+                candidates = sorted(
+                    [p for p in OUTROOT.iterdir() if p.is_dir() and (p / "story.json").exists()],
+                    key=lambda p: p.name,
+                )
+                if not candidates:
+                    raise RuntimeError("No saved story was found to resume. Start a new story first.")
+                outdir = candidates[-1]
+                story = json.loads((outdir / "story.json").read_text(encoding="utf-8"))
+                st.info(f"Preparing visual review for saved story: {outdir.name}")
+                style = story.get("illustration_style", STYLE_LOCK)
+                audience = story.get("audience", "Family / all ages")
+                trim = story.get("trim_size", trim)
+                text_size = story.get("pdf_text_size", text_size)
+                author = story.get("author", author)
+            else:
+                run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+                outdir = OUTROOT / run_id
+                outdir.mkdir(parents=True, exist_ok=True)
                 story = make_story(genre, style, audience, title_hint, character_notes, scene_words)
                 story["author"] = author.strip() or "Your Author Name"
                 story["genre"] = genre
                 story["illustration_style"] = style
                 story["trim_size"] = trim
-                (outdir/"story.json").write_text(json.dumps(story, indent=2, ensure_ascii=False), encoding="utf-8")
-                status.update(label="Story created. Generating illustrations...", state="running")
-                progress = st.progress(0)
-                note = st.empty()
-                for i, scene in enumerate(story["scenes"], 1):
-                    path = scenes_dir / f"scene_{i:03d}.png"
-                    note.write(f"Generating scene {i}/50: {scene.get('heading','')}")
-                    prompt = f"""Art direction: {story.get('art_direction','consistent storybook illustration')}.
-Character bible: {story.get('character_bible','')}.
-Scene {i}: {scene['visual_prompt']}
-Style: {style}. Audience: {audience}. Maintain identical recurring character design, clothing, proportions, and palette across scenes. No words, lettering, logo, or watermark."""
-                    cf_image(prompt, path)
-                    progress.progress(i/50)
-                    time.sleep(0.15)
-                status.update(label="All 50 illustrations generated. Building files...", state="running")
-                build_pdf(story, scenes_dir, outdir/"storybook_interior.pdf", trim, False, text_size)
-                make_kindle_html(story, scenes_dir, outdir/"kindle_story.html")
-                make_listing(story, outdir)
-                write_checklist(outdir)
-                create_contact_sheet(scenes_dir, outdir/"scene_contact_sheet.jpg")
-                status.update(label="Storybook files created!", state="complete")
-            st.success(f"Finished! Files are in: {outdir}")
-            st.session_state["story"] = story
+                story["pdf_text_size"] = text_size
+                (outdir / "story.json").write_text(
+                    json.dumps(story, indent=2, ensure_ascii=False), encoding="utf-8"
+                )
+
+            scenes_dir = outdir / "scenes"
+            scenes_dir.mkdir(parents=True, exist_ok=True)
+            with st.status("Creating the style and character references...", expanded=True) as status:
+                references = create_reference_images(story, outdir)
+                status.update(label="Generating three sample scenes for your approval...", state="running")
+                sample_numbers = sorted(set([1, min(10, len(story["scenes"])), min(25, len(story["scenes"]))]))
+                for number in sample_numbers:
+                    scene = story["scenes"][number - 1]
+                    path = scenes_dir / f"scene_{number:03d}.png"
+                    if path.exists() and path.stat().st_size > 0:
+                        continue
+                    st.write(f"Creating sample scene {number}: {scene.get('heading', '')}")
+                    cf_image(build_scene_prompt(story, scene, style), path, reference_images=references)
+                status.update(label="Visual samples are ready for your review.", state="complete")
+
+            st.session_state["pending_review_dir"] = str(outdir)
             st.session_state["last_outdir"] = str(outdir)
-        except Exception as e:
-            st.error(f"Generation stopped: {e}")
-            st.info("Any scene images generated before the error remain in the output folder. This starter version does not automatically resume a partially completed run.")
+            st.success("Your story and three sample illustrations are ready. Review them below before generating the remaining scenes.")
+        except Exception as exc:
+            st.error(f"Preparation stopped: {exc}")
+            st.info("Saved story data, reference images and completed samples remain in the output folder. You can choose resume and try again.")
+
+
+if "pending_review_dir" in st.session_state:
+    review_dir = Path(st.session_state["pending_review_dir"])
+    story_path = review_dir / "story.json"
+    if story_path.exists():
+        review_story = json.loads(story_path.read_text(encoding="utf-8"))
+        st.header("Review your story's visual style")
+        st.write("Check that the style, character designs and camera direction feel consistent. The app will not generate the remaining scenes until you approve.")
+        preview_cols = st.columns(3)
+        preview_items = [
+            ("style_reference.png", "Master style reference"),
+            ("character_reference_sheet.png", "Selected character reference"),
+            ("scenes/scene_001.png", "Sample scene 1"),
+        ]
+        for col, (relative_path, label) in zip(preview_cols, preview_items):
+            image_path = review_dir / relative_path
+            with col:
+                st.caption(label)
+                if image_path.exists():
+                    st.image(str(image_path), use_container_width=True)
+                else:
+                    st.warning(f"Not created yet: {label}")
+        extra_cols = st.columns(2)
+        for col, number in zip(extra_cols, [10, 25]):
+            image_path = review_dir / "scenes" / f"scene_{number:03d}.png"
+            with col:
+                st.caption(f"Sample scene {number}")
+                if image_path.exists():
+                    st.image(str(image_path), use_container_width=True)
+        if st.button("Approve visual style and generate all 50 illustrations", type="primary", use_container_width=True):
+            try:
+                references = [review_dir / "style_reference.png", review_dir / "character_reference_sheet.png"]
+                scenes_dir = review_dir / "scenes"
+                with st.status("Generating the remaining illustrations and publishing files...", expanded=True) as status:
+                    progress = st.progress(0.0)
+                    note = st.empty()
+                    completed = 0
+                    for index, scene in enumerate(review_story["scenes"], 1):
+                        image_path = scenes_dir / f"scene_{index:03d}.png"
+                        if image_path.exists() and image_path.stat().st_size > 0:
+                            completed += 1
+                            progress.progress(completed / 50)
+                            continue
+                        note.write(f"Generating scene {index}/50: {scene.get('heading', '')}")
+                        cf_image(build_scene_prompt(review_story, scene, STYLE_LOCK), image_path, reference_images=references)
+                        completed += 1
+                        progress.progress(completed / 50)
+                        time.sleep(0.15)
+                    status.update(label="All illustrations are ready. Building book files...", state="running")
+                    saved_trim = review_story.get("trim_size", list(TRIM_SIZES.keys())[0])
+                    build_pdf(review_story, scenes_dir, review_dir / "storybook_interior.pdf", saved_trim, False, review_story.get("pdf_text_size", 11))
+                    make_kindle_html(review_story, scenes_dir, review_dir / "kindle_story.html")
+                    make_listing(review_story, review_dir)
+                    write_checklist(review_dir)
+                    create_contact_sheet(scenes_dir, review_dir / "scene_contact_sheet.jpg")
+                    status.update(label="Storybook files created!", state="complete")
+                st.session_state["last_outdir"] = str(review_dir)
+                st.session_state.pop("pending_review_dir", None)
+                st.success(f"Finished! Files are in: {review_dir}")
+            except Exception as exc:
+                st.error(f"Generation stopped: {exc}")
+                st.info("Completed images remain saved. Click approve again to resume; existing scene images will be skipped.")
 
 if "last_outdir" in st.session_state:
     outdir = Path(st.session_state["last_outdir"])
