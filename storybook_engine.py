@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 import requests
 from dotenv import load_dotenv
-from PIL import Image, ImageOps, ImageDraw
+from PIL import Image, ImageOps, ImageDraw, ImageFont
 from reportlab.lib.pagesizes import inch
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
@@ -27,20 +27,18 @@ TRIM_SIZES = {
 }
 
 def scene_image_dimensions(trim, max_side=None):
-    """Choose a high-resolution image size matching the printable art panel."""
+    """Return full-page image dimensions; story text is overlaid later."""
     if trim not in TRIM_SIZES:
         raise ValueError(f"Unsupported trim size: {trim}")
     max_side = int(max_side or os.getenv("STORY_IMAGE_MAX_SIDE", "1536"))
     if max_side < 1024 or max_side > 1920 or max_side % 16:
         raise ValueError("STORY_IMAGE_MAX_SIDE must be a multiple of 16 from 1024 to 1920.")
-    page_w, page_h = (value * 72 for value in TRIM_SIZES[trim])
-    panel_h = max(1.55 * 72, page_h * 0.25)
-    art_w, art_h = page_w, page_h - panel_h
-    scale = max_side / max(art_w, art_h)
-    width = max(256, int(round((art_w * scale) / 16) * 16))
-    height = max(256, int(round((art_h * scale) / 16) * 16))
+    page_w, page_h = TRIM_SIZES[trim]
+    scale = max_side / max(page_w, page_h)
+    width = max(256, int(round((page_w * scale) / 16) * 16))
+    height = max(256, int(round((page_h * scale) / 16) * 16))
     if width * height > 4_000_000:
-        raise ValueError("Selected scene dimensions exceed FLUX.2 Klein's 4MP output limit.")
+        raise ValueError("Selected full-page dimensions exceed FLUX.2 Klein's 4MP output limit.")
     return width, height
 
 
@@ -266,7 +264,17 @@ STAGE 1 — Read the plot and genre, then independently select only the visual s
 STAGE 2 — Only AFTER selecting slots, create this book's character registry. For each selected visual slot, invent a completely new story-specific name and assign a plot-appropriate personality, backstory, relationships, profession/job, role, rank/designation, social status, costume and (fantasy mode only) powers/abilities. Do not use or mention old library names. The technical visual_id links the new story identity to its permanent portrait. For original non-library characters use visual_id:null and invent their complete identity.
 The library is ONLY a set of reusable physical identity portraits. Preserve only the selected model's recognisable physical identity, anatomy/species and permanent marks. Everything else is newly invented for this book. Never carry over a prior book's name, personality, role, powers, job, rank, costume or relationships.
 Every recurring character must have a stable identity and costume within this book. Every scene must use the story-specific registry names.
-Use cinematic shot variety, purposeful action, gaze, expressions, lighting and depth.
+HOLLYWOOD FILM DIRECTION — mandatory:
+Think like a film director and cinematographer, not a portrait illustrator. Plan camera placement,
+actor blocking, eyelines, foreground action, background action and visual storytelling.
+Use varied coverage: extreme wide establishing shots, wide master shots, medium two-shots,
+over-the-shoulder dialogue shots, reverse shots, side profiles, rear three-quarter views,
+shots from behind a speaker, low and high angles, overheads, close-ups, insert details,
+tracking viewpoints and motivated 360-degree orbit frames. Adjacent scenes must not repeat
+the same camera setup. During dialogue, the speaker looks at the listener and the listener
+looks at the speaker. Characters may face away from camera, appear in profile, or be partly
+seen from behind. Direct eye contact with the viewer is rare and story-motivated. Never pose
+a group as a front-facing lineup. Use simple, natural English with common words and short sentences.
 Avoid copyrighted characters, existing franchises and imitation of living artists.
 """
     plan = None
