@@ -206,22 +206,16 @@ def extract_json(text, repair_context="story data"):
             ) from repair_error
 
 DEFAULT_CHARACTER_POOL = """
-REUSABLE CHARACTER POOL — select only those needed by this standalone story; never force the full cast into every book.
-ADULT HUMANS:
-Adam (27): dark chestnut slightly wavy hair, grey-hazel eyes, vertical scar at outer left eyebrow, tall lean athletic build; charcoal jacket and dark shirt; strategic thinker.
-Zayn (24): tousled black hair, amber-brown eyes, small mole below right eye, slim athletic build; olive utility jacket; inventive problem-solver.
-Rayan (28): short textured dark-brown hair, deep-brown eyes, thin diagonal chin scar, broad athletic build; brown expedition jacket; bold adventurer.
-Noah (26): straight black side-parted hair, blue-grey eyes, crescent birthmark near right temple, lean build; black long coat; observant investigator.
-Aira (25): long espresso-brown hair, hazel-green eyes, beauty mark below left side of mouth, athletic build; burgundy jacket; decisive leader.
-Zara (23): shoulder-length layered black hair, dark-brown eyes, notch in left eyebrow, slim athletic build; black leather jacket; sharp detective.
-Hania (22): medium soft chestnut hair, warm dark-hazel eyes, freckles across nose, petite-average build; beige jacket and teal top; empathetic analyst.
-Meher (29): dark auburn-black hair tied back, steel-brown eyes, diagonal scar on right cheek, athletic build; forest-green field jacket; survival expert.
-FANTASY CREATURES — optional identities for fantasy stories only; any story role is possible:
-Drako: intelligent proud dragon with obsidian scales, bronze undertones, amber eyes, bronze-black horns, large dark wings and a glowing ancient chest symbol.
-Grim: three-foot moss-green goblin with yellow eyes, pointed ears, one bent ear and a collection of old keys; clever trickster.
-Lumi: gentle wise unicorn with pearl-white coat, silver mane, icy-blue eyes, crystal horn and star mark on forehead.
-Bamboo: clever loyal black-and-white panda with brown eyes, crescent mark on right shoulder and explorer satchel.
-Treat every entry as an optional physical identity reference, never a fixed cast. The listed occupations, temperaments and outfit examples are NOT permanent: reinvent each selected character's name, personality, profession, job, rank, designation, role, relationships, social status and costume for each new story. For fantasy identities, invent story-specific powers, abilities, magical limits, rank, faction and purpose each time. Preserve only the recognisable physical identity and permanent marks when a saved visual model is reused. Choose no library characters if the plot does not need them. Real-world stories must exclude every fantasy identity and all supernatural elements. Keep each story's chosen design consistent within that book.
+PERMANENT VISUAL MODEL LIBRARY — neutral slots only:
+Character 1 = visual_001; Character 2 = visual_002; Character 3 = visual_003; Character 4 = visual_004;
+Character 5 = visual_005; Character 6 = visual_006; Character 7 = visual_007; Character 8 = visual_008;
+Character 9 = visual_009; Character 10 = visual_010; Character 11 = visual_011; Character 12 = visual_012.
+These slot numbers and visual IDs are technical identity references, NOT character names or story identities.
+The AI must independently decide which zero-to-twelve visual models, if any, genuinely serve this book.
+Only preserve a selected model's recognisable physical identity, species (where applicable), anatomy, colours and permanent marks.
+Invent every selected character's name, personality, history, relationships, job, profession, role, rank, designation, social status, costume and (in fantasy only) powers and abilities for the current story.
+Never import a model's old name, personality, occupation, costume, role or powers. Keep each new story identity stable throughout its own book.
+Real-world stories must not select fantasy creature models and must contain no supernatural elements.
 """
 
 STYLE_LOCK = (
@@ -253,11 +247,13 @@ Audience: {audience}. Cast age, occupations, social roles and character mix must
 Visual style (LOCKED): {STYLE_LOCK}
 Title hint: {title_hint or "invent a memorable title"}.
 Character notes / reusable character pool: {character_notes or DEFAULT_CHARACTER_POOL}
-Permanent visual library available to this project:
-{json.dumps([{k: v for k, v in model.items() if not k.startswith("_")} for model in load_character_library()], ensure_ascii=False)}
-STRICT VISUAL MODEL RULE: The only valid visual_id values are the IDs listed in the permanent visual library above. Never invent an ID that is not listed. Use visual_id: null for every original character. Select a saved library identity only when that exact physical identity genuinely fits the plot; never assign a library ID merely because a character has the same species or age.
-Every story must use fresh story-specific names and avoid all previous story character names listed here: {json.dumps(previous_story_character_names(), ensure_ascii=False)}. Select only the permanent visual identities that genuinely fit this plot; zero library characters is allowed. The library stores reusable physical identity references, NOT fixed personalities, jobs, ranks, costumes, relationships, powers or story roles. When a saved human identity is selected, preserve only its recognisable physical identity and permanent marks; freely create a new profession, designation, rank, personality, social status, role, relationships and story-specific costume for this book. When a saved fantasy creature identity is selected, preserve its recognisable species and physical identity; freely invent its powers, abilities, rank, faction, personality, role and costume according to this story's world rules. Never carry powers, jobs, ranks or costumes from a previous book. If visual model visual_001 is selected, give it a fresh story name (never "Adam") while preserving only its immutable physical identity. Add its exact visual_id. Other characters may be original story-specific designs. Build a cast sized for this plot; the library's 12 characters are optional choices, not a required ensemble. Include a compelling central threat and exactly ONE principal villain when appropriate to the selected genre; in crime/thriller stories, the antagonist may be a human criminal or institution. Do not add fantasy creatures or supernatural elements in real-world mode.
-CRITICAL VISUAL-CONTINUITY RULE: every recurring character, including supporting characters and the villain, must have a stable physical identity. Give every character a fresh story-specific name for this book; do not reuse names from the reusable pool. Each character_registry entry must include name, role, importance, immutable_identity (face shape/features, skin tone, hair, eye colour, body/build, height impression and permanent marks), story_costume (this book's clothing, accessories and palette), and visual_bible. If a permanent library model is used, include its exact visual_id and preserve its immutable_identity exactly while creating a new story-specific costume. The costume must remain stable throughout this book unless a visible story event changes it. Every scene's characters_present must use exact registry names and include only visible characters.
+Permanent visual library — numbered slots with identity facts only (no legacy names or story roles):
+{json.dumps([{"slot": "Character " + str(model.get("visual_id", "visual_000").split("_")[-1]), "visual_id": model.get("visual_id"), "immutable_identity": model.get("immutable_identity")} for model in load_character_library()], ensure_ascii=False)}
+TWO-STAGE CAST DESIGN (mandatory):
+STAGE 1 — Read the plot and genre, then independently select only the visual slots that genuinely improve this story. You may select zero, one, several or all; do not force a fixed cast. Real-world mode may select only human visual slots.
+STAGE 2 — Only AFTER selecting slots, create this book's character registry. For each selected visual slot, invent a completely new story-specific name and assign a plot-appropriate personality, backstory, relationships, profession/job, role, rank/designation, social status, costume and (fantasy mode only) powers/abilities. Do not use or mention old library names. The technical visual_id links the new story identity to its permanent portrait. For original non-library characters use visual_id:null and invent their complete identity.
+The library is ONLY a set of reusable physical identity portraits. Preserve only the selected model's recognisable physical identity, anatomy/species and permanent marks. Everything else is newly invented for this book. Never carry over a prior book's name, personality, role, powers, job, rank, costume or relationships.
+Every recurring character must have a stable identity and costume within this book. Every scene must use the story-specific registry names.
 Use cinematic shot variety, purposeful action, gaze, expressions, lighting and depth.
 Avoid copyrighted characters, existing franchises and imitation of living artists.
 """
@@ -265,7 +261,7 @@ Avoid copyrighted characters, existing franchises and imitation of living artist
     if plan_path and plan_path.exists():
         try:
             cached = json.loads(plan_path.read_text(encoding="utf-8"))
-            if cached.get("story_schema_version") == 3 and len(cached.get("outline", [])) == 50 and cached.get("character_registry") and cached.get("principal_villain"):
+            if cached.get("story_schema_version") == 4 and len(cached.get("outline", [])) == 50 and cached.get("character_registry") and cached.get("principal_villain"):
                 plan = cached
         except Exception:
             plan = None
@@ -336,7 +332,7 @@ Do not add JSON, quotation marks, headings or explanatory text.
             f'{item.get("name", "")}: {item.get("visual_bible", "")}'
             for item in plan.get("character_registry", []) if isinstance(item, dict)
         )
-        plan["story_schema_version"] = 3
+        plan["story_schema_version"] = 4
         registry = plan.get("character_registry", [])
         if not isinstance(registry, list) or not registry:
             raise ValueError("Story plan is missing its character_registry.")
@@ -491,26 +487,9 @@ No extra keys, no markdown fences, no text outside JSON.
             visible_names = scene.get("characters_present", [])
             if not isinstance(visible_names, list):
                 raise ValueError(f"Scene {number} characters_present must be a list.")
-            # Normalize aliases from the permanent identity library to this book's
-            # story-specific registry names. The model may call a reused visual identity
-            # by its library name (e.g. "Zayn") even though this book gave it a fresh name.
-            character_aliases = {"Kaelin": "Kaelin Darkshadow"}
-            registry_by_visual_id = {
-                item.get("visual_id"): item
-                for item in plan.get("character_registry", [])
-                if item.get("visual_id")
-            }
-            for library_model in load_character_library():
-                registered = registry_by_visual_id.get(library_model.get("visual_id"))
-                if not registered:
-                    continue
-                story_name = registered.get("name")
-                aliases = [library_model.get("character_name"), library_model.get("library_name")]
-                for alias in aliases:
-                    if isinstance(alias, str) and alias.strip():
-                        clean_alias = re.sub(r"\s+Base Model$", "", alias.strip(), flags=re.IGNORECASE)
-                        character_aliases[alias.strip().casefold()] = story_name
-                        character_aliases[clean_alias.casefold()] = story_name
+            # Permanent visual slots have no story names. The current book's
+            # registry is the sole authority for character names.
+            character_aliases = {}
             generic_labels = {
                 "minions", "guards", "soldiers", "villagers", "townspeople",
                 "crowd", "crowds", "bandits", "enemies"
