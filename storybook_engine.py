@@ -396,6 +396,7 @@ Do not add JSON, quotation marks, headings or explanatory text.
 Book title: {plan.get("title", title_hint or "Untitled")}
 Character registry (canonical identities; never rename or redesign within this book):
 {json.dumps(plan.get("character_registry", []), ensure_ascii=False)}
+CAST RULE: For characters_present, use ONLY exact names from the character registry above. Never use permanent-library base names unless that exact name is registered for this book. Never invent incidental named people (for example, Mr. Jenkins); unnamed crowds/guards may remain part of the environment but are not named characters.
 Principal villain: {plan.get("principal_villain", "")}
 Character bible: {plan.get("character_bible", "")}
 Art direction: {plan.get("art_direction", "")}
@@ -552,7 +553,22 @@ No extra keys, no markdown fences, no text outside JSON.
             scene["characters_present"] = visible_names
             unknown_names = [name for name in visible_names if name not in known_names]
             if unknown_names:
-                raise ValueError(f"Scene {number} uses unregistered character names: {unknown_names}")
+                # The scene model sometimes invents incidental names or reuses a
+                # permanent-library name that this story did not select. The story
+                # registry is the authority for visible cast; do not let an
+                # unregistered name create an unintended character design.
+                logging.warning(
+                    "Scene %s mentioned unregistered visible names %s; excluding them from the illustrated cast.",
+                    number, unknown_names
+                )
+                visible_names = [name for name in visible_names if name in known_names]
+                scene["characters_present"] = visible_names
+                scene["visual_prompt"] = (
+                    str(scene.get("visual_prompt", "")).strip()
+                    + "\\nSTRICT CAST LOCK: Depict only these registered characters: "
+                    + (", ".join(visible_names) if visible_names else "no named character; environment-only composition")
+                    + ". Do not depict or invent any other named person or character."
+                )
             scenes.append(scene)
 
         # Cache only a fully validated batch so interrupted/invalid responses are regenerated.
