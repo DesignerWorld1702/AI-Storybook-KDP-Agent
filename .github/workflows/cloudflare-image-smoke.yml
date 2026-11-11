@@ -1,0 +1,78 @@
+name: Cloudflare image generation smoke test
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/cloudflare-image-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  image-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install image validation dependency
+        run: python -m pip install --upgrade requests pillow
+
+      - name: Generate and validate one test illustration
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          python - <<'PY'
+          import os, io, base64, json, requests
+          from PIL import Image
+
+          account = os.environ.get("CLOUDFLARE_ACCOUNT_ID", "").strip()
+          token = os.environ.get("CLOUDFLARE_API_TOKEN", "").strip()
+          if not account or not token:
+              raise SystemExit("Cloudflare account ID or API token secret is missing.")
+
+          url = f"https://api.cloudflare.com/client/v4/accounts/{account}/ai/run/@cf/black-forest-labs/flux-2-klein-4b"
+          response = requests.post(
+              url,
+              headers={"Authorization": f"Bearer {token}"},
+              files={
+                  "prompt": (None, "A cinematic 2D anime-realism storybook illustration of a young explorer standing on a misty mountain ridge at sunrise, detailed natural anatomy, expressive face, crisp focus, richly detailed clothing and environment, no text, no watermark."),
+                  "width": (None, "1024"),
+                  "height": (None, "1024"),
+              },
+              timeout=240,
+          )
+          if not response.ok:
+              raise SystemExit(f"Cloudflare image request failed ({response.status_code}): {response.text[:700]}")
+
+          raw = response.content
+          if "json" in response.headers.get("content-type", ""):
+              payload = response.json()
+              result = payload.get("result", {})
+              encoded = result.get("image") if isinstance(result, dict) else result
+              if not encoded:
+                  raise SystemExit("Cloudflare returned JSON without image data.")
+              raw = base64.b64decode(encoded)
+
+          image = Image.open(io.BytesIO(raw)).convert("RGB")
+          image.verify()
+          image = Image.open(io.BytesIO(raw)).convert("RGB")
+          if image.size != (1024, 1024):
+              raise SystemExit(f"Unexpected image dimensions: {image.size}")
+          os.makedirs("image-smoke-output", exist_ok=True)
+          image.save("image-smoke-output/cloudflare_image_test.png")
+          print(f"IMAGE_GENERATION_OK dimensions={image.size} bytes={len(raw)}")
+          PY
+
+      - name: Upload test image
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudflare-image-smoke-test
+          path: image-smoke-output/cloudflare_image_test.png
+          retention-days: 7
