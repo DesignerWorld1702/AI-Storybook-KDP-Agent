@@ -1,21 +1,13 @@
 {
   "visual_id": "visual_002",
-  "library_name": "Zayn Base Model",
   "reference_image": "reference.png",
-  "character_name": "Zayn",
-  "immutable_identity": "Adult male, 24. Tousled black hair, amber-brown eyes, a small permanent mole below the right eye, slim athletic build, youthful angular face. Inventor and practical problem-solver. Reference outfit: muted olive utility jacket over a dark neutral shirt, practical trousers and boots. Keep facial proportions, mole, hair and eye colour fixed.",
-  "changeable_story_identity": {
-    "personality": "May be adapted to the story while respecting core species/identity",
-    "occupation": "May change",
-    "background": "May change",
-    "relationships": "May change",
-    "story_role": "May change",
-    "clothing": "May change for each book; remain consistent within that book",
-    "accessories": "May change for each book; remain consistent within that book"
-  },
-  "reference_image_spec": {
-    "composition": "single-character full-body reference portrait, front three-quarter view, face clearly readable, neutral standing pose, uncluttered muted background",
-    "style": "cinematic anime realism, grounded anatomy, natural expressions, realistic materials, restrained purposeful fantasy, polished hand-painted feature-film illustration",
-    "exclusions": "no text, labels, panels, logos, watermark, chibi proportions, oversized eyes, plastic skin, photorealism"
+  "immutable_identity": {
+    "hair": "Tousled black hair",
+    "eyes": "Amber-brown",
+    "permanent_mark": "Small permanent mole below the right eye",
+    "build": "Slim athletic build",
+    "face_identity": "Preserve the exact facial identity, proportions and youthful angular face shown in reference.png.",
+    "body_identity": "Preserve the same height impression and slim athletic body proportions shown in reference.png.",
+    "skin_tone": "Match reference.png."
   }
 }
