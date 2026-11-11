@@ -818,7 +818,7 @@ def ensure_character_library_references():
         prompt = (
             "Create the master character reference portrait for the first character in a "
             "unified illustrated storybook character library. This portrait will be the "
-            "style benchmark for all other character portraits. Show one adult human male, "
+            "style benchmark for the visual library. Show one adult human character, "
             "full body, front three-quarter view, neutral confident standing pose, face clearly "
             "readable, uncluttered muted cinematic background. Permanent identity: "
             + str(first.get("immutable_identity", ""))
@@ -831,14 +831,14 @@ def ensure_character_library_references():
         )
         cf_image(prompt, first_path, width=1024, height=1024)
         if not valid_reference(first_path):
-            raise RuntimeError("Could not create the master Adam character reference image.")
+            raise RuntimeError("Could not create the Character 1 identity reference image.")
 
     created = []
     for model in models:
         path = Path(model["_reference_path"])
         if valid_reference(path):
             continue
-        name = str(model.get("character_name") or model.get("library_name") or model["visual_id"])
+        name = f"Character {int(str(model['visual_id']).split('_')[-1])}"
         prompt = (
             f"Create a permanent full-body character identity reference portrait for {name}. "
             "Show exactly one character, front three-quarter view, neutral natural standing pose, "
@@ -860,7 +860,7 @@ def ensure_character_library_references():
         if not valid_reference(path):
             raise RuntimeError(f"Reference image generation failed validation for {name}.")
         created.append(name)
-        logging.info("Created permanent character reference: %s (%s)", name, model["visual_id"])
+        logging.info("Created permanent visual reference: %s (%s)", name, model["visual_id"])
 
     missing = [m["visual_id"] for m in models if not valid_reference(Path(m["_reference_path"]))]
     if missing:
