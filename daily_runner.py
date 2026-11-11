@@ -148,7 +148,7 @@ def build_one_book(book_date, config):
         logging.exception("Book generation failed for %s: %s", book_date, exc)
         return False
 
-def run_due_jobs(force=False):
+def run_due_jobs(force=False, today_only=False):
     config = load_config()
     state = load_state(config)
     now = datetime.now(TZ)
@@ -156,10 +156,22 @@ def run_due_jobs(force=False):
     today_due = now.hour > hour or (now.hour == hour and now.minute >= minute)
     last_done = date.fromisoformat(state["last_completed_date"])
     today = now.date()
-    due_through = today if (force or today_due) else today - timedelta(days=1)
-    next_date = last_done + timedelta(days=1)
-    if next_date < date.fromisoformat(config["first_run_date"]):
-        next_date = date.fromisoformat(config["first_run_date"])
+    if today_only:
+        next_date = today
+        due_through = today
+        today_status = OUTROOT / (today.strftime("%Y%m%d") + "_daily_story") / "job_status.json"
+        if today_status.exists():
+            try:
+                if json.loads(today_status.read_text(encoding="utf-8")).get("status") == "completed":
+                    logging.info("Today's Pakistan-date book is already complete; skipping duplicate generation.")
+                    return 0
+            except (OSError, ValueError):
+                pass
+    else:
+        due_through = today if (force or today_due) else today - timedelta(days=1)
+        next_date = last_done + timedelta(days=1)
+        if next_date < date.fromisoformat(config["first_run_date"]):
+            next_date = date.fromisoformat(config["first_run_date"])
     if next_date > due_through:
         logging.info("No books due. Next scheduled run: %s %s.", config["schedule_time"], config["timezone"])
         return 0
@@ -183,6 +195,7 @@ def run_due_jobs(force=False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--run-now", action="store_true", help="Generate the next book immediately.")
+    parser.add_argument("--run-now", action="store_true", help="Generate immediately.")
+    parser.add_argument("--today-only", action="store_true", help="Generate only today's Pakistan-date book; do not process older catch-up dates.")
     args = parser.parse_args()
-    sys.exit(run_due_jobs(force=args.run_now))
+    sys.exit(run_due_jobs(force=args.run_now, today_only=args.today_only))
