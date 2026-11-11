@@ -490,17 +490,42 @@ No extra keys, no markdown fences, no text outside JSON.
             visible_names = scene.get("characters_present", [])
             if not isinstance(visible_names, list):
                 raise ValueError(f"Scene {number} characters_present must be a list.")
-            # Normalize known aliases and remove generic crowd labels that are not registry identities.
+            # Normalize aliases from the permanent identity library to this book's
+            # story-specific registry names. The model may call a reused visual identity
+            # by its library name (e.g. "Zayn") even though this book gave it a fresh name.
             character_aliases = {"Kaelin": "Kaelin Darkshadow"}
+            registry_by_visual_id = {
+                item.get("visual_id"): item
+                for item in plan.get("character_registry", [])
+                if item.get("visual_id")
+            }
+            for library_model in load_character_library():
+                registered = registry_by_visual_id.get(library_model.get("visual_id"))
+                if not registered:
+                    continue
+                story_name = registered.get("name")
+                aliases = [library_model.get("character_name"), library_model.get("library_name")]
+                for alias in aliases:
+                    if isinstance(alias, str) and alias.strip():
+                        clean_alias = re.sub(r"\\s+Base Model$", "", alias.strip(), flags=re.IGNORECASE)
+                        character_aliases[alias.strip().casefold()] = story_name
+                        character_aliases[clean_alias.casefold()] = story_name
             generic_labels = {
                 "minions", "guards", "soldiers", "villagers", "townspeople",
                 "crowd", "crowds", "bandits", "enemies"
             }
-            visible_names = [
-                character_aliases.get(name, name) if isinstance(name, str) else name
-                for name in visible_names
-                if not (isinstance(name, str) and name.strip().lower() in generic_labels)
-            ]
+            normalized_names = []
+            for name in visible_names:
+                if not isinstance(name, str):
+                    normalized_names.append(name)
+                    continue
+                clean_name = name.strip()
+                if clean_name.casefold() in generic_labels:
+                    continue
+                normalized_names.append(
+                    character_aliases.get(clean_name, character_aliases.get(clean_name.casefold(), clean_name))
+                )
+            visible_names = list(dict.fromkeys(normalized_names))
             scene["characters_present"] = visible_names
             unknown_names = [name for name in visible_names if name not in known_names]
             if unknown_names:
