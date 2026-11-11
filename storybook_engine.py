@@ -238,27 +238,25 @@ def make_story(genre, style, audience, title_hint, character_notes, scene_words,
     if workdir:
         workdir.mkdir(parents=True, exist_ok=True)
     plan_path = workdir / "story_plan.json" if workdir else None
+    genre_label = str(genre or "").lower()
+    fantasy_mode = any(term in genre_label for term in ("fantasy", "magical", "mythic", "enchanted"))
+    if fantasy_mode:
+        world_rules = """WORLD MODE: FANTASY. Build an original fantasy world with its own rules, history, factions and atmosphere. Mystery, suspense and thriller tension are mandatory: use a consequential mystery or threat, escalating clues, secrets, reversals, danger, time pressure and a satisfying reveal. Fantasy creatures may appear only when the plot needs them; they are not compulsory. Give every character a story-specific role, rank, profession, powers and abilities appropriate to this world's rules. Powers and ranks are not permanent library traits and may change in another story. Do not make every fantasy story a light-hearted adventure; maintain genuine suspense and thriller stakes."""
+    else:
+        world_rules = """WORLD MODE: REAL-WORLD ONLY. This is a grounded contemporary or historical human-world crime / suspense / thriller story. Use realistic human characters, believable institutions, locations, professions, jobs, ranks and technology appropriate to the chosen period. NO fantasy creatures, dragons, goblins, unicorns, talking animals, magic, supernatural powers, mythical species, enchanted objects or fantasy-world elements. Crime, investigation, psychological suspense, conspiracy, danger, twists and thriller pacing should drive the plot. Roles, professions, ranks, designations and costumes are created specifically for this story and are not permanent library traits."""
     common = f"""
 Create an original illustrated feature-film story.
-Story direction: mystery, suspense, thriller, adventure and restrained fantasy.
+Story direction: {genre}
+Genre rules: {world_rules}
 Genre emphasis: {genre}
-Audience: family / all ages. Main protagonists must be humans in their 20s.
+Audience: {audience}. Cast age, occupations, social roles and character mix must suit the genre and plot; do not force every protagonist to be human unless the selected world mode requires it.
 Visual style (LOCKED): {STYLE_LOCK}
 Title hint: {title_hint or "invent a memorable title"}.
 Character notes / reusable character pool: {character_notes or DEFAULT_CHARACTER_POOL}
 Permanent visual library available to this project:
 {json.dumps([{k: v for k, v in model.items() if not k.startswith("_")} for model in load_character_library()], ensure_ascii=False)}
 STRICT VISUAL MODEL RULE: The only valid visual_id values are the IDs listed in the permanent visual library above. Never invent an ID that is not listed. Use visual_id: null for every original character. Select a saved library identity only when that exact physical identity genuinely fits the plot; never assign a library ID merely because a character has the same species or age.
-Every story must use fresh character names, not reusable pool labels, and must avoid all previous story character names listed here: {json.dumps(previous_story_character_names(), ensure_ascii=False)}. Select permanent visual models only when they naturally fit the plot; do not force any character into a book. If visual model visual_001 is selected, give it a new story name (never "Adam") while preserving its immutable physical identity exactly. Add visual_id: "visual_001" to that registry entry. Other characters may be original story-specific designs. Humans drive the plot. Build a lively ensemble: several clear main protagonists plus
-supporting characters who join, leave, form alliances, disagree, and reveal secrets
-naturally as the adventure unfolds. Build at least two clearly defined main protagonists
-and at least three meaningful recurring supporting characters, in addition to the villain.
-Do not force every pool character into the story.
-Include exactly ONE principal villain with a consequential role, distinctive personality,
-clear motive, methods, and a meaningful connection to the central conflict. The villain
-may be a reusable identity from a villain pool, but create a fresh story-specific costume,
-equipment, styling and visual presentation for this book. Keep that new design unchanged
-throughout this book. Fantasy creatures remain rare supporting roles.
+Every story must use fresh story-specific names and avoid all previous story character names listed here: {json.dumps(previous_story_character_names(), ensure_ascii=False)}. Select only the permanent visual identities that genuinely fit this plot; zero library characters is allowed. The library stores reusable physical identity references, NOT fixed personalities, jobs, ranks, costumes, relationships, powers or story roles. When a saved human identity is selected, preserve only its recognisable physical identity and permanent marks; freely create a new profession, designation, rank, personality, social status, role, relationships and story-specific costume for this book. When a saved fantasy creature identity is selected, preserve its recognisable species and physical identity; freely invent its powers, abilities, rank, faction, personality, role and costume according to this story's world rules. Never carry powers, jobs, ranks or costumes from a previous book. If visual model visual_001 is selected, give it a fresh story name (never "Adam") while preserving only its immutable physical identity. Add its exact visual_id. Other characters may be original story-specific designs. Build a cast sized for this plot; the library's 12 characters are optional choices, not a required ensemble. Include a compelling central threat and exactly ONE principal villain when appropriate to the selected genre; in crime/thriller stories, the antagonist may be a human criminal or institution. Do not add fantasy creatures or supernatural elements in real-world mode.
 CRITICAL VISUAL-CONTINUITY RULE: every recurring character, including supporting characters and the villain, must have a stable physical identity. Give every character a fresh story-specific name for this book; do not reuse names from the reusable pool. Each character_registry entry must include name, role, importance, immutable_identity (face shape/features, skin tone, hair, eye colour, body/build, height impression and permanent marks), story_costume (this book's clothing, accessories and palette), and visual_bible. If a permanent library model is used, include its exact visual_id and preserve its immutable_identity exactly while creating a new story-specific costume. The costume must remain stable throughout this book unless a visible story event changes it. Every scene's characters_present must use exact registry names and include only visible characters.
 Use cinematic shot variety, purposeful action, gaze, expressions, lighting and depth.
 Avoid copyrighted characters, existing franchises and imitation of living artists.
@@ -267,7 +265,7 @@ Avoid copyrighted characters, existing franchises and imitation of living artist
     if plan_path and plan_path.exists():
         try:
             cached = json.loads(plan_path.read_text(encoding="utf-8"))
-            if cached.get("story_schema_version") == 2 and len(cached.get("outline", [])) == 50 and cached.get("character_registry") and cached.get("principal_villain"):
+            if cached.get("story_schema_version") == 3 and len(cached.get("outline", [])) == 50 and cached.get("character_registry") and cached.get("principal_villain"):
                 plan = cached
         except Exception:
             plan = None
@@ -283,14 +281,14 @@ Return one compact valid JSON object, no markdown, with these keys:
  "description":"A compelling 100-140 word book description",
  "keywords":["seven distinct short search phrases"],
  "categories":["suggested broad category 1","suggested broad category 2"],
- "audience":"Family / all ages",
+ "audience":"{audience}",
  "character_registry":[
   {"name":"Fresh story-specific name","visual_id":null,"role":"story role","importance":"protagonist/supporting/villain/creature","immutable_identity":"physical traits and permanent marks","story_costume":"this book's clothing and accessories","visual_bible":"complete physical identity plus story costume"}
  ],
  "principal_villain":"Exact name of the single principal villain",
  "art_direction":"Consistent palette, lighting and world atmosphere"
 }
-Keep the registry concise: two protagonists, three recurring supporting characters and exactly one villain. Add optional creatures only if essential. Never include an outline or extra keys.
+Keep the registry concise and plot-driven: create only the characters the story genuinely needs. A typical story may have one to three protagonists, supporting roles as required, and a consequential antagonist; do not pad the cast to hit a fixed count. In real-world mode every character must be human and grounded. In fantasy mode add creatures only if they serve the plot. Never include an outline or extra keys.
 """
         plan = extract_json(cf_text(metadata_prompt, max_tokens=2600), "compact book metadata and character registry")
         if not isinstance(plan, dict):
@@ -338,7 +336,7 @@ Do not add JSON, quotation marks, headings or explanatory text.
             f'{item.get("name", "")}: {item.get("visual_bible", "")}'
             for item in plan.get("character_registry", []) if isinstance(item, dict)
         )
-        plan["story_schema_version"] = 2
+        plan["story_schema_version"] = 3
         registry = plan.get("character_registry", [])
         if not isinstance(registry, list) or not registry:
             raise ValueError("Story plan is missing its character_registry.")
@@ -363,12 +361,13 @@ Do not add JSON, quotation marks, headings or explanatory text.
         villain_entries = [item for item in registry if item.get("importance") == "villain"]
         if not villain_name or villain_name not in names or len(villain_entries) != 1 or villain_entries[0]["name"] != villain_name:
             raise ValueError("Every book must define exactly one registered principal villain.")
-        protagonist_count = sum(item.get("importance") == "protagonist" for item in registry)
-        supporting_count = sum(item.get("importance") == "supporting" for item in registry)
-        if protagonist_count < 2:
-            raise ValueError("Story must define a group of at least two main protagonists.")
-        if supporting_count < 3:
-            raise ValueError("Story must define at least three meaningful supporting characters.")
+        if not fantasy_mode:
+            forbidden_visual_ids = {"visual_009", "visual_010", "visual_011", "visual_012"}
+            forbidden_terms = ("dragon", "goblin", "unicorn", "fantasy creature", "mythical", "magical", "supernatural", "talking panda")
+            for item in registry:
+                identity_text = " ".join(str(item.get(key, "")) for key in ("role", "importance", "immutable_identity", "visual_bible")).lower()
+                if item.get("visual_id") in forbidden_visual_ids or item.get("importance") in ("creature", "fantasy_creature") or any(term in identity_text for term in forbidden_terms):
+                    raise ValueError(f"Real-world story contains a fantasy character: {item.get('name')}")
         plan["character_bible"] = "\\n\\n".join(
             f"{item['name']} — {item.get('role', '')}: {item.get('visual_bible', '')}"
             for item in registry
