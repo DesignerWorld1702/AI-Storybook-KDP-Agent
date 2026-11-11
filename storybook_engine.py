@@ -294,18 +294,54 @@ Return ONLY valid JSON, no markdown, with this exact shape:
 }}
 Exactly 50 outline entries. Keep metadata concise.
 """
-        plan = extract_json(cf_text(outline_prompt, max_tokens=5000), "book metadata and 50-scene outline")
-        if len(plan.get("outline", [])) != 50:
-            raise ValueError(f"Expected 50 outline entries but received {len(plan.get('outline', []))}.")
-        expected_numbers = list(range(1, 51))
-        actual_numbers = [entry.get("number") for entry in plan["outline"] if isinstance(entry, dict)]
-        if actual_numbers != expected_numbers:
-            raise ValueError("Outline scenes must be numbered sequentially from 1 to 50.")
-        beats = [re.sub(r"[^a-z0-9 ]", "", str(entry.get("beat", "")).lower()).strip() for entry in plan["outline"]]
-        if any(len(beat.split()) < 8 for beat in beats):
-            raise ValueError("Every outline beat must describe a meaningful story event, not a fragment.")
-        if len(set(beats)) < 45:
-            raise ValueError("Outline contains repeated or near-identical beats; regenerate the outline.")
+        # Retry outline generation when the model returns repetitive or malformed beats.
+        # Keep the quality gate strict; ask for a genuinely different outline instead of
+        # silently accepting duplicated scenes.
+        last_outline_error = None
+        for outline_attempt in range(1, 4):
+            try:
+                plan = extract_json(
+                    cf_text(outline_prompt, max_tokens=6500),
+                    "book metadata and 50-scene outline"
+                )
+                outline = plan.get("outline", [])
+                if not isinstance(outline, list) or len(outline) != 50:
+                    raise ValueError(
+                        f"Expected 50 outline entries but received {len(outline) if isinstance(outline, list) else 'a non-list value'}."
+                    )
+                expected_numbers = list(range(1, 51))
+                if any(not isinstance(entry, dict) for entry in outline):
+                    raise ValueError("Every outline entry must be a JSON object.")
+                actual_numbers = [entry.get("number") for entry in outline]
+                if actual_numbers != expected_numbers:
+                    raise ValueError("Outline scenes must be numbered sequentially from 1 to 50.")
+                beats = [
+                    re.sub(r"[^a-z0-9 ]", "", str(entry.get("beat", "")).lower()).strip()
+                    for entry in outline
+                ]
+                if any(len(beat.split()) < 8 for beat in beats):
+                    raise ValueError("Every outline beat must describe a meaningful story event, not a fragment.")
+                if len(set(beats)) < 45:
+                    raise ValueError("Outline contains repeated or near-identical beats.")
+                last_outline_error = None
+                break
+            except (ValueError, TypeError, KeyError) as exc:
+                last_outline_error = exc
+                if outline_attempt == 3:
+                    break
+                outline_prompt += f"""
+
+IMPORTANT RETRY {outline_attempt}: The previous outline failed validation because: {exc}
+Create a substantially different and more specific 50-scene outline.
+Do not repeat an event with slightly different wording. Every scene must cause a new
+plot development, reveal evidence, change a relationship, introduce a consequence,
+or move the characters to a meaningfully different situation. Vary the action and
+setting across all 50 beats. Keep the 50 sequential scene numbers and full JSON schema.
+"""
+        if last_outline_error is not None:
+            raise ValueError(
+                f"Outline validation failed after 3 attempts: {last_outline_error}"
+            ) from last_outline_error
         plan["story_schema_version"] = 2
         registry = plan.get("character_registry", [])
         if not isinstance(registry, list) or not registry:
