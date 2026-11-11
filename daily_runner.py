@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
 import storybook_engine as engine
+from kindle_epub import build_fixed_layout_epub
 
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
@@ -130,6 +131,7 @@ def build_one_book(book_date, config):
         engine.build_pdf(story, scenes_dir, outdir / "storybook_interior.pdf",
                          story["trim_size"], False, story["pdf_text_size"])
         engine.make_kindle_html(story, scenes_dir, outdir / "kindle_story.html")
+        build_fixed_layout_epub(story, scenes_dir, outdir / "kindle_story.epub")
         engine.make_listing(story, outdir)
         engine.write_checklist(outdir)
         engine.create_contact_sheet(scenes_dir, outdir / "scene_contact_sheet.jpg")
