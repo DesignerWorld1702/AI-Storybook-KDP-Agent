@@ -700,6 +700,89 @@ def create_reference_images(story, outdir):
         cf_image(portrait_prompt, portrait_path, reference_images=[style_ref])
     return [style_ref, cast_ref]
 
+
+def ensure_character_library_references():
+    """Create missing permanent identity portraits for the complete 12-character pool.
+
+    The first existing Adam portrait is used as the style-only benchmark. If it is
+    unavailable in a clean cloud runner, create an Adam benchmark portrait from
+    the locked visual bible, then use that same image as the style reference for
+    every remaining model.
+    """
+    models = sorted(load_character_library(), key=lambda item: item.get("visual_id") != "visual_001")
+    if not models:
+        raise RuntimeError("The permanent character library is empty.")
+    if not CF_ACCOUNT or not CF_TOKEN:
+        raise RuntimeError("Cloudflare credentials are required to build character references.")
+
+    first = next((m for m in models if m.get("visual_id") == "visual_001"), models[0])
+    first_path = Path(first["_reference_path"])
+    first_path.parent.mkdir(parents=True, exist_ok=True)
+
+    def valid_reference(path):
+        try:
+            with Image.open(path) as im:
+                im.verify()
+            return path.is_file() and path.stat().st_size > 1024
+        except Exception:
+            return False
+
+    if not valid_reference(first_path):
+        prompt = (
+            "Create the master character reference portrait for the first character in a "
+            "unified illustrated storybook character library. This portrait will be the "
+            "style benchmark for all other character portraits. Show one adult human male, "
+            "full body, front three-quarter view, neutral confident standing pose, face clearly "
+            "readable, uncluttered muted cinematic background. Permanent identity: "
+            + str(first.get("immutable_identity", ""))
+            + ". Clothing: charcoal jacket over a dark shirt. Use unified 2D cinematic anime "
+            "realism: hand-painted feature-film illustration, semi-realistic adult anatomy, "
+            "natural facial proportions, expressive but restrained eyes, consistent fine linework, "
+            "painterly cel shading, detailed believable fabric and materials, controlled cinematic "
+            "colour grading. Not 3D, not chibi, not childish cartoon, not photorealistic. "
+            "No text, labels, panels, logos or watermark."
+        )
+        cf_image(prompt, first_path, width=1024, height=1024)
+        if not valid_reference(first_path):
+            raise RuntimeError("Could not create the master Adam character reference image.")
+
+    created = []
+    for model in models:
+        path = Path(model["_reference_path"])
+        if valid_reference(path):
+            continue
+        name = str(model.get("character_name") or model.get("library_name") or model["visual_id"])
+        prompt = (
+            f"Create a permanent full-body character identity reference portrait for {name}. "
+            "Show exactly one character, front three-quarter view, neutral natural standing pose, "
+            "head and entire body visible, face and identifying features clearly readable, "
+            "uncluttered muted cinematic background. This is a clean continuity reference, not "
+            "an action scene or a multi-character sheet. Preserve this canonical identity exactly: "
+            + str(model.get("immutable_identity", ""))
+            + ". The character's identity, anatomy, markings, colours and proportions are fixed. "
+            "Clothing should match the character's reference outfit where specified; avoid adding "
+            "unnecessary accessories. Use the exact rendering style and colour treatment of the "
+            "first reference image, but do NOT copy the first character's face, hair, body, species "
+            "or clothing. Style only: unified 2D cinematic anime realism, hand-painted feature-film "
+            "illustration, grounded believable anatomy, natural expressions, realistic materials, "
+            "restrained purposeful fantasy, consistent fine linework, painterly cel shading, "
+            "controlled cinematic colour grading. No 3D CGI, chibi, childish cartoon, oversized "
+            "anime eyes, plastic skin or photorealism. No text, labels, panels, logos or watermark."
+        )
+        cf_image(prompt, path, width=1024, height=1024, reference_images=[first_path])
+        if not valid_reference(path):
+            raise RuntimeError(f"Reference image generation failed validation for {name}.")
+        created.append(name)
+        logging.info("Created permanent character reference: %s (%s)", name, model["visual_id"])
+
+    missing = [m["visual_id"] for m in models if not valid_reference(Path(m["_reference_path"]))]
+    if missing:
+        raise RuntimeError("Character reference library remains incomplete: " + ", ".join(missing))
+    logging.info("Permanent character library ready: %s models; newly created: %s",
+                 len(models), ", ".join(created) if created else "none")
+    return [Path(m["_reference_path"]) for m in models]
+
+
 def wrap_text(text, font_name, font_size, max_width, c):
     words = text.split()
     lines, line = [], ""
