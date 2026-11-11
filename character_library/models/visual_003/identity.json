@@ -1,0 +1,21 @@
+{
+  "visual_id": "visual_003",
+  "library_name": "Rayan Base Model",
+  "reference_image": "reference.png",
+  "character_name": "Rayan",
+  "immutable_identity": "Adult male, 28. Short textured dark-brown hair, deep-brown eyes, a thin permanent diagonal scar on the chin, broad muscular athletic build, strong jaw and grounded expression. Adventurer and field leader. Reference outfit: weathered brown expedition jacket, dark practical layers, rugged trousers and boots. Keep scar and proportions fixed.",
+  "changeable_story_identity": {
+    "personality": "May be adapted to the story while respecting core species/identity",
+    "occupation": "May change",
+    "background": "May change",
+    "relationships": "May change",
+    "story_role": "May change",
+    "clothing": "May change for each book; remain consistent within that book",
+    "accessories": "May change for each book; remain consistent within that book"
+  },
+  "reference_image_spec": {
+    "composition": "single-character full-body reference portrait, front three-quarter view, face clearly readable, neutral standing pose, uncluttered muted background",
+    "style": "cinematic anime realism, grounded anatomy, natural expressions, realistic materials, restrained purposeful fantasy, polished hand-painted feature-film illustration",
+    "exclusions": "no text, labels, panels, logos, watermark, chibi proportions, oversized eyes, plastic skin, photorealism"
+  }
+}
