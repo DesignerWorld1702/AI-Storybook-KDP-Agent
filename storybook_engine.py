@@ -216,12 +216,12 @@ Aira (25): long espresso-brown hair, hazel-green eyes, beauty mark below left si
 Zara (23): shoulder-length layered black hair, dark-brown eyes, notch in left eyebrow, slim athletic build; black leather jacket; sharp detective.
 Hania (22): medium soft chestnut hair, warm dark-hazel eyes, freckles across nose, petite-average build; beige jacket and teal top; empathetic analyst.
 Meher (29): dark auburn-black hair tied back, steel-brown eyes, diagonal scar on right cheek, athletic build; forest-green field jacket; survival expert.
-FANTASY CREATURES — optional, rare supporting roles:
+FANTASY CREATURES — optional identities for fantasy stories only; any story role is possible:
 Drako: intelligent proud dragon with obsidian scales, bronze undertones, amber eyes, bronze-black horns, large dark wings and a glowing ancient chest symbol.
 Grim: three-foot moss-green goblin with yellow eyes, pointed ears, one bent ear and a collection of old keys; clever trickster.
 Lumi: gentle wise unicorn with pearl-white coat, silver mane, icy-blue eyes, crystal horn and star mark on forehead.
 Bamboo: clever loyal black-and-white panda with brown eyes, crescent mark on right shoulder and explorer satchel.
-Treat these as visual starting points, not a fixed cast. Create fresh story-specific names, roles, personalities and backgrounds for every book; do not reuse pool names as story names. Keep physical traits and permanent marks stable when reusing a saved visual model. Design a new costume for each book and keep it consistent within that book.
+Treat every entry as an optional physical identity reference, never a fixed cast. The listed occupations, temperaments and outfit examples are NOT permanent: reinvent each selected character's name, personality, profession, job, rank, designation, role, relationships, social status and costume for each new story. For fantasy identities, invent story-specific powers, abilities, magical limits, rank, faction and purpose each time. Preserve only the recognisable physical identity and permanent marks when a saved visual model is reused. Choose no library characters if the plot does not need them. Real-world stories must exclude every fantasy identity and all supernatural elements. Keep each story's chosen design consistent within that book.
 """
 
 STYLE_LOCK = (
@@ -281,7 +281,7 @@ Return one compact valid JSON object, no markdown, with these keys:
  "description":"A compelling 100-140 word book description",
  "keywords":["seven distinct short search phrases"],
  "categories":["suggested broad category 1","suggested broad category 2"],
- "audience":"{audience}",
+ "audience":"Family / all ages",
  "character_registry":[
   {"name":"Fresh story-specific name","visual_id":null,"role":"story role","importance":"protagonist/supporting/villain/creature","immutable_identity":"physical traits and permanent marks","story_costume":"this book's clothing and accessories","visual_bible":"complete physical identity plus story costume"}
  ],
