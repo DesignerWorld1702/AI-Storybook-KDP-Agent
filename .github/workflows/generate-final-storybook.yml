@@ -9,6 +9,12 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  # Serialize manual and scheduled runs so a queued schedule can see the
+  # success marker written by an earlier run on the same Pakistan date.
+  group: daily-storybook-one-per-day
+  cancel-in-progress: false
+
 jobs:
   generate-book:
     runs-on: ubuntu-latest
@@ -17,17 +23,34 @@ jobs:
       - name: Check out canonical project
         uses: actions/checkout@v4
 
+      - name: Check whether today's Pakistan-date book is already complete
+        id: daily_guard
+        shell: bash
+        run: |
+          today="$(TZ=Asia/Karachi date +%F)"
+          marker="state/last_successful_book_date.txt"
+          if [ -f "$marker" ] && [ "$(tr -d '\\r\\n' < "$marker")" = "$today" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "A successful book already exists for $today (Asia/Karachi); skipping this run."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "No successful book marker for $today; generation may proceed."
+          fi
+
       - name: Set up Python
+        if: steps.daily_guard.outputs.skip != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Install project dependencies
+        if: steps.daily_guard.outputs.skip != 'true'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Verify Cloudflare credentials are present
+        if: steps.daily_guard.outputs.skip != 'true'
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -40,6 +63,7 @@ jobs:
           PY
 
       - name: Generate one complete 50-scene book
+        if: steps.daily_guard.outputs.skip != 'true'
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -49,7 +73,7 @@ jobs:
         run: python daily_runner.py --run-now
 
       - name: Save generated permanent character references to main
-        if: always()
+        if: always() && steps.daily_guard.outputs.skip != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -62,7 +86,7 @@ jobs:
           fi
 
       - name: Verify final book files
-        if: always()
+        if: always() && steps.daily_guard.outputs.skip != 'true'
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -87,6 +111,19 @@ jobs:
           if status.get("status") != "completed" or len(scenes) != 50 or not (book / "kindle_story.epub").is_file():
               sys.exit(1)
           PY
+
+      - name: Mark today's book as successfully completed
+        if: success() && steps.daily_guard.outputs.skip != 'true'
+        shell: bash
+        run: |
+          today="$(TZ=Asia/Karachi date +%F)"
+          mkdir -p state
+          printf '%s\\n' "$today" > state/last_successful_book_date.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state/last_successful_book_date.txt
+          git commit -m "Mark daily storybook complete for $today"
+          git push origin HEAD:main
 
       - name: Upload generated book package
         if: always()
