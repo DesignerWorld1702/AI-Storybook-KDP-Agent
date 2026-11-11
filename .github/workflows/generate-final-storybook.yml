@@ -2,9 +2,6 @@ name: Generate final 50-scene storybook
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths: [".github/storybook-run-once.trigger"]
   schedule:
     # 20:00 Pakistan Standard Time (UTC+5) = 15:00 UTC.
     - cron: "0 15 * * *"
