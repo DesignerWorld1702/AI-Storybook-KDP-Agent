@@ -1,21 +1,13 @@
 {
   "visual_id": "visual_004",
-  "library_name": "Noah Base Model",
   "reference_image": "reference.png",
-  "character_name": "Noah",
-  "immutable_identity": "Adult male, 26. Straight black side-parted hair, blue-grey eyes, a small permanent crescent birthmark near the right temple, lean build, refined thoughtful features. Investigator and observant analyst. Reference outfit: tailored black long coat over charcoal layers. Keep birthmark, hair and eyes fixed.",
-  "changeable_story_identity": {
-    "personality": "May be adapted to the story while respecting core species/identity",
-    "occupation": "May change",
-    "background": "May change",
-    "relationships": "May change",
-    "story_role": "May change",
-    "clothing": "May change for each book; remain consistent within that book",
-    "accessories": "May change for each book; remain consistent within that book"
-  },
-  "reference_image_spec": {
-    "composition": "single-character full-body reference portrait, front three-quarter view, face clearly readable, neutral standing pose, uncluttered muted background",
-    "style": "cinematic anime realism, grounded anatomy, natural expressions, realistic materials, restrained purposeful fantasy, polished hand-painted feature-film illustration",
-    "exclusions": "no text, labels, panels, logos, watermark, chibi proportions, oversized eyes, plastic skin, photorealism"
+  "immutable_identity": {
+    "hair": "Straight black hair with a side part",
+    "eyes": "Blue-grey",
+    "permanent_mark": "Small crescent-shaped birthmark near the right temple",
+    "build": "Lean build",
+    "face_identity": "Preserve the exact facial identity, refined facial proportions and distinctive features shown in reference.png.",
+    "body_identity": "Preserve the same height impression and lean body proportions shown in reference.png.",
+    "skin_tone": "Match reference.png."
   }
 }
