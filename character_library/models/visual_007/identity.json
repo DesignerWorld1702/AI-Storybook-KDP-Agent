@@ -1,21 +1,13 @@
 {
   "visual_id": "visual_007",
-  "library_name": "Hania Base Model",
   "reference_image": "reference.png",
-  "character_name": "Hania",
-  "immutable_identity": "Adult female, 22. Medium-length soft chestnut hair, warm dark-hazel eyes, natural freckles across the bridge of the nose, petite-to-average build, gentle intelligent features. Psychologist and empathetic mediator. Reference outfit: beige jacket over a muted teal top. Keep freckles, hair and eyes fixed.",
-  "changeable_story_identity": {
-    "personality": "May be adapted to the story while respecting core species/identity",
-    "occupation": "May change",
-    "background": "May change",
-    "relationships": "May change",
-    "story_role": "May change",
-    "clothing": "May change for each book; remain consistent within that book",
-    "accessories": "May change for each book; remain consistent within that book"
-  },
-  "reference_image_spec": {
-    "composition": "single-character full-body reference portrait, front three-quarter view, face clearly readable, neutral standing pose, uncluttered muted background",
-    "style": "cinematic anime realism, grounded anatomy, natural expressions, realistic materials, restrained purposeful fantasy, polished hand-painted feature-film illustration",
-    "exclusions": "no text, labels, panels, logos, watermark, chibi proportions, oversized eyes, plastic skin, photorealism"
+  "immutable_identity": {
+    "hair": "Medium-length soft chestnut hair",
+    "eyes": "Warm dark-hazel",
+    "permanent_mark": "Natural freckles across the bridge of the nose",
+    "build": "Petite-to-average build",
+    "face_identity": "Preserve the exact facial identity, gentle intelligent facial proportions and distinctive features shown in reference.png.",
+    "body_identity": "Preserve the same height impression and petite-to-average body proportions shown in reference.png.",
+    "skin_tone": "Match reference.png."
   }
 }
