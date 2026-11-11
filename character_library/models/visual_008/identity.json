@@ -1,0 +1,21 @@
+{
+  "visual_id": "visual_008",
+  "library_name": "Meher Base Model",
+  "reference_image": "reference.png",
+  "character_name": "Meher",
+  "immutable_identity": "Adult female, 29. Dark auburn-black hair tied back, steel-brown eyes, a permanent diagonal scar on the right cheek, strong athletic build, composed resilient face. Survival expert. Reference outfit: forest-green field jacket with practical outdoor layers. Keep scar, tied hair, eyes and proportions fixed.",
+  "changeable_story_identity": {
+    "personality": "May be adapted to the story while respecting core species/identity",
+    "occupation": "May change",
+    "background": "May change",
+    "relationships": "May change",
+    "story_role": "May change",
+    "clothing": "May change for each book; remain consistent within that book",
+    "accessories": "May change for each book; remain consistent within that book"
+  },
+  "reference_image_spec": {
+    "composition": "single-character full-body reference portrait, front three-quarter view, face clearly readable, neutral standing pose, uncluttered muted background",
+    "style": "cinematic anime realism, grounded anatomy, natural expressions, realistic materials, restrained purposeful fantasy, polished hand-painted feature-film illustration",
+    "exclusions": "no text, labels, panels, logos, watermark, chibi proportions, oversized eyes, plastic skin, photorealism"
+  }
+}
