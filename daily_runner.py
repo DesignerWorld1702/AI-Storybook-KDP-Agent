@@ -86,7 +86,7 @@ def build_one_book(book_date, config):
             genres = config["genre_cycle"]
             genre = genres[(book_date - date.fromisoformat(config["first_run_date"])).days % len(genres)]
             story = engine.make_story(
-                genre, engine.STYLE_LOCK, "Family / all ages",
+                genre, engine.STYLE_LOCK, "Teen and adult readers",
                 "", engine.DEFAULT_CHARACTER_POOL, int(config["scene_words"]), workdir=outdir
             )
             story["author"] = config["author"]
@@ -97,7 +97,7 @@ def build_one_book(book_date, config):
             story["scheduled_date"] = book_date.isoformat()
             story_path.write_text(json.dumps(story, indent=2, ensure_ascii=False), encoding="utf-8")
 
-        if story.get("story_schema_version") != 4:
+        if story.get("story_schema_version") != 5:
             raise RuntimeError(
                 "This saved story uses an older story schema and has been left untouched. "
                 "Create a fresh book date with the updated generator; existing story files and images are preserved."
