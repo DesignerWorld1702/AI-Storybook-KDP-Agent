@@ -281,7 +281,7 @@ Avoid copyrighted characters, existing franchises and imitation of living artist
     if plan_path and plan_path.exists():
         try:
             cached = json.loads(plan_path.read_text(encoding="utf-8"))
-            if cached.get("story_schema_version") == 4 and len(cached.get("outline", [])) == 50 and cached.get("character_registry") and cached.get("principal_villain"):
+            if cached.get("story_schema_version") == 5 and len(cached.get("outline", [])) == 50 and cached.get("character_registry") and cached.get("principal_villain"):
                 plan = cached
         except Exception:
             plan = None
@@ -352,7 +352,7 @@ Do not add JSON, quotation marks, headings or explanatory text.
             f'{item.get("name", "")}: {item.get("visual_bible", "")}'
             for item in plan.get("character_registry", []) if isinstance(item, dict)
         )
-        plan["story_schema_version"] = 4
+        plan["story_schema_version"] = 5
         registry = plan.get("character_registry", [])
         if not isinstance(registry, list) or not registry:
             raise ValueError("Story plan is missing its character_registry.")
