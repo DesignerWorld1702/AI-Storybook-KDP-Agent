@@ -62,6 +62,18 @@ def load_character_library():
     return models
 
 
+def permanent_visual_slot_catalog():
+    """Expose only neutral slot IDs and immutable physical identity facts to story planning."""
+    return [
+        {
+            "slot": f"Character {int(str(model.get('visual_id', 'visual_000').split('_')[-1]))}",
+            "visual_id": model.get("visual_id"),
+            "immutable_identity": model.get("immutable_identity"),
+        }
+        for model in load_character_library()
+    ]
+
+
 def library_reference_path(visual_id):
     for model in load_character_library():
         if model.get("visual_id") == visual_id:
@@ -248,7 +260,7 @@ Visual style (LOCKED): {STYLE_LOCK}
 Title hint: {title_hint or "invent a memorable title"}.
 Character notes / reusable character pool: {character_notes or DEFAULT_CHARACTER_POOL}
 Permanent visual library — numbered slots with identity facts only (no legacy names or story roles):
-{json.dumps([{"slot": "Character " + str(model.get("visual_id", "visual_000").split("_")[-1]), "visual_id": model.get("visual_id"), "immutable_identity": model.get("immutable_identity")} for model in load_character_library()], ensure_ascii=False)}
+{json.dumps(permanent_visual_slot_catalog(), ensure_ascii=False)}
 TWO-STAGE CAST DESIGN (mandatory):
 STAGE 1 — Read the plot and genre, then independently select only the visual slots that genuinely improve this story. You may select zero, one, several or all; do not force a fixed cast. Real-world mode may select only human visual slots.
 STAGE 2 — Only AFTER selecting slots, create this book's character registry. For each selected visual slot, invent a completely new story-specific name and assign a plot-appropriate personality, backstory, relationships, profession/job, role, rank/designation, social status, costume and (fantasy mode only) powers/abilities. Do not use or mention old library names. The technical visual_id links the new story identity to its permanent portrait. For original non-library characters use visual_id:null and invent their complete identity.
@@ -338,6 +350,9 @@ Do not add JSON, quotation marks, headings or explanatory text.
             raise ValueError("Story plan is missing its character_registry.")
         names = [str(item.get("name", "")).strip() for item in registry if isinstance(item, dict)]
         known_visual_ids = {model.get("visual_id") for model in load_character_library()}
+        selected_visual_ids = [item.get("visual_id") for item in registry if item.get("visual_id")]
+        if len(selected_visual_ids) != len(set(selected_visual_ids)):
+            raise ValueError("A permanent visual slot may be selected only once in a book.")
         for item in registry:
             visual_id = item.get("visual_id")
             if visual_id and visual_id not in known_visual_ids:
