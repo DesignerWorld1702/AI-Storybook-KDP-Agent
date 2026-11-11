@@ -29,7 +29,8 @@ jobs:
         run: |
           today="$(TZ=Asia/Karachi date +%F)"
           marker="state/last_successful_book_date.txt"
-          if [ -f "$marker" ] && [ "$(tr -d '\\r\\n' < "$marker")" = "$today" ]; then
+          marker_date="$(cat "$marker" 2>/dev/null || true)"
+          if [ -f "$marker" ] && [ "$marker_date" = "$today" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "A successful book already exists for $today (Asia/Karachi); skipping this run."
           else
@@ -118,7 +119,7 @@ jobs:
         run: |
           today="$(TZ=Asia/Karachi date +%F)"
           mkdir -p state
-          printf '%s\\n' "$today" > state/last_successful_book_date.txt
+          echo "$today" > state/last_successful_book_date.txt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add state/last_successful_book_date.txt
