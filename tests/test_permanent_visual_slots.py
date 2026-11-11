@@ -7,6 +7,17 @@ import storybook_engine as engine
 
 
 class PermanentVisualSlotTests(unittest.TestCase):
+    def test_repository_models_store_only_physical_identity(self):
+        models_root = engine.CHARACTER_LIBRARY_ROOT / "models"
+        for number in range(1, 13):
+            identity_path = models_root / f"visual_{number:03d}" / "identity.json"
+            identity = json.loads(identity_path.read_text(encoding="utf-8"))
+            self.assertEqual(identity["visual_id"], f"visual_{number:03d}")
+            self.assertIsInstance(identity["immutable_identity"], dict)
+            self.assertNotIn("library_name", identity)
+            self.assertNotIn("character_name", identity)
+            self.assertNotIn("changeable_story_identity", identity)
+
     def test_catalog_exposes_neutral_slots_without_legacy_names_or_roles(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
