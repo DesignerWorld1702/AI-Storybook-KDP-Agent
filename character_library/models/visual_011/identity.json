@@ -1,0 +1,21 @@
+{
+  "visual_id": "visual_011",
+  "library_name": "Lumi Base Model",
+  "reference_image": "reference.png",
+  "character_name": "Lumi",
+  "immutable_identity": "Fantasy creature: gentle, wise unicorn with elegant realistic equine anatomy and graceful proportions. Pearl-white coat, flowing silver mane and tail, icy-blue eyes, a translucent crystal horn, and a small star-shaped marking centered on the forehead. Subtle magical glow only around the horn; natural coat and mane texture. Keep coat, mane, eyes, horn and star mark permanent.",
+  "changeable_story_identity": {
+    "personality": "May be adapted to the story while respecting core species/identity",
+    "occupation": "May change",
+    "background": "May change",
+    "relationships": "May change",
+    "story_role": "May change",
+    "clothing": "May change for each book; remain consistent within that book",
+    "accessories": "May change for each book; remain consistent within that book"
+  },
+  "reference_image_spec": {
+    "composition": "single-character full-body reference portrait, front three-quarter view, face clearly readable, neutral standing pose, uncluttered muted background",
+    "style": "cinematic anime realism, grounded anatomy, natural expressions, realistic materials, restrained purposeful fantasy, polished hand-painted feature-film illustration",
+    "exclusions": "no text, labels, panels, logos, watermark, chibi proportions, oversized eyes, plastic skin, photorealism"
+  }
+}
