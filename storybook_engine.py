@@ -126,7 +126,7 @@ def reference_guidance_for_images(reference_images):
         image_path = Path(image_path)
         character_name = (image_path.parent.name if image_path.stem == "reference" else image_path.stem).replace("_", " ").strip()
         guidance.append(
-            f"Use reference image {index} only as the physical-identity guide for {character_name}: preserve face, facial proportions, skin tone, hair identity, eye shape/colour, body proportions and permanent marks. Ignore its pose, gaze, camera angle, composition, facial expression, clothing and accessories; follow the new scene direction instead. Never merge identities. "
+            f"Use reference image {index} only as the physical-identity guide for {character_name}: preserve face, facial proportions, skin tone, hair identity, eye shape/colour, body proportions and permanent marks. Ignore reference clothing and accessories, and also ignore its pose, gaze, camera angle, composition and facial expression; follow the new scene direction instead. Never merge identities. "
         )
     if len(reference_images) == 1:
         guidance.append(
