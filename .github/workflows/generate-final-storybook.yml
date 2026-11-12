@@ -109,8 +109,13 @@ jobs:
               path = book / name
               print(f"{name}: {'present' if path.exists() else 'missing'}")
           scenes = list((book / "scenes").glob("scene_*.png")) if (book / "scenes").exists() else []
+          pages = list((book / "pages").glob("page_*.png")) if (book / "pages").exists() else []
           print("Scene illustrations:", len(scenes), "/ 50")
-          if status.get("status") != "completed" or len(scenes) != 50 or not (book / "kindle_story.epub").is_file():
+          print("Integrated text-overlay pages:", len(pages), "/ 50")
+          print("Story quality report:", "present" if (book / "quality_review.json").is_file() else "missing")
+          if (status.get("status") != "completed" or len(scenes) != 50 or len(pages) != 50
+              or not (book / "quality_review.json").is_file()
+              or not (book / "kindle_story.epub").is_file()):
               sys.exit(1)
           PY
 
