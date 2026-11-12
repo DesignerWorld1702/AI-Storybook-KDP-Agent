@@ -89,4 +89,6 @@ body { font-family: serif; }
         ET.fromstring(check.read("EPUB/nav.xhtml"))
         if len([n for n in check.namelist() if n.startswith("EPUB/text/page_")]) != 50:
             raise ValueError("EPUB does not contain all 50 page documents.")
+        if len([n for n in check.namelist() if n.startswith("EPUB/images/page_")]) != 50:
+            raise ValueError("EPUB does not contain all 50 integrated page images.")
     return output_path
