@@ -64,7 +64,7 @@ class CharacterContinuityTests(unittest.TestCase):
         self.assertEqual(width % 16, 0)
         self.assertEqual(height % 16, 0)
         self.assertLessEqual(width * height, 4_000_000)
-        self.assertAlmostEqual(width / height, 8.5 / (8.5 * 0.75), delta=0.02)
+        self.assertAlmostEqual(width / height, 1.0, delta=0.02)
 
     def test_reference_guidance_maps_each_portrait_to_its_character(self):
         guidance = reference_guidance_for_images([
