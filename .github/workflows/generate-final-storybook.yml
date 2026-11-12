@@ -151,8 +151,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add state/last_successful_book_date.txt
-          git commit -m "Mark daily storybook complete for $today"
-          git push origin HEAD:main
+          if git diff --cached --quiet; then
+            echo "Today's success marker already has the correct date; no marker commit is needed."
+          else
+            git commit -m "Mark daily storybook complete for $today"
+            git push origin HEAD:main
+          fi
 
       - name: Upload generated book package
         if: always()
