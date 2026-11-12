@@ -14,9 +14,9 @@ class PublicationQualityGateTests(unittest.TestCase):
             "critical_issues": critical or [],
             "minor_issues": [],
             "dimension_scores": {
-                "plot": 8, "continuity": 8, "character_consistency": 8,
-                "easy_english": 8, "pacing": 8, "emotional_impact": 8,
-                "scene_variety": 8, "art_direction": 8, "originality": 8, "ending": 8
+                "plot": score / 10, "continuity": score / 10, "character_consistency": score / 10,
+                "easy_english": score / 10, "pacing": score / 10, "emotional_impact": score / 10,
+                "scene_variety": score / 10, "art_direction": score / 10, "originality": score / 10, "ending": score / 10
             },
             "score": score
         }
@@ -28,6 +28,7 @@ class PublicationQualityGateTests(unittest.TestCase):
                     {"title": "Test", "character_registry": [], "scenes": []}, [], tmp
                 )
             self.assertEqual(result["rating_out_of_10"], 7.0)
+            self.assertEqual(result["score"], 70.0)
             self.assertEqual(result["minimum_publish_rating"], 7.0)
             self.assertTrue((Path(tmp) / "quality_review.json").is_file())
 
