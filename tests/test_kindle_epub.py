@@ -22,7 +22,7 @@ class KindleEpubTests(unittest.TestCase):
             images = root / "scenes"
             images.mkdir()
             for number in range(1, 51):
-                (images / f"scene_{number:03d}.png").write_bytes(PNG_1X1)
+                (images / f"page_{number:03d}.png").write_bytes(PNG_1X1)
             story = {
                 "title": "EPUB Test Story",
                 "author": "Test Author",
