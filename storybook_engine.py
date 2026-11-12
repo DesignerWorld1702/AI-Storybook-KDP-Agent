@@ -343,7 +343,7 @@ Avoid copyrighted characters, existing franchises and imitation of living artist
 
     if plan is None:
         metadata_prompt = common + """
-Create ONLY the book metadata and character registry for an original illustrated feature-film story.
+Create ONLY the book metadata and character registry for an original illustrated feature-film story. Write the description in clear, simple English and describe only events that the actual story will deliver.
 Return one compact valid JSON object, no markdown, with these keys:
 {
  "title":"...",
@@ -352,7 +352,7 @@ Return one compact valid JSON object, no markdown, with these keys:
  "description":"A compelling 100-140 word book description",
  "keywords":["seven distinct short search phrases"],
  "categories":["suggested broad category 1","suggested broad category 2"],
- "audience":"Family / all ages",
+ "audience":"Teen and adult readers",
  "character_registry":[
   {"name":"Fresh story-specific name","visual_id":null,"role":"story role","importance":"protagonist/supporting/villain/creature","immutable_identity":"physical traits and permanent marks","story_costume":"this book's clothing and accessories","visual_bible":"complete physical identity plus story costume"}
  ],
