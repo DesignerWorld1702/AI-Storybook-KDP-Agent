@@ -732,12 +732,17 @@ def character_reference_path(outdir, character_name):
 
 
 def character_reference_for_entry(outdir, item):
+    # Prefer this book's own model sheet: it locks the new story costume as well
+    # as the reused face. Fall back to the permanent portrait only before it exists.
+    story_portrait = character_reference_path(outdir, item.get("name", ""))
+    if story_portrait.is_file() and story_portrait.stat().st_size > 1024:
+        return story_portrait
     visual_id = item.get("visual_id")
     if visual_id:
         permanent = library_reference_path(visual_id)
         if permanent:
             return permanent
-    return character_reference_path(outdir, item.get("name", ""))
+    return story_portrait
 
 
 def scene_reference_images(story, scene, outdir, style_ref):
@@ -864,22 +869,25 @@ def create_reference_images(story, outdir):
             continue
         if appearances.get(name, 0) < 2 and item.get("importance") != "villain":
             continue
-        portrait_path = character_reference_for_entry(outdir, item)
-        if item.get("visual_id") and library_reference_path(item.get("visual_id")):
-            continue
+        portrait_path = character_reference_path(outdir, name)
         if portrait_path.exists() and portrait_path.stat().st_size > 1024:
             continue
+        permanent_ref = library_reference_path(item.get("visual_id")) if item.get("visual_id") else None
         portrait_prompt = (
-            f"Create a single-character full-body identity reference portrait of {name}. "
+            f"Create this book's canonical full-body model sheet for {name}. "
             f"Story role: {item.get('role', '')}. Importance: {item.get('importance', '')}. "
-            f"CANONICAL VISUAL IDENTITY — follow exactly and do not improvise: "
-            f"{item.get('visual_bible', '')}. "
-            "Show one figure only, head and entire body visible, front three-quarter view, "
-            "neutral standing pose, clear face and identifying marks, uncluttered muted background. "
-            "This is a continuity model sheet, not an action scene. Preserve exact face, hairstyle, "
-            "eye colour, proportions, outfit, accessories and colours. " + STYLE_LOCK
+            f"CANONICAL VISUAL BIBLE — follow exactly: {item.get('visual_bible', '')}. "
+            f"STORY COSTUME — follow exactly: {item.get('story_costume', '')}. "
+            "Show one figure only, front three-quarter view, neutral standing pose, clear face, "
+            "body proportions and permanent marks, against a simple muted background. "
+            "This is a continuity reference, not an action scene. If a second reference image "
+            "is supplied, use it ONLY to preserve the character's face, anatomy, hair, colours "
+            "and permanent marks. Do NOT copy its clothing; use this book's story costume. "
+            "Keep the face, hair, body, marks, outfit design and outfit colours fixed for every "
+            "scene in this book. " + STYLE_LOCK
         )
-        cf_image(portrait_prompt, portrait_path, reference_images=[style_ref])
+        refs = [style_ref] + ([permanent_ref] if permanent_ref else [])
+        cf_image(portrait_prompt, portrait_path, reference_images=refs)
     return [style_ref, cast_ref]
 
 
