@@ -816,9 +816,10 @@ def build_scene_prompt(story, scene, style):
         f"Characters visible in this scene: {cast}. "
         f"Exact visual identities required for this scene: {scene_bibles}. "
         "Match every recurring character's face, facial proportions, hair, eye shape/colour, skin tone, body proportions and permanent marks exactly. Do not merge identities or substitute one character for another. Clothing follows this book's story_costume and stays consistent unless the story shows a change. "
-        f"DIRECTOR'S CAMERA BRIEF (this overrides conflicting shot notes below): {director_camera_brief(scene)} "
+        f"DIRECTOR'S CAMERA COVERAGE GUIDE (adapt to the exact story beat): {director_camera_brief(scene)} "
         f"{direction} Scene {scene.get('number')}: {scene.get('visual_prompt', '')}. "
-        "Blocking and eyeline rules: characters face and look toward the person they address, the object they handle, or the action they follow. Do not make characters face the viewer by default. No front-facing lineup, cast portrait, or everyone looking into the lens. Use natural backs, profiles, over-the-shoulder views and off-camera eyelines when the shot calls for them. "
+        "Use the planned shot_type, camera_angle, composition, action_pose and gaze as the scene-specific director's plan when they are clear. The camera coverage guide reminds the model to vary angles; it must not force an unmotivated shot. Think of 360-degree coverage as placing the camera at different positions around the actors across scenes: front, side, rear, over-the-shoulder, high and low. "
+        "Blocking and eyeline rules: characters face and look toward the person they address, the object they handle, or the action they follow. Do not make characters face the viewer by default. No front-facing lineup, cast portrait, or everyone looking into the lens. A speaker must not look into the lens when speaking to another person. Use natural backs, profiles, over-the-shoulder views and off-camera eyelines when the shot calls for them. "
         f"Style lock: {STYLE_LOCK}. Create one composed feature-film frame with strong foreground, midground and background depth, motivated camera placement, natural anatomy and believable physical action. Preserve each character's exact identity and costume across all scenes; only camera angle, pose and expression may change. "
         "Do not add characters who are not in this scene. No words, lettering, logos or watermark."
     )
