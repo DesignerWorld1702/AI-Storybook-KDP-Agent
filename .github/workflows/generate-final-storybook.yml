@@ -2,6 +2,12 @@ name: Generate final 50-scene storybook
 
 on:
   workflow_dispatch:
+    inputs:
+      bypass_daily_guard:
+        description: "Allow one manually approved replacement run even if today's book already exists"
+        required: false
+        type: boolean
+        default: false
   schedule:
     # 20:00 Pakistan Standard Time (UTC+5) = 15:00 UTC.
     - cron: "0 15 * * *"
@@ -30,7 +36,11 @@ jobs:
           today="$(TZ=Asia/Karachi date +%F)"
           marker="state/last_successful_book_date.txt"
           marker_date="$(cat "$marker" 2>/dev/null || true)"
-          if [ -f "$marker" ] && [ "$marker_date" = "$today" ]; then
+          bypass="${{ github.event_name == 'workflow_dispatch' && inputs.bypass_daily_guard }}"
+          if [ "$bypass" = "true" ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "One-time manual replacement override approved for $today; existing output will be preserved."
+          elif [ -f "$marker" ] && [ "$marker_date" = "$today" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "A successful book already exists for $today (Asia/Karachi); skipping this run."
           else
@@ -72,7 +82,19 @@ jobs:
           CLOUDFLARE_IMAGE_MODEL: "@cf/black-forest-labs/flux-2-klein-4b"
           STORY_IMAGE_MAX_SIDE: "1536"
           TZ: "Asia/Karachi"
-        run: python daily_runner.py --run-now --today-only
+        run: |
+          # Preserve the previous book as a timestamped backup before a one-time replacement.
+          if [ "${{ github.event_name == 'workflow_dispatch' && inputs.bypass_daily_guard }}" = "true" ]; then
+            today="$(TZ=Asia/Karachi date +%F)"
+            folder="output/$(TZ=Asia/Karachi date +%Y%m%d)_daily_story"
+            if [ -d "$folder" ]; then
+              backup="${folder}_backup_before_quality_replacement_$(date -u +%H%M%S)"
+              cp -a "$folder" "$backup"
+              echo "Preserved existing book at $backup"
+              rm -rf "$folder"
+            fi
+          fi
+          python daily_runner.py --run-now --today-only
 
       - name: Save generated permanent character references to main
         if: always() && steps.daily_guard.outputs.skip != 'true'
