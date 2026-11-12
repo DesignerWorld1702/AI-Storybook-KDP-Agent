@@ -287,10 +287,23 @@ def review_story_quality(story, outline, workdir=None):
     report = extract_json(cf_text(prompt, max_tokens=1500), "strict full-book continuity and readability audit")
     if not isinstance(report, dict) or not isinstance(report.get("passed"), bool):
         raise ValueError("The story quality reviewer did not return a valid pass/fail report.")
-    score = report.get("score")
-    if not isinstance(score, (int, float)) or isinstance(score, bool) or not 0 <= score <= 100:
-        raise ValueError("The story quality reviewer returned an invalid numeric score.")
-    report["rating_out_of_10"] = round(float(score) / 10, 1)
+    score_dimensions = (
+        "plot", "continuity", "character_consistency", "easy_english", "pacing",
+        "emotional_impact", "scene_variety", "art_direction", "originality", "ending"
+    )
+    dimension_scores = report.get("dimension_scores")
+    if not isinstance(dimension_scores, dict) or any(
+        key not in dimension_scores
+        or not isinstance(dimension_scores[key], (int, float))
+        or isinstance(dimension_scores[key], bool)
+        or not 0 <= dimension_scores[key] <= 10
+        for key in score_dimensions
+    ):
+        raise ValueError("The story quality reviewer returned missing or invalid category scores.")
+    # Calculate the final score locally so the reviewer cannot inflate or contradict it.
+    score = round(sum(float(dimension_scores[key]) for key in score_dimensions) / len(score_dimensions) * 10, 1)
+    report["score"] = score
+    report["rating_out_of_10"] = round(score / 10, 1)
     report["minimum_publish_rating"] = 7.0
     report["reviewed_at"] = datetime.utcnow().isoformat() + "Z"
     if workdir:
