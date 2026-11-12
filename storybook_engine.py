@@ -236,6 +236,61 @@ STYLE_LOCK = (
     "childish cartoon, photorealism, or a mixture of unrelated art styles."
 )
 
+def review_story_quality(story, outline, workdir=None):
+    """Reject books with broken cast continuity, weak plot logic, or hard-to-read prose."""
+    review_input = {
+        "title": story.get("title", ""),
+        "description": story.get("description", ""),
+        "principal_villain": story.get("principal_villain", ""),
+        "character_registry": story.get("character_registry", []),
+        "outline": outline,
+        "scenes": [
+            {
+                "number": scene.get("number"),
+                "heading": scene.get("heading", ""),
+                "text": scene.get("text", ""),
+                "characters_present": scene.get("characters_present", [])
+            }
+            for scene in story.get("scenes", [])
+        ]
+    }
+    prompt = (
+        "You are the strict continuity editor and story editor for a professionally illustrated "
+        "feature film storybook. Audit the complete 50-scene book below. Do not be polite; protect "
+        "the reader from a broken book. Check: (1) every named speaking or recurring character "
+        "belongs to the character_registry and keeps one name and identity; (2) the registered "
+        "principal villain is truly the main villain and has a clear, believable ending; "
+        "(3) events happen in a logical order with no repeated kidnappings/rescues, verdicts before "
+        "trials, dead characters returning, unexplained changes, or timeline breaks; "
+        "(4) clues, motives and the main mystery have a clear payoff; (5) scenes progress and do "
+        "not repeat the same event or use filler endings; (6) the book description matches the "
+        "actual story; (7) page prose uses simple, common English and is easy to follow. "
+        "A story fails if any major contradiction, unregistered named character, missing villain "
+        "payoff, unresolved central mystery, or repeated major event remains. Do not pass a book "
+        "just because it has 50 scenes. Return ONLY JSON with keys: "
+        "{\"passed\":true/false,\"critical_issues\":[\"specific issue with scene numbers\"],"
+        "\"minor_issues\":[\"specific issue\"],\"score\":0-100}. "
+        "Set passed=false for any critical issue.\n\nBOOK DATA:\n"
+        + json.dumps(review_input, ensure_ascii=False)
+    )
+    report = extract_json(cf_text(prompt, max_tokens=1500), "strict full-book continuity and readability audit")
+    if not isinstance(report, dict) or not isinstance(report.get("passed"), bool):
+        raise ValueError("The story quality reviewer did not return a valid pass/fail report.")
+    report["reviewed_at"] = datetime.utcnow().isoformat() + "Z"
+    if workdir:
+        (Path(workdir) / "quality_review.json").write_text(
+            json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+    if not report["passed"] or report.get("critical_issues"):
+        issues = "; ".join(str(issue) for issue in report.get("critical_issues", []))
+        raise ValueError(
+            "The story failed the full-book quality gate and will not be marked publishable. "
+            + (issues or "The reviewer found critical story problems.")
+        )
+    logging.info("Story quality gate passed with score %s/100.", report.get("score", "unscored"))
+    return report
+
+
 def make_story(genre, style, audience, title_hint, character_notes, scene_words, workdir=None):
     """Create a 50-scene story, caching the outline and each small scene batch."""
     workdir = Path(workdir) if workdir else None
@@ -589,9 +644,10 @@ No extra keys, no markdown fences, no text outside JSON.
                 encoding="utf-8"
             )
 
-    plan.pop("outline", None)
     plan["scenes"] = scenes
     plan["art_direction"] = f"{STYLE_LOCK}\n{plan.get('art_direction', '')}"
+    plan["quality_review"] = review_story_quality(plan, outline, workdir)
+    plan.pop("outline", None)
     save_story_cast(plan, workdir)
     return plan
 
