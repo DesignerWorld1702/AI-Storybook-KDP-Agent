@@ -265,23 +265,39 @@ def review_story_quality(story, outline, workdir=None):
         "(4) clues, motives and the main mystery have a clear payoff; (5) scenes progress and do "
         "not repeat the same event or use filler endings; (6) the book description matches the "
         "actual story; (7) page prose uses simple, common English and is easy to follow. "
-        "A story fails if any major contradiction, unregistered named character, missing villain "
-        "payoff, unresolved central mystery, or repeated major event remains. Do not pass a book "
-        "just because it has 50 scenes. Return ONLY JSON with keys: "
-        "{\"passed\":true/false,\"critical_issues\":[\"specific issue with scene numbers\"],"
-        "\"minor_issues\":[\"specific issue\"],\"score\":0-100}. "
-        "Set passed=false for any critical issue.\n\nBOOK DATA:\n"
+        "A story fails if any major contradiction, unregistered named character, name drift, "
+        "identity drift, missing villain payoff, unresolved central mystery, repeated major event, "
+        "or difficult prose remains. Audit every scene, not a sample. Verify that every registered "
+        "character keeps the exact same spelling of their name, role, physical identity and costume; "
+        "no alias, nickname, renamed version or unexplained appearance change is allowed. "
+        "Judge English for a beginner reader: common everyday words, short sentences, clear actions, "
+        "simple dialogue, no confusing metaphors or complex phrasing. Score these dimensions from "
+        "0 to 10: plot, continuity, character consistency, easy English, pacing, emotional impact, "
+        "scene variety, illustration-direction clarity, originality, ending. Return ONLY JSON with "
+        "keys: {\"passed\":true/false,\"critical_issues\":[\"issue and scene numbers\"],"
+        "\"minor_issues\":[\"issue\"],\"dimension_scores\":{\"plot\":0-10,\"continuity\":0-10,"
+        "\"character_consistency\":0-10,\"easy_english\":0-10,\"pacing\":0-10,"
+        "\"emotional_impact\":0-10,\"scene_variety\":0-10,\"art_direction\":0-10,"
+        "\"originality\":0-10,\"ending\":0-10},\"score\":0-100}. "
+        "Calculate score as the average of the ten dimension scores multiplied by ten. "
+        "A score below 70 is an automatic failure. Do not inflate scores to be encouraging. "
+        "Set passed=false for any critical issue or score below 70.\\n\\nBOOK DATA:\\n"
         + json.dumps(review_input, ensure_ascii=False)
     )
     report = extract_json(cf_text(prompt, max_tokens=1500), "strict full-book continuity and readability audit")
     if not isinstance(report, dict) or not isinstance(report.get("passed"), bool):
         raise ValueError("The story quality reviewer did not return a valid pass/fail report.")
+    score = report.get("score")
+    if not isinstance(score, (int, float)) or isinstance(score, bool) or not 0 <= score <= 100:
+        raise ValueError("The story quality reviewer returned an invalid numeric score.")
+    report["rating_out_of_10"] = round(float(score) / 10, 1)
+    report["minimum_publish_rating"] = 7.0
     report["reviewed_at"] = datetime.utcnow().isoformat() + "Z"
     if workdir:
         (Path(workdir) / "quality_review.json").write_text(
             json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8"
         )
-    if not report["passed"] or report.get("critical_issues"):
+    if float(score) < 70 or not report["passed"] or report.get("critical_issues"):
         issues = "; ".join(str(issue) for issue in report.get("critical_issues", []))
         raise ValueError(
             "The story failed the full-book quality gate and will not be marked publishable. "
@@ -567,6 +583,11 @@ No extra keys, no markdown fences, no text outside JSON.
                     )
                 scene["text"] = repaired_text
                 logging.info("Repaired scene %s page text to %s words.", number, len(repaired_text.split()))
+            final_word_count = len(str(scene.get("text", "")).split())
+            if not 40 <= final_word_count <= 55:
+                raise ValueError(
+                    f"Scene {number} has {final_word_count} words; every page must contain 40–55 words."
+                )
             for key in ("shot_type", "camera_angle", "composition", "action_pose", "gaze", "expression", "lighting"):
                 scene.setdefault(key, "")
             scene.setdefault("characters_present", [])
@@ -623,17 +644,9 @@ No extra keys, no markdown fences, no text outside JSON.
                 # permanent-library name that this story did not select. The story
                 # registry is the authority for visible cast; do not let an
                 # unregistered name create an unintended character design.
-                logging.warning(
-                    "Scene %s mentioned unregistered visible names %s; excluding them from the illustrated cast.",
-                    number, unknown_names
-                )
-                visible_names = [name for name in visible_names if name in known_names]
-                scene["characters_present"] = visible_names
-                scene["visual_prompt"] = (
-                    str(scene.get("visual_prompt", "")).strip()
-                    + "\\nSTRICT CAST LOCK: Depict only these registered characters: "
-                    + (", ".join(visible_names) if visible_names else "no named character; environment-only composition")
-                    + ". Do not depict or invent any other named person or character."
+                raise ValueError(
+                    f"Scene {number} uses unregistered character name(s) {unknown_names}. "
+                    "The book must be regenerated or repaired; names may never be silently dropped."
                 )
             scenes.append(scene)
 
