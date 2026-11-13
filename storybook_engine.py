@@ -394,6 +394,51 @@ Keep the registry concise and plot-driven: create only the characters the story 
         if not isinstance(plan, dict):
             raise ValueError("Book metadata response was not a JSON object.")
 
+        # Repair a common metadata inconsistency before spending tokens on the outline.
+        registry_for_villain = plan.get("character_registry", [])
+        if isinstance(registry_for_villain, list):
+            registry_names = [
+                str(item.get("name", "")).strip()
+                for item in registry_for_villain if isinstance(item, dict)
+            ]
+            declared_villain = str(plan.get("principal_villain", "")).strip()
+            villain_rows = [
+                item for item in registry_for_villain
+                if isinstance(item, dict) and item.get("importance") == "villain"
+            ]
+            if (declared_villain in registry_names and
+                    (len(villain_rows) != 1 or villain_rows[0].get("name") != declared_villain)):
+                for item in registry_for_villain:
+                    if isinstance(item, dict) and item.get("importance") == "villain":
+                        item["importance"] = "supporting"
+                for item in registry_for_villain:
+                    if isinstance(item, dict) and str(item.get("name", "")).strip() == declared_villain:
+                        item["importance"] = "villain"
+                logging.info(
+                    "Normalized villain registry to the exact declared principal villain: %s",
+                    declared_villain
+                )
+            else:
+                villain_prompt = common + """
+The metadata JSON below has an inconsistent principal villain declaration.
+Repair ONLY the character_registry importance fields and principal_villain field.
+There must be exactly ONE registry entry with importance="villain".
+principal_villain must exactly equal that entry's full name, character role must make
+them a genuine consequential antagonist, and no other entry may be marked villain.
+Do not invent characters or rename anyone. Preserve all other metadata and character
+details exactly. Return ONLY the complete corrected JSON object.
+Metadata:
+""" + json.dumps(plan, ensure_ascii=False)
+                if (not declared_villain or declared_villain not in registry_names or
+                        len(villain_rows) != 1):
+                    repaired_plan = extract_json(
+                        cf_text(villain_prompt, max_tokens=2200),
+                        "principal villain metadata repair"
+                    )
+                    if not isinstance(repaired_plan, dict):
+                        raise ValueError("Principal villain metadata repair did not return a JSON object.")
+                    plan = repaired_plan
+
         outline_prompt = common + """
 Create a fresh, original 50-scene cinematic story outline for the metadata and characters already established.
 Return EXACTLY 50 numbered lines as plain text, not JSON, not markdown bullets.
