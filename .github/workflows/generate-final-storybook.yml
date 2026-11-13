@@ -1,6 +1,9 @@
 name: Generate final 50-scene storybook
 
 on:
+  push:
+    paths:
+      - ".github/workflows/storybook-run-trigger.txt"
   workflow_dispatch:
     inputs:
       bypass_daily_guard:
