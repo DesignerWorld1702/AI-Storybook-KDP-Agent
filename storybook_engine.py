@@ -653,13 +653,53 @@ No extra keys, no markdown fences, no text outside JSON.
             scene["characters_present"] = visible_names
             unknown_names = [name for name in visible_names if name not in known_names]
             if unknown_names:
-                # The scene model sometimes invents incidental names or reuses a
-                # permanent-library name that this story did not select. The story
-                # registry is the authority for visible cast; do not let an
-                # unregistered name create an unintended character design.
-                raise ValueError(
-                    f"Scene {number} uses unregistered character name(s) {unknown_names}. "
-                    "The book must be regenerated or repaired; names may never be silently dropped."
+                # Attempt a focused canonical-name repair before rejecting the book.
+                # The model must map aliases/surnames to exact registry names and
+                # preserve the scene; unregistered characters are never silently dropped.
+                repair_prompt = (
+                    "Repair this one story scene so its cast uses ONLY exact canonical names "
+                    "from the supplied character registry. Do not invent names, aliases, "
+                    "surnames, or additional people. If a registered character is mentioned "
+                    "by a shortened name or surname, use that character's exact registry name. "
+                    "Preserve the event, facts, emotional beat, continuity, visual action, and "
+                    "camera direction. Keep page text between 40 and 55 words in very simple "
+                    "English. characters_present must contain only exact registry names for "
+                    "people or creatures actually visible. Return ONLY a JSON object with keys "
+                    "heading, text, shot_type, camera_angle, composition, action_pose, gaze, "
+                    "expression, lighting, characters_present, visual_prompt.\\n\\n"
+                    f"Registry: {json.dumps(plan.get('character_registry', []), ensure_ascii=False)}\\n"
+                    f"Principal villain: {plan.get('principal_villain', '')}\\n"
+                    f"Unregistered names detected: {json.dumps(unknown_names)}\\n"
+                    f"Scene to repair: {json.dumps(scene, ensure_ascii=False)}"
+                )
+                repaired = extract_json(
+                    cf_text(repair_prompt, max_tokens=1400),
+                    f"scene {number} canonical-name repair"
+                )
+                if not isinstance(repaired, dict):
+                    raise ValueError(f"Scene {number} name repair did not return a JSON object.")
+                for key in (
+                    "heading", "text", "shot_type", "camera_angle", "composition",
+                    "action_pose", "gaze", "expression", "lighting",
+                    "characters_present", "visual_prompt"
+                ):
+                    if key in repaired:
+                        scene[key] = repaired[key]
+                repaired_names = scene.get("characters_present")
+                if not isinstance(repaired_names, list):
+                    raise ValueError(f"Scene {number} name repair returned an invalid cast list.")
+                if not 40 <= len(str(scene.get("text", "")).split()) <= 55:
+                    raise ValueError(f"Scene {number} name repair returned page text outside 40–55 words.")
+                remaining_unknown = [name for name in repaired_names if name not in known_names]
+                if remaining_unknown:
+                    raise ValueError(
+                        f"Scene {number} still uses unregistered character name(s) "
+                        f"{remaining_unknown} after targeted repair."
+                    )
+                scene["characters_present"] = list(dict.fromkeys(repaired_names))
+                logging.info(
+                    "Repaired scene %s unregistered character names: %s",
+                    number, unknown_names
                 )
             scenes.append(scene)
 
