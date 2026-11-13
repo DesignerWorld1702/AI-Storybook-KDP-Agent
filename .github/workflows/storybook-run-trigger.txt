@@ -1,1 +1,1 @@
-One-time request to generate the November 13, 2026 storybook using the latest validated code.
+One-time generation request using principal-villain metadata repair commit b2e20cea0cc5bab3cc03da79e3d8266985517a8e.
