@@ -1,4 +1,4 @@
-name: Cloudflare quota probe and one-time storybook resume # Exact page word-count repair QA trigger
+name: Cloudflare quota probe and one-time storybook resume # Outline sanitization and exact page text QA trigger
 
 on:
   push:
