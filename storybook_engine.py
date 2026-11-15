@@ -936,7 +936,7 @@ No extra keys, no markdown fences, no text outside JSON.
                     f"character identities, story costumes and art direction. Scene details: {scene.get('text', '')}"
                 )
             word_count = len(str(scene.get("text", "")).split())
-            if word_count < 35 or word_count > 65:
+            if word_count < 40 or word_count > 55:
                 # Repair an out-of-range page locally instead of failing the whole book.
                 # Keep the existing scene's events, characters and tone; only revise its prose.
                 # Keep the full original page unchanged across retries. Previously, each
@@ -948,20 +948,20 @@ No extra keys, no markdown fences, no text outside JSON.
                 for repair_attempt in range(1, 6):
                     repair_prompt = (
                         "Rewrite the following illustrated storybook page as polished narrative prose "
-                        "of 45–55 words (never fewer than 35). Preserve the exact events, facts, "
+                        "of 45–50 words (never fewer than 40 or more than 55). Preserve the exact events, facts, "
                         "characters, emotional beat, and continuity. Do not add a new event, heading, "
                         "label, or explanation. Do not summarize. Count the words before answering. "
                         "Return only the page paragraph.\n\n"
                         f"Book: {plan.get('title', 'Untitled')}\n"
                         f"Scene {number}: {scene.get('heading', '')}\n"
-                        f"Required length: 45–55 words. You MUST write at least 40 words.\n"
+                        f"Required length: 45–50 words; absolute allowed range is 40–55 words.\n"
                         f"{previous_attempt_note}"
                         f"Original page text ({len(source_text.split())} words): {source_text}"
                     )
                     candidate = cf_text(repair_prompt, max_tokens=700)
                     candidate = candidate.strip().strip('"').strip()
                     candidate_count = len(candidate.split())
-                    if 35 <= candidate_count <= 65:
+                    if 40 <= candidate_count <= 55:
                         repaired_text = candidate
                         break
                     last_repair_error = f"repair {repair_attempt} returned {candidate_count} words"
@@ -971,7 +971,7 @@ No extra keys, no markdown fences, no text outside JSON.
                     )
                 if repaired_text is None:
                     raise ValueError(
-                        f"Scene {number} page text could not be repaired to 35–65 words "
+                        f"Scene {number} page text could not be repaired to 40–55 words "
                         f"after 5 attempts ({last_repair_error})."
                     )
                 scene["text"] = repaired_text
