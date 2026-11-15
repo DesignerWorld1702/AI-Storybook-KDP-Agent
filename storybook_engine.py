@@ -434,6 +434,29 @@ def missing_registered_outline_names(outline, registry):
     ]
 
 
+def unregistered_named_entities_in_outline(outline, registry):
+    """Find named people introduced by the outline who are absent from the locked cast."""
+    known = {
+        str(item.get("name", "")).strip().casefold()
+        for item in registry if isinstance(item, dict) and str(item.get("name", "")).strip()
+    }
+    text = " ".join(
+        str(item.get("beat", "")) for item in outline if isinstance(item, dict)
+    )
+    patterns = (
+        r"\b(?:named|called|known as|known only as)\s+[\"']?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)",
+        r"\b(?:chief|detective|officer|dr\.?|mr\.?|mrs\.?|ms\.?|captain|agent|judge|doctor|professor|inspector|sergeant|lieutenant|mayor|sheriff)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)",
+        r"\b(?:victim|partner|informant|businessman|socialite|hacker|bartender|owner|thief|leader|mentor|figure|guard|suspect|witness|police chief)\s*,\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)",
+    )
+    unknown = []
+    for pattern in patterns:
+        for match in re.finditer(pattern, text):
+            candidate = re.sub(r"['\".,;:!?]+$", "", match.group(1)).strip()
+            if candidate and candidate.casefold() not in known and candidate not in unknown:
+                unknown.append(candidate)
+    return unknown
+
+
 def review_story_quality(story, outline, workdir=None):
     """Reject books with broken cast continuity, weak plot logic, or hard-to-read prose."""
     # Deterministic structural gates run before the language-model editorial review.
@@ -731,15 +754,19 @@ clue discovery, argument, journey, or other event with slightly changed wording.
                     rows.append({"number": int(match.group(1)), "beat": match.group(2).strip()})
             if len(rows) == 50 and [item["number"] for item in rows] == list(range(1, 51)):
                 beats = [re.sub(r"[^a-z0-9 ]", "", item["beat"].lower()).strip() for item in rows]
-                missing_cast = missing_registered_outline_names(rows, plan.get("character_registry", []))
-                if all(len(beat.split()) >= 8 for beat in beats) and len(set(beats)) >= 45 and not missing_cast:
+                registry = plan.get("character_registry", [])
+                missing_cast = missing_registered_outline_names(rows, registry)
+                unknown_cast = unregistered_named_entities_in_outline(rows, registry)
+                if all(len(beat.split()) >= 8 for beat in beats) and len(set(beats)) >= 45 and not missing_cast and not unknown_cast:
                     parsed_outline = rows
                     break
-                if missing_cast:
-                    last_outline_error = (
-                        "Outline omitted exact registered character name(s): "
-                        + ", ".join(missing_cast)
-                    )
+                if missing_cast or unknown_cast:
+                    problems = []
+                    if missing_cast:
+                        problems.append("omitted registered names: " + ", ".join(missing_cast))
+                    if unknown_cast:
+                        problems.append("introduced unregistered named people: " + ", ".join(unknown_cast))
+                    last_outline_error = "Outline cast mismatch — " + "; ".join(problems)
                 else:
                     last_outline_error = "Outline contains short or repeated scene beats."
             else:
@@ -749,7 +776,8 @@ clue discovery, argument, journey, or other event with slightly changed wording.
 
 RETRY {outline_attempt}: {last_outline_error}
 You MUST use every registered character's exact full name from the cast registry above.
-Do not substitute aliases or invent any named person.
+Do not substitute aliases or invent any named person. Remove every unregistered named person
+from the outline; use an unnamed extra only when a one-scene background person is essential.
 Return all 50 lines again, using the exact two-digit number | event format.
 Replace repeated scenes with new actions, discoveries, decisions and consequences.
 Do not add JSON, quotation marks, headings or explanatory text.
