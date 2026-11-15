@@ -1143,10 +1143,10 @@ Do not add JSON, quotation marks, headings or explanatory text.
 
     outline = validate_outline_rows(plan["outline"], plan.get("character_registry", []))
     outline_report = review_story_outline(plan, outline, workdir)
-    for repair_attempt in range(1, 3):
+    for repair_attempt in range(1, 4):
         if outline_report.get("passed"):
             break
-        if repair_attempt == 2:
+        if repair_attempt == 3:
             break
         logging.warning(
             "Outline quality review failed (%s/100); automatically repairing story structure.",
