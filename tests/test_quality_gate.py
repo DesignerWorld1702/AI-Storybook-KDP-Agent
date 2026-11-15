@@ -66,6 +66,11 @@ class PublicationQualityGateTests(unittest.TestCase):
 
 
 
+
+    def test_rejects_non_string_scene_cast_entries(self):
+        with self.assertRaisesRegex(ValueError, "must be a string"):
+            engine.normalize_scene_cast_names(["Hero", {"name": "Unknown"}])
+
     def test_outline_requires_exact_registered_names(self):
         outline = [
             {"number": 1, "beat": "Jameson arrives at the mansion."},
