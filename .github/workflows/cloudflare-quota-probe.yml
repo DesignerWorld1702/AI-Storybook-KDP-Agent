@@ -1,4 +1,4 @@
-name: Cloudflare quota probe and one-time storybook resume # Pre-scene plot review and fixed costume fallback QA trigger
+name: Cloudflare quota probe and one-time storybook resume # Outline title alias sanitizer QA trigger
 
 on:
   push:
