@@ -50,6 +50,14 @@ class PublicationQualityGateTests(unittest.TestCase):
             self.assertEqual(result["minimum_publish_rating"], 7.0)
             self.assertTrue((Path(tmp) / "quality_review.json").is_file())
 
+
+    def test_core_dimension_below_seven_fails_even_when_average_is_high(self):
+        report = self.report(80)
+        report["dimension_scores"]["easy_english"] = 6.0
+        with patch.object(engine, "cf_text", return_value=json.dumps(report)):
+            with self.assertRaisesRegex(ValueError, "easy_english"):
+                engine.review_story_quality(self.valid_story(), [])
+
     def test_below_seven_is_rejected_even_if_model_says_passed(self):
         with patch.object(engine, "cf_text", return_value=json.dumps(self.report(69))):
             with self.assertRaisesRegex(ValueError, "quality gate"):
