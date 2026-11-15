@@ -241,6 +241,40 @@ STYLE_LOCK = (
 
 def review_story_quality(story, outline, workdir=None):
     """Reject books with broken cast continuity, weak plot logic, or hard-to-read prose."""
+    # Deterministic structural gates run before the language-model editorial review.
+    scenes = story.get("scenes", [])
+    if not isinstance(scenes, list) or len(scenes) != 50:
+        raise ValueError(f"Quality gate: expected exactly 50 scenes; received {len(scenes) if isinstance(scenes, list) else 'invalid data'}.")
+    numbers = [scene.get("number") for scene in scenes if isinstance(scene, dict)]
+    if len(numbers) != 50 or numbers != list(range(1, 51)):
+        raise ValueError("Quality gate: scenes must be numbered sequentially from 1 through 50.")
+    for scene in scenes:
+        number = scene["number"]
+        words = len(str(scene.get("text", "")).split())
+        if not 40 <= words <= 55:
+            raise ValueError(f"Quality gate: scene {number} has {words} words; every page must contain 40–55 words.")
+        if not str(scene.get("heading", "")).strip():
+            raise ValueError(f"Quality gate: scene {number} is missing its heading.")
+        if not str(scene.get("visual_prompt", "")).strip():
+            raise ValueError(f"Quality gate: scene {number} is missing its illustration direction.")
+    registry = story.get("character_registry", [])
+    if not isinstance(registry, list) or not registry:
+        raise ValueError("Quality gate: character registry is missing.")
+    registered_names = [str(item.get("name", "")).strip() for item in registry if isinstance(item, dict)]
+    if len(registered_names) != len(registry) or any(not name for name in registered_names) or len(set(registered_names)) != len(registered_names):
+        raise ValueError("Quality gate: character registry has missing or duplicate names.")
+    villain_name = str(story.get("principal_villain", "")).strip()
+    villains = [item for item in registry if item.get("importance") == "villain"]
+    if not villain_name or villain_name not in registered_names or len(villains) != 1 or villains[0].get("name") != villain_name:
+        raise ValueError("Quality gate: exactly one registered principal villain is required.")
+    registered_set = set(registered_names)
+    for scene in scenes:
+        present = scene.get("characters_present", [])
+        if not isinstance(present, list):
+            raise ValueError(f"Quality gate: scene {scene['number']} has an invalid characters_present list.")
+        unknown = [name for name in present if name not in registered_set]
+        if unknown:
+            raise ValueError(f"Quality gate: scene {scene['number']} contains unregistered character name(s): {unknown}.")
     review_input = {
         "title": story.get("title", ""),
         "description": story.get("description", ""),
