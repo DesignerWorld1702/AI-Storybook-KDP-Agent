@@ -1084,7 +1084,33 @@ Do not add JSON, quotation marks, headings or explanatory text.
             genre, style, audience, title_hint, character_notes, scene_words, workdir=workdir
         )
 
-    outline = plan["outline"]
+    outline = validate_outline_rows(plan["outline"], plan.get("character_registry", []))
+    outline_report = review_story_outline(plan, outline, workdir)
+    for repair_attempt in range(1, 3):
+        if outline_report.get("passed"):
+            break
+        if repair_attempt == 2:
+            break
+        logging.warning(
+            "Outline quality review failed (%s/100); automatically repairing story structure.",
+            outline_report.get("score")
+        )
+        outline, repaired_description = repair_outline_from_review(plan, outline, outline_report)
+        plan["outline"] = outline
+        plan["description"] = repaired_description
+        if workdir:
+            for cached_batch in workdir.glob("scene_batch_*.json"):
+                cached_batch.unlink(missing_ok=True)
+        outline_report = review_story_outline(plan, outline, workdir)
+    if not outline_report.get("passed"):
+        raise ValueError(
+            "The story outline could not reach the minimum 7/10 quality standard after automatic repair. "
+            + "; ".join(str(issue) for issue in outline_report.get("critical_issues", []))
+        )
+    plan["outline"] = outline
+    plan["outline_quality_review"] = outline_report
+    if plan_path:
+        plan_path.write_text(json.dumps(plan, indent=2, ensure_ascii=False), encoding="utf-8")
     scenes = []
     # Five scenes per request keeps responses smaller and makes recovery granular.
     for first in range(1, 51, 5):
