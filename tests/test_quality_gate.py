@@ -86,16 +86,21 @@ class PublicationQualityGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "non-human character"):
             engine.normalize_real_world_registry(plan)
 
-    def test_real_world_registry_rejects_fantasy_visual_slot(self):
+    def test_real_world_registry_remaps_fantasy_visual_slot_to_unused_human_model(self):
         plan = {"character_registry": [{
             "name": "Bamboo",
             "species": "human",
             "role": "supporting",
             "importance": "supporting",
             "visual_id": "visual_012",
+            "immutable_identity": {"species": "panda"},
+            "story_costume": "A plain dark jacket",
         }]}
-        with self.assertRaisesRegex(ValueError, "non-human visual model"):
-            engine.normalize_real_world_registry(plan)
+        engine.normalize_real_world_registry(plan)
+        item = plan["character_registry"][0]
+        self.assertEqual(item["species"], "human")
+        self.assertNotIn(item["visual_id"], {"visual_009", "visual_010", "visual_011", "visual_012"})
+        self.assertNotEqual(item["immutable_identity"], {"species": "panda"})
 
     def test_seven_out_of_ten_is_minimum_and_report_is_saved(self):
         with tempfile.TemporaryDirectory() as tmp:
