@@ -1115,6 +1115,11 @@ Do not add JSON, quotation marks, headings or explanatory text.
         if plan_path:
             plan_path.write_text(json.dumps(plan, indent=2, ensure_ascii=False), encoding="utf-8")
 
+    plan["genre"] = genre
+    plan = ensure_concrete_story_costumes(plan)
+    if plan_path:
+        plan_path.write_text(json.dumps(plan, indent=2, ensure_ascii=False), encoding="utf-8")
+
     cached_outline_missing = missing_registered_outline_names(
         plan.get("outline", []), plan.get("character_registry", [])
     )
