@@ -1,4 +1,4 @@
-name: Cloudflare quota probe and one-time storybook resume
+name: Cloudflare quota probe and one-time storybook resume # Manual QA trigger
 
 on:
   push:
