@@ -1,4 +1,4 @@
-name: Cloudflare quota probe and one-time storybook resume # Strict outline cast validation QA trigger
+name: Cloudflare quota probe and one-time storybook resume # Exact page word-count repair QA trigger
 
 on:
   push:
