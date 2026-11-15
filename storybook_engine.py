@@ -674,6 +674,24 @@ Do not add JSON, quotation marks, headings or explanatory text.
         if plan_path:
             plan_path.write_text(json.dumps(plan, indent=2, ensure_ascii=False), encoding="utf-8")
 
+    cached_outline_missing = missing_registered_outline_names(
+        plan.get("outline", []), plan.get("character_registry", [])
+    )
+    if cached_outline_missing:
+        logging.warning(
+            "Cached story outline omitted exact registered character names %s; "
+            "discarding the incompatible outline and scene batches.",
+            cached_outline_missing
+        )
+        if plan_path and plan_path.exists():
+            plan_path.unlink()
+        if workdir:
+            for cached_batch in workdir.glob("scene_batch_*.json"):
+                cached_batch.unlink(missing_ok=True)
+        return make_story(
+            genre, style, audience, title_hint, character_notes, scene_words, workdir=workdir
+        )
+
     outline = plan["outline"]
     scenes = []
     # Five scenes per request keeps responses smaller and makes recovery granular.
