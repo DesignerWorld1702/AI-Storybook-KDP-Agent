@@ -611,7 +611,7 @@ Return one compact valid JSON object, no markdown, with these keys:
  "categories":["suggested broad category 1","suggested broad category 2"],
  "audience":"Teen and adult readers",
  "character_registry":[
-  {"name":"Fresh story-specific name","visual_id":null,"role":"story role","importance":"protagonist/supporting/villain/creature","immutable_identity":"physical traits and permanent marks","story_costume":"this book's clothing and accessories","visual_bible":"complete physical identity plus story costume"}
+  {"name":"Fresh story-specific name","species":"human","visual_id":null,"role":"story role","importance":"protagonist/supporting/villain (creature only in fantasy)","immutable_identity":"physical traits and permanent marks","story_costume":"this book's clothing and accessories","visual_bible":"complete physical identity plus story costume"}
  ],
  "principal_villain":"Exact name of the single principal villain",
  "art_direction":"Consistent palette, lighting and world atmosphere"
