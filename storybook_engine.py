@@ -448,13 +448,17 @@ def unregistered_named_entities_in_outline(outline, registry):
         r"\b(?:chief|detective|officer|dr\.?|mr\.?|mrs\.?|ms\.?|captain|agent|judge|doctor|professor|inspector|sergeant|lieutenant|mayor|sheriff)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)",
         r"\b(?:victim|partner|informant|businessman|socialite|hacker|bartender|owner|thief|leader|mentor|figure|guard|suspect|witness|police chief)\s*,\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)",
     )
-    unknown = []
+    found = []
     for pattern in patterns:
         for match in re.finditer(pattern, text):
             candidate = re.sub(r"['\".,;:!?]+$", "", match.group(1)).strip()
-            if candidate and candidate.casefold() not in known and candidate not in unknown:
-                unknown.append(candidate)
-    return unknown
+            if candidate and candidate.casefold() not in known:
+                found.append((match.start(), candidate))
+    ordered = []
+    for _, candidate in sorted(found, key=lambda item: item[0]):
+        if candidate not in ordered:
+            ordered.append(candidate)
+    return ordered
 
 
 def review_story_quality(story, outline, workdir=None):
