@@ -476,7 +476,25 @@ def sanitize_outline_unregistered_names(outline, registry, extra_names=None):
         for item in registry if isinstance(item, dict) and str(item.get("name", "")).strip()
     ]
     for name in unknown:
-        words = re.findall(r"[A-Za-z]+", name.casefold())
+        title_match = re.match(
+            r"^(police chief|chief|detective|officer|dr\\.?|mr\\.?|mrs\\.?|ms\\.?|captain|agent|judge|doctor|professor|inspector|sergeant|lieutenant|mayor|sheriff)\\s+(.+)$",
+            name, flags=re.IGNORECASE
+        )
+        title_label = None
+        candidate_source = name
+        if title_match:
+            title = title_match.group(1).casefold().replace(".", "")
+            candidate_source = title_match.group(2).strip()
+            title_label = {
+                "police chief": "the police chief", "chief": "the chief",
+                "detective": "the detective", "officer": "the officer",
+                "dr": "the doctor", "mr": "the man", "mrs": "the woman",
+                "ms": "the woman", "captain": "the captain", "agent": "the agent",
+                "judge": "the judge", "doctor": "the doctor", "professor": "the professor",
+                "inspector": "the inspector", "sergeant": "the sergeant",
+                "lieutenant": "the lieutenant", "mayor": "the mayor", "sheriff": "the sheriff"
+            }.get(title, "the person")
+        words = re.findall(r"[A-Za-z]+", candidate_source.casefold())
         candidates = set()
         for registered_name in registered:
             known_words = re.findall(r"[A-Za-z]+", registered_name.casefold())
@@ -493,6 +511,13 @@ def sanitize_outline_unregistered_names(outline, registry, extra_names=None):
             if not isinstance(item, dict):
                 continue
             beat = str(item.get("beat", ""))
+            if title_match:
+                beat = re.sub(
+                    r"(?<![A-Za-z])" + escaped + r"(?![A-Za-z])",
+                    canonical or title_label, beat, flags=re.IGNORECASE
+                )
+                item["beat"] = re.sub(r"\\s{2,}", " ", beat).strip()
+                continue
             if canonical:
                 beat = re.sub(
                     r"(?<![A-Za-z])" + escaped + r"(?![A-Za-z])",
