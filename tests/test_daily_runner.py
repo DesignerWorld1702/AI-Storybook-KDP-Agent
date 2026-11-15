@@ -18,6 +18,8 @@ class DailyRunnerResumeTests(unittest.TestCase):
                 "story_schema_version": 5,
                 "character_registry": [{"name": "Hero"}],
                 "principal_villain": "Villain",
+                "trim_size": "8.5 × 8.5 in — square picture book",
+                "pdf_text_size": 11,
                 "scenes": [{"number": n, "text": "cached"} for n in range(1, 51)],
             }
             (book / "story.json").write_text(json.dumps(story), encoding="utf-8")
