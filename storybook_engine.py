@@ -761,7 +761,7 @@ Do not add JSON, quotation marks, headings or explanatory text.
         villain_entries = [item for item in registry if item.get("importance") == "villain"]
         if not villain_name or villain_name not in names or len(villain_entries) != 1 or villain_entries[0]["name"] != villain_name:
             raise ValueError("Every book must define exactly one registered principal villain.")
-        plan["character_bible"] = "\\n\\n".join(
+        plan["character_bible"] = "\n\n".join(
             f"{item['name']} — {item.get('role', '')}: {item.get('visual_bible', '')}"
             for item in registry
         )
