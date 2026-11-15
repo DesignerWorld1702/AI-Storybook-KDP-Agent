@@ -151,6 +151,25 @@ class PublicationQualityGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "must be a string"):
             engine.normalize_scene_cast_names(["Hero", {"name": "Unknown"}])
 
+
+    def test_outline_rejects_unregistered_named_people(self):
+        outline = [
+            {"number": 1, "beat": "The victim, Sarah Lee, reports the strange break-in."},
+            {"number": 2, "beat": "Police Chief Michael Reed briefs James Winter."},
+            {"number": 3, "beat": "A hacker known only as Zero Cool shares a clue."},
+            {"number": 4, "beat": "The old informant, named Sal, reveals the truth."},
+            {"number": 5, "beat": "Dr. Lee gives Emily Taylor a warning."},
+        ]
+        registry = [
+            {"name": "James Winter"},
+            {"name": "Emily Taylor"},
+            {"name": "Alexei Petrov"},
+        ]
+        self.assertEqual(
+            engine.unregistered_named_entities_in_outline(outline, registry),
+            ["Sarah Lee", "Michael Reed", "Zero Cool", "Sal", "Lee"],
+        )
+
     def test_outline_requires_exact_registered_names(self):
         outline = [
             {"number": 1, "beat": "Jameson arrives at the mansion."},
