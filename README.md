@@ -37,20 +37,19 @@ A local Windows-first starter app that creates an original 50-scene illustrated 
 - FLUX.2 Klein 4B is a speed-oriented distilled model with a fixed four-step process on Workers AI; increasing output dimensions cannot guarantee perfect detail. The project does not pretend to guarantee zero blur. Inspect the contact sheet and regenerate weak scenes before publishing.
 - A 512 × 512 test image is only a low-resolution connectivity test; it is not representative of the daily runner's final scene dimensions.
 
-## Daily automatic generation (Windows)
+## Scheduling status — intentionally paused
 
-The Streamlit app remains an optional manual dashboard. The independent `daily_runner.py` creates books without opening a browser.
+Automatic daily generation is disabled while the storybook agent is being finalized. The GitHub Actions generation workflow is manual-dispatch only; it has no cron schedule. The Windows scheduler installer also requires an explicit `-EnableScheduling` switch and will otherwise make no changes.
 
-1. Keep your Cloudflare credentials in the local `.env` file. Never upload it to GitHub.
-2. Install the project dependencies with `python -m pip install -r requirements.txt`.
-3. Run `python daily_runner.py --run-now` once to test the unattended pipeline immediately.
-4. After the test succeeds, right-click `install_scheduler.ps1` and run it with PowerShell (or run it from an ordinary PowerShell window). It registers a Windows Task Scheduler task for 8:00 PM and Windows logon. If the PC was asleep, the task is configured to wake it when supported.
-5. The runner stores progress in `state/scheduler_state.json`, writes each book under `output/YYYYMMDD_daily_story/`, and resumes from valid scene images after interruptions.
-6. If the PC was off for scheduled days, the startup trigger processes overdue dates sequentially, one book per task trigger by default to limit quota spikes. A failed date stays at the head of the queue and is retried on the next task run. Change `max_books_per_run` in the automation config if you intentionally want a larger catch-up batch.
+If an older Windows scheduled task is already installed on your PC, run `disable_scheduler.ps1` once in PowerShell to remove it. This repository change cannot remove a task from your computer remotely.
 
-Configuration is created on first run at `config/automation.json`. You can edit the author, genre rotation, trim size, schedule, and catch-up pause there. The time zone is Asia/Karachi.
+After the agent passes the complete quality and output validation process, scheduling can be enabled deliberately with:
 
-**Important:** The first automatic test should be run manually with `--run-now` before installing the schedule. A 50-image book may exceed a free Cloudflare quota or incur usage charges. Check the account's limits before leaving daily generation unattended.
+```powershell
+.\\install_scheduler.ps1 -EnableScheduling
+```
+
+The daily runner stores progress in `state/scheduler_state.json` and writes books under `output/YYYYMMDD_daily_story/`. Do not enable scheduling until the agent has been tested end to end and the owner approves restarting automation.
 
 ## KDP workflow boundary
 
