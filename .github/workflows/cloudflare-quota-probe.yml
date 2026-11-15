@@ -1,4 +1,4 @@
-name: Cloudflare quota probe and one-time storybook resume # Scene-level cast sanitization QA trigger
+name: Cloudflare quota probe and one-time storybook resume # Pre-scene outline review and fixed costume QA trigger
 
 on:
   push:
