@@ -840,11 +840,14 @@ Do not add JSON, quotation marks, headings or explanatory text.
     cached_outline_missing = missing_registered_outline_names(
         plan.get("outline", []), plan.get("character_registry", [])
     )
-    if cached_outline_missing:
+    cached_outline_unknown = unregistered_named_entities_in_outline(
+        plan.get("outline", []), plan.get("character_registry", [])
+    )
+    if cached_outline_missing or cached_outline_unknown:
         logging.warning(
-            "Cached story outline omitted exact registered character names %s; "
+            "Cached story outline has cast mismatches (missing=%s; unregistered=%s); "
             "discarding the incompatible outline and scene batches.",
-            cached_outline_missing
+            cached_outline_missing, cached_outline_unknown
         )
         if plan_path and plan_path.exists():
             plan_path.unlink()
