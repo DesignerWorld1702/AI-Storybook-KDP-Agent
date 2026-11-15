@@ -308,6 +308,19 @@ STYLE_LOCK = (
     "childish cartoon, photorealism, or a mixture of unrelated art styles."
 )
 
+def missing_registered_outline_names(outline, registry):
+    """Return cast names that the outline failed to use exactly as registered."""
+    outline_text = " ".join(
+        str(item.get("beat", "")) for item in outline if isinstance(item, dict)
+    ).casefold()
+    return [
+        str(item.get("name", "")).strip()
+        for item in registry if isinstance(item, dict)
+        and str(item.get("name", "")).strip()
+        and str(item.get("name", "")).strip().casefold() not in outline_text
+    ]
+
+
 def review_story_quality(story, outline, workdir=None):
     """Reject books with broken cast continuity, weak plot logic, or hard-to-read prose."""
     # Deterministic structural gates run before the language-model editorial review.
@@ -554,7 +567,22 @@ Metadata:
                     plan = repaired_plan
 
         outline_prompt = common + """
-Create a fresh, original 50-scene cinematic story outline for the metadata and characters already established.
+BOOK METADATA AND LOCKED CAST:
+""" + json.dumps({
+            "title": plan.get("title", ""),
+            "description": plan.get("description", ""),
+            "character_registry": plan.get("character_registry", []),
+            "principal_villain": plan.get("principal_villain", "")
+        }, ensure_ascii=False) + """
+
+Create a fresh, original 50-scene cinematic story outline for THIS exact book.
+CANONICAL NAME RULE: Every registered character must be referred to only by their exact full registry name.
+Never use aliases, surnames alone, nicknames, former names, or substitute characters.
+Do not invent or name any other person. Use unnamed extras only when needed.
+Every registered protagonist and supporting character must have a meaningful part.
+The exact registered principal villain must drive the central conflict and be confronted in the ending.
+The outline, metadata and cast registry must describe the same story; do not replace a registered person
+with a generic detective, partner, businessman, victim, leader or other unnamed substitute.
 Return EXACTLY 50 numbered lines as plain text, not JSON, not markdown bullets.
 Format every line exactly: 01 | one or two sentences describing one distinct event.
 Use 8-18 words per scene. No quotation marks, no JSON, no headings, no blank lines.
@@ -574,16 +602,25 @@ clue discovery, argument, journey, or other event with slightly changed wording.
                     rows.append({"number": int(match.group(1)), "beat": match.group(2).strip()})
             if len(rows) == 50 and [item["number"] for item in rows] == list(range(1, 51)):
                 beats = [re.sub(r"[^a-z0-9 ]", "", item["beat"].lower()).strip() for item in rows]
-                if all(len(beat.split()) >= 8 for beat in beats) and len(set(beats)) >= 45:
+                missing_cast = missing_registered_outline_names(rows, plan.get("character_registry", []))
+                if all(len(beat.split()) >= 8 for beat in beats) and len(set(beats)) >= 45 and not missing_cast:
                     parsed_outline = rows
                     break
-                last_outline_error = "Outline contains short or repeated scene beats."
+                if missing_cast:
+                    last_outline_error = (
+                        "Outline omitted exact registered character name(s): "
+                        + ", ".join(missing_cast)
+                    )
+                else:
+                    last_outline_error = "Outline contains short or repeated scene beats."
             else:
                 last_outline_error = f"Expected 50 numbered lines; parsed {len(rows)}."
             if outline_attempt < 3:
                 outline_prompt += f"""
 
 RETRY {outline_attempt}: {last_outline_error}
+You MUST use every registered character's exact full name from the cast registry above.
+Do not substitute aliases or invent any named person.
 Return all 50 lines again, using the exact two-digit number | event format.
 Replace repeated scenes with new actions, discoveries, decisions and consequences.
 Do not add JSON, quotation marks, headings or explanatory text.
