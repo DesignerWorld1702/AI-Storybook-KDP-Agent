@@ -656,7 +656,8 @@ def review_story_outline(plan, outline, workdir=None):
         "principal villain must drive the central conflict and face a clear consequence. The story must be "
         "standalone and close its main mystery. Use very simple English. Score plot, continuity, pacing, "
         "character consistency, and ending from 0 to 10. Return ONLY JSON with passed, score (0–100), "
-        "critical_issues (specific scene numbers and reasons), minor_issues, and dimension_scores. "
+        "critical_issues (specific scene numbers and reasons), minor_issues, and dimension_scores "
+        "with exactly these numeric keys from 0 to 10: plot, continuity, pacing, character_consistency, ending. "
         "Set passed=false if any major contradiction, unresolved central mystery, weak ending, or any "
         "dimension below 7 remains. Do not inflate scores.\\n\\n"
         + json.dumps({
