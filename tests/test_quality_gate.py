@@ -79,9 +79,7 @@ class PublicationQualityGateTests(unittest.TestCase):
             self.report(95, critical=["Scene 18 changes the lead character's name"])
         )):
             with self.assertRaisesRegex(ValueError, "quality gate"):
-                engine.review_story_quality(
-                    {"title": "Test", "character_registry": [], "scenes": []}, []
-                )
+                engine.review_story_quality(self.valid_story(), [])
 
 
 if __name__ == "__main__":
