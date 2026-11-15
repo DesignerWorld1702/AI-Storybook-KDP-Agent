@@ -87,6 +87,9 @@ def normalize_scene_cast_names(names, registry=None, return_aliases=False):
             normalized.append(exact)
             if clean_name.casefold() != exact.casefold():
                 aliases[clean_name] = exact
+            for token in re.findall(r"[A-Za-z]+", candidate_text):
+                if token.casefold() not in {part.casefold() for part in exact.split()}:
+                    aliases[token] = exact
             continue
         words = re.findall(r"[A-Za-z]+", candidate_text.casefold())
         candidates = set()
@@ -103,6 +106,9 @@ def normalize_scene_cast_names(names, registry=None, return_aliases=False):
         normalized.append(canonical)
         if canonical != clean_name:
             aliases[clean_name] = canonical
+            for token in re.findall(r"[A-Za-z]+", candidate_text):
+                if token.casefold() not in {part.casefold() for part in canonical.split()}:
+                    aliases[token] = canonical
     result = list(dict.fromkeys(normalized))
     return (result, aliases) if return_aliases else result
 
