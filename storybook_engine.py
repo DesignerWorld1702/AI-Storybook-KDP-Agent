@@ -629,7 +629,7 @@ Do not add JSON, quotation marks, headings or explanatory text.
 Book title: {plan.get("title", title_hint or "Untitled")}
 Character registry (canonical identities; never rename or redesign within this book):
 {json.dumps(plan.get("character_registry", []), ensure_ascii=False)}
-CAST RULE: For characters_present, use ONLY exact names from the character registry above. Never use permanent-library base names unless that exact name is registered for this book. Never invent incidental named people (for example, Mr. Jenkins); unnamed crowds/guards may remain part of the environment but are not named characters.
+CAST RULE: For characters_present, use ONLY exact names from the character registry above. Never use permanent-library base names unless that exact name is registered for this book. Never invent incidental named people (for example, Mr. Jenkins). Unnamed role labels such as victim, suspect, witness, guard, officer, crowd or bystander are environmental extras, not cast names; do not put them in characters_present.
 Principal villain: {plan.get("principal_villain", "")}
 Character bible: {plan.get("character_bible", "")}
 Art direction: {plan.get("art_direction", "")}
@@ -741,9 +741,22 @@ No extra keys, no markdown fences, no text outside JSON.
             # Permanent visual slots have no story names. The current book's
             # registry is the sole authority for character names.
             character_aliases = {}
+            # These are unnamed role/group descriptors, not character names.
+            # Important recurring people must still receive a canonical registry name.
             generic_labels = {
-                "minions", "guards", "soldiers", "villagers", "townspeople",
-                "crowd", "crowds", "bandits", "enemies"
+                "minion", "minions", "guard", "guards", "soldier", "soldiers",
+                "villager", "villagers", "townsperson", "townspeople", "crowd", "crowds",
+                "bandit", "bandits", "enemy", "enemies", "victim", "victims",
+                "suspect", "suspects", "witness", "witnesses", "officer", "officers",
+                "police", "detective", "detectives", "doctor", "doctors", "nurse", "nurses",
+                "reporter", "reporters", "driver", "drivers", "clerk", "clerks",
+                "stranger", "strangers", "attacker", "attackers", "criminal", "criminals",
+                "judge", "judges", "lawyer", "lawyers", "prosecutor", "prosecutors",
+                "agent", "agents", "investigator", "investigators", "bodyguard", "bodyguards",
+                "worker", "workers", "passenger", "passengers", "customer", "customers",
+                "man", "men", "woman", "women", "child", "children", "boy", "boys",
+                "girl", "girls", "people", "person", "bystander", "bystanders",
+                "crew", "staff", "audience", "family", "family members", "officials"
             }
             normalized_names = []
             for name in visible_names:
