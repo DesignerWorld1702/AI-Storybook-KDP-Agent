@@ -142,6 +142,12 @@ def build_one_book(book_date, config):
                 raise RuntimeError(f"Scene {index} image did not pass file validation.")
             time.sleep(0.2)
 
+        image_report = engine.validate_scene_image_set(
+            scenes_dir, expected_count=50, expected_size=(scene_width, scene_height)
+        )
+        (outdir / "image_quality_report.json").write_text(
+            json.dumps(image_report, indent=2), encoding="utf-8"
+        )
         pages_dir = outdir / "pages"
         engine.build_page_images(story, scenes_dir, pages_dir, story["trim_size"])
         engine.build_pdf(story, pages_dir, outdir / "storybook_interior.pdf",
