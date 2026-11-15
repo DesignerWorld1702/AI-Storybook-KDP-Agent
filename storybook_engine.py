@@ -597,11 +597,53 @@ def ensure_concrete_story_costumes(plan):
         "dress", "boots", "shoes", "uniform", "blazer", "sweater", "vest", "robe",
         "tunic", "belt", "gloves", "scarf", "overalls", "suit", "waistcoat"
     )
+    def fallback_costume(item):
+        role = str(item.get("role", "")).casefold()
+        importance = str(item.get("importance", "")).casefold()
+        species = str(item.get("species", "human")).casefold()
+        if species not in ("human", "human being", "person"):
+            return (
+                "A dark woven travel cloak secured by a bronze clasp, layered leather straps, "
+                "reinforced bracers, sturdy leg wraps, and a weathered utility satchel."
+            )
+        if any(term in role for term in ("detective", "police", "officer", "inspector", "sheriff")):
+            return (
+                "A dark navy field jacket with a silver badge over a pale blue shirt, "
+                "charcoal trousers, black leather boots, and a plain black duty belt."
+            )
+        if any(term in role for term in ("journalist", "reporter", "writer")):
+            return (
+                "An olive blazer over a cream blouse, dark straight-leg trousers, "
+                "brown leather ankle boots, and a tan leather shoulder bag."
+            )
+        if any(term in role for term in ("doctor", "nurse", "medic")):
+            return (
+                "A clean white lab coat over a pale blue shirt, charcoal trousers, "
+                "dark leather shoes, and a clipped identification badge."
+            )
+        if importance == "villain" or "antagonist" in role:
+            return (
+                "A charcoal wool overcoat over a black shirt, dark tailored trousers, "
+                "polished black leather boots, and a plain steel ring."
+            )
+        if importance == "protagonist":
+            return (
+                "A dark grey canvas jacket over a plain cotton shirt, navy trousers, "
+                "black leather shoes, and a simple leather wristwatch."
+            )
+        return (
+            "A deep charcoal jacket over a light grey cotton shirt, dark navy trousers, "
+            "black leather shoes, and a simple brown leather wristwatch."
+        )
+
     for item in registry:
         name = str(item.get("name", "")).strip()
         costume = mapping[name]
         if not 10 <= len(costume.split()) <= 24 or sum(term in costume.casefold() for term in garment_terms) < 2:
-            raise ValueError(f"Costume for {name} is not concrete enough to lock across the book.")
+            logging.warning("Costume response for %s was too vague; applying a concrete role-based outfit.", name)
+            costume = fallback_costume(item)
+        if not 10 <= len(costume.split()) <= 24 or sum(term in costume.casefold() for term in garment_terms) < 2:
+            raise ValueError(f"Could not create a concrete fixed costume for {name}.")
         item["story_costume"] = costume
         item["visual_bible"] = (
             f"{name}: immutable physical identity "
