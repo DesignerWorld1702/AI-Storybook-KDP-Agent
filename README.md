@@ -9,7 +9,9 @@ A local Windows-first starter app that creates an original 50-scene illustrated 
 - Repeats each visible character's exact visual bible in scene prompts and validates scene character names against the registry.
 - Generates one illustration per scene using a Cloudflare Workers AI image model (configurable).
 - Builds a square/portrait/6x9 PDF with illustration above a readable text panel.
-- Exports scene text, metadata JSON, a KDP listing draft, and a publishing checklist.
+- Runs a strict whole-book editorial review with a 7/10 minimum, plus deterministic checks for 50 sequential scenes, 40–55 words per page, exact registered character names, and one registered principal villain.
+- Validates all 50 scene image files for readability, requested resolution, blank outputs, and near-duplicate images before page composition.
+- Exports scene text, metadata JSON, a KDP listing draft, quality reports, and a publishing checklist.
 - Includes a KDP browser handoff helper: opens KDP in your browser for you to sign in yourself. This project does **not** store your Amazon password or automate final publication. KDP's interface and requirements can change; review every field and preview in KDP before submitting.
 
 ## Important publishing notes
@@ -97,6 +99,8 @@ Each run creates a timestamped folder inside `output/` with:
 - `kdp_listing_draft.json` and `kdp_listing_draft.txt` — metadata draft.
 - `scenes/scene_001.png` ... `scene_050.png`.
 - `scene_contact_sheet.jpg` — quick visual review.
+- `quality_review.json` — editorial review scores and issues.
+- `image_quality_report.json` — technical image integrity report.
 - `publishing_checklist.txt`.
 
 ## Limitations
