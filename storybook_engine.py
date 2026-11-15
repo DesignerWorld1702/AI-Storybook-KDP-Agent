@@ -477,7 +477,7 @@ def sanitize_outline_unregistered_names(outline, registry, extra_names=None):
     ]
     for name in unknown:
         title_match = re.match(
-            r"^(police chief|chief|detective|officer|dr\\.?|mr\\.?|mrs\\.?|ms\\.?|captain|agent|judge|doctor|professor|inspector|sergeant|lieutenant|mayor|sheriff)\\s+(.+)$",
+            r"^(police chief|chief|detective|officer|dr\.?|mr\.?|mrs\.?|ms\.?|captain|agent|judge|doctor|professor|inspector|sergeant|lieutenant|mayor|sheriff)\s+(.+)$",
             name, flags=re.IGNORECASE
         )
         title_label = None
@@ -516,7 +516,7 @@ def sanitize_outline_unregistered_names(outline, registry, extra_names=None):
                     r"(?<![A-Za-z])" + escaped + r"(?![A-Za-z])",
                     canonical or title_label, beat, flags=re.IGNORECASE
                 )
-                item["beat"] = re.sub(r"\\s{2,}", " ", beat).strip()
+                item["beat"] = re.sub(r"\s{2,}", " ", beat).strip()
                 continue
             if canonical:
                 beat = re.sub(
