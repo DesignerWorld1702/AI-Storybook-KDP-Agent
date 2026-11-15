@@ -466,9 +466,11 @@ def unregistered_named_entities_in_outline(outline, registry):
     return ordered
 
 
-def sanitize_outline_unregistered_names(outline, registry):
+def sanitize_outline_unregistered_names(outline, registry, extra_names=None):
     """Map clear aliases to canonical cast names and anonymize incidental named extras."""
-    unknown = unregistered_named_entities_in_outline(outline, registry)
+    unknown = list(dict.fromkeys(
+        unregistered_named_entities_in_outline(outline, registry) + list(extra_names or [])
+    ))
     registered = [
         str(item.get("name", "")).strip()
         for item in registry if isinstance(item, dict) and str(item.get("name", "")).strip()
@@ -525,6 +527,33 @@ def sanitize_outline_unregistered_names(outline, registry):
                 )
             item["beat"] = re.sub(r"\s{2,}", " ", beat).strip()
     return outline
+
+
+def sanitize_scene_unregistered_cast(scene, registry):
+    """Anonymize incidental unregistered people and keep only canonical cast entries."""
+    fields = ("heading", "text", "visual_prompt", "composition", "action_pose", "gaze", "expression")
+    known = {
+        str(item.get("name", "")).strip()
+        for item in registry if isinstance(item, dict) and str(item.get("name", "")).strip()
+    }
+    raw_names = scene.get("characters_present", [])
+    normalized, aliases = normalize_scene_cast_names(raw_names, registry, return_aliases=True)
+    if aliases:
+        apply_scene_cast_aliases(scene, aliases)
+    unknown_cast = [name for name in normalized if name not in known]
+    if unknown_cast:
+        for field in fields:
+            value = scene.get(field)
+            if isinstance(value, str) and value:
+                temporary = [{"beat": value}]
+                sanitize_outline_unregistered_names(temporary, registry, extra_names=unknown_cast)
+                scene[field] = temporary[0]["beat"]
+        logging.warning(
+            "Anonymized incidental unregistered scene cast entries: %s",
+            unknown_cast
+        )
+    scene["characters_present"] = [name for name in normalized if name in known]
+    return scene
 
 
 def review_story_quality(story, outline, workdir=None):
