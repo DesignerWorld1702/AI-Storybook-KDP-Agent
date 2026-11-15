@@ -618,6 +618,24 @@ def review_story_outline(plan, outline, workdir=None):
     report = extract_json(cf_text(prompt, max_tokens=1200), "strict pre-scene outline editorial review")
     if not isinstance(report, dict) or not isinstance(report.get("passed"), bool):
         raise ValueError("Outline reviewer returned an invalid report.")
+    dimensions = report.get("dimension_scores")
+    required = ("plot", "continuity", "pacing", "character_consistency", "ending")
+    if not isinstance(dimensions, dict) or any(
+        key not in dimensions or not isinstance(dimensions[key], (int, float))
+        or isinstance(dimensions[key], bool) or not 0 <= dimensions[key] <= 10
+        for key in required
+    ):
+        raise ValueError("Outline reviewer returned missing or invalid dimension scores.")
+    score = round(sum(float(dimensions[key]) for key in required) / len(required) * 10, 1)
+    critical = report.get("critical_issues", [])
+    if not isinstance(critical, list):
+        critical = [str(critical)]
+    for key in required:
+        if float(dimensions[key]) < 7:
+            critical.append(f"Core outline dimension '{key}' scored below 7/10.")
+    report["score"] = score
+    report["critical_issues"] = critical
+    report["passed"] = bool(report["passed"] and score >= 70 and not critical)
     if workdir:
         (Path(workdir) / "outline_quality_review.json").write_text(
             json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8"
