@@ -159,6 +159,27 @@ class PublicationQualityGateTests(unittest.TestCase):
         self.assertTrue(engine.page_text_word_count_valid("word " * 55))
         self.assertFalse(engine.page_text_word_count_valid("word " * 56))
 
+
+    def test_outline_sanitizer_removes_extra_people_and_keeps_registered_cast(self):
+        registry = [{"name": "James Winter"}, {"name": "Emily Taylor"}]
+        outline = [
+            {"number": 1, "beat": "The victim, Sarah Lee, reports the strange break-in."},
+            {"number": 2, "beat": "A reclusive hacker known only as Zero Cool shares a clue."},
+            {"number": 3, "beat": "Police Chief Michael Reed briefs James Winter."},
+            {"number": 4, "beat": "The old informant, named Sal, reveals the truth to Emily Taylor."},
+        ]
+        cleaned = engine.sanitize_outline_unregistered_names(outline, registry)
+        self.assertEqual(
+            [item["beat"] for item in cleaned],
+            [
+                "The victim reports the strange break-in.",
+                "A reclusive hacker shares a clue.",
+                "the police chief briefs James Winter.",
+                "The old informant reveals the truth to Emily Taylor.",
+            ],
+        )
+        self.assertEqual(engine.unregistered_named_entities_in_outline(cleaned, registry), [])
+
     def test_outline_rejects_unregistered_named_people(self):
         outline = [
             {"number": 1, "beat": "The victim, Sarah Lee, reports the strange break-in."},
