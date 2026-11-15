@@ -65,9 +65,12 @@ def normalize_scene_cast_names(names):
         raise ValueError("characters_present must be a list.")
     normalized = []
     for name in names:
-        if isinstance(name, str) and name.strip().casefold() in GENERIC_CHARACTER_LABELS:
+        if not isinstance(name, str):
+            raise ValueError("Every characters_present entry must be a string.")
+        clean_name = name.strip()
+        if not clean_name or clean_name.casefold() in GENERIC_CHARACTER_LABELS:
             continue
-        normalized.append(name.strip() if isinstance(name, str) else name)
+        normalized.append(clean_name)
     return list(dict.fromkeys(normalized))
 
 
