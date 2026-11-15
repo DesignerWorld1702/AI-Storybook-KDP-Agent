@@ -466,6 +466,67 @@ def unregistered_named_entities_in_outline(outline, registry):
     return ordered
 
 
+def sanitize_outline_unregistered_names(outline, registry):
+    """Map clear aliases to canonical cast names and anonymize incidental named extras."""
+    unknown = unregistered_named_entities_in_outline(outline, registry)
+    registered = [
+        str(item.get("name", "")).strip()
+        for item in registry if isinstance(item, dict) and str(item.get("name", "")).strip()
+    ]
+    for name in unknown:
+        words = re.findall(r"[A-Za-z]+", name.casefold())
+        candidates = set()
+        for registered_name in registered:
+            known_words = re.findall(r"[A-Za-z]+", registered_name.casefold())
+            if any(
+                word == known
+                or (len(word) >= 4 and len(known) >= 4
+                    and difflib.SequenceMatcher(None, word, known).ratio() >= 0.80)
+                for word in words for known in known_words
+            ):
+                candidates.add(registered_name)
+        canonical = next(iter(candidates)) if len(candidates) == 1 else None
+        escaped = re.escape(name)
+        for item in outline:
+            if not isinstance(item, dict):
+                continue
+            beat = str(item.get("beat", ""))
+            if canonical:
+                beat = re.sub(
+                    r"(?<![A-Za-z])" + escaped + r"(?![A-Za-z])",
+                    canonical, beat, flags=re.IGNORECASE
+                )
+            else:
+                # Remove invented aliases after role phrases, leaving the role unnamed.
+                beat = re.sub(
+                    r"\s+(?:named|called|known as|known only as)\s+[\"']?" + escaped + r"[\"']?",
+                    "", beat, flags=re.IGNORECASE
+                )
+                role_patterns = (
+                    (r"\bpolice\s+chief\s+" + escaped, "the police chief"),
+                    (r"\bchief\s+" + escaped, "the chief"),
+                    (r"\bdetective\s+" + escaped, "the detective"),
+                    (r"\bofficer\s+" + escaped, "the officer"),
+                    (r"\bdr\.?\s+" + escaped, "the doctor"),
+                    (r"\bmr\.?\s+" + escaped, "the man"),
+                    (r"\bmrs\.?\s+" + escaped, "the woman"),
+                    (r"\bprofessor\s+" + escaped, "the professor"),
+                )
+                for pattern, replacement in role_patterns:
+                    beat = re.sub(pattern, replacement, beat, flags=re.IGNORECASE)
+                beat = re.sub(
+                    r"(\b(?:victim|partner|informant|businessman|socialite|hacker|bartender|owner|"
+                    r"thief|leader|mentor|figure|guard|suspect|witness)\b)\s*,\s*" + escaped,
+                    r"\1", beat, flags=re.IGNORECASE
+                )
+                beat = re.sub(
+                    r"(?<![A-Za-z])" + escaped + r"(?![A-Za-z])",
+                    "the person", beat, flags=re.IGNORECASE
+                )
+            item["beat"] = re.sub(r"\s{2,}", " ", beat).strip()
+    return outline
+
+
 def review_story_quality(story, outline, workdir=None):
     """Reject books with broken cast continuity, weak plot logic, or hard-to-read prose."""
     # Deterministic structural gates run before the language-model editorial review.
@@ -766,7 +827,14 @@ clue discovery, argument, journey, or other event with slightly changed wording.
                 registry = plan.get("character_registry", [])
                 missing_cast = missing_registered_outline_names(rows, registry)
                 unknown_cast = unregistered_named_entities_in_outline(rows, registry)
-                if all(len(beat.split()) >= 8 for beat in beats) and len(set(beats)) >= 45 and not missing_cast and not unknown_cast:
+                if unknown_cast:
+                    rows = sanitize_outline_unregistered_names(rows, registry)
+                    unknown_cast = unregistered_named_entities_in_outline(rows, registry)
+                    logging.warning("Sanitized unregistered outline names; remaining: %s", unknown_cast)
+                if all(len(str(item.get("beat", "")).split()) >= 8 for item in rows) and len({
+                    re.sub(r"[^a-z0-9 ]", "", str(item.get("beat", "")).lower()).strip()
+                    for item in rows
+                }) >= 45 and not missing_cast and not unknown_cast:
                     parsed_outline = rows
                     break
                 if missing_cast or unknown_cast:
