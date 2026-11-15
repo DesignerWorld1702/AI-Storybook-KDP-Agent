@@ -153,6 +153,68 @@ class PublicationQualityGateTests(unittest.TestCase):
 
 
 
+
+    def test_concrete_costume_lock_replaces_abstract_costume(self):
+        plan = {
+            "genre": "Real-world crime suspense thriller",
+            "title": "Test Book",
+            "character_registry": [{
+                "name": "Ethan Thompson",
+                "role": "human antagonist",
+                "importance": "villain",
+                "immutable_identity": {"hair": "short dark hair", "eyes": "grey"},
+                "story_costume": "Disguise and deception",
+            }],
+        }
+        response = {
+            "costumes": [{
+                "name": "Ethan Thompson",
+                "story_costume": "A dark charcoal overcoat over a black shirt, black trousers, polished leather boots, and a silver ring",
+            }]
+        }
+        with patch.object(engine, "cf_text", return_value=json.dumps(response)):
+            engine.ensure_concrete_story_costumes(plan)
+        item = plan["character_registry"][0]
+        self.assertIn("overcoat", item["story_costume"])
+        self.assertIn("fixed story costume", item["visual_bible"])
+        self.assertIn("Ethan Thompson", plan["character_bible"])
+
+    def test_outline_review_computes_score_and_enforces_core_dimensions(self):
+        report = {
+            "passed": True,
+            "critical_issues": [],
+            "minor_issues": [],
+            "dimension_scores": {
+                "plot": 8, "continuity": 8, "pacing": 8,
+                "character_consistency": 8, "ending": 8,
+            },
+        }
+        with patch.object(engine, "cf_text", return_value=json.dumps(report)):
+            result = engine.review_story_outline(
+                {"title": "Test", "character_registry": [], "principal_villain": "Villain"},
+                [{"number": 1, "beat": "A short outline beat"}],
+            )
+        self.assertEqual(result["score"], 80.0)
+        self.assertTrue(result["passed"])
+
+    def test_outline_review_rejects_core_dimension_below_seven(self):
+        report = {
+            "passed": True,
+            "critical_issues": [],
+            "minor_issues": [],
+            "dimension_scores": {
+                "plot": 8, "continuity": 8, "pacing": 8,
+                "character_consistency": 8, "ending": 6,
+            },
+        }
+        with patch.object(engine, "cf_text", return_value=json.dumps(report)):
+            result = engine.review_story_outline(
+                {"title": "Test", "character_registry": [], "principal_villain": "Villain"},
+                [{"number": 1, "beat": "A short outline beat"}],
+            )
+        self.assertFalse(result["passed"])
+        self.assertTrue(result["critical_issues"])
+
     def test_page_word_count_gate_is_exactly_40_to_55_words(self):
         self.assertFalse(engine.page_text_word_count_valid("word " * 39))
         self.assertTrue(engine.page_text_word_count_valid("word " * 40))
