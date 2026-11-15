@@ -432,6 +432,20 @@ def review_story_quality(story, outline, workdir=None):
     report["score"] = score
     report["rating_out_of_10"] = round(score / 10, 1)
     report["minimum_publish_rating"] = 7.0
+    # Core reader-facing dimensions cannot be hidden by high scores elsewhere.
+    core_dimensions = (
+        "plot", "continuity", "character_consistency", "easy_english",
+        "art_direction", "ending"
+    )
+    critical_issues = report.get("critical_issues", [])
+    if not isinstance(critical_issues, list):
+        critical_issues = [str(critical_issues)]
+    for key in core_dimensions:
+        if float(dimension_scores[key]) < 7.0:
+            critical_issues.append(
+                f"Core quality dimension '{key}' scored {dimension_scores[key]}/10; minimum is 7/10."
+            )
+    report["critical_issues"] = critical_issues
     report["reviewed_at"] = datetime.utcnow().isoformat() + "Z"
     if workdir:
         (Path(workdir) / "quality_review.json").write_text(
