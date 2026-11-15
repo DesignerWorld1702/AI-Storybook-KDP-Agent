@@ -128,6 +128,36 @@ def apply_scene_cast_aliases(scene, aliases):
 
 
 
+def normalize_real_world_registry(plan):
+    """Enforce human species while correcting the model's occasional 'creature' role label."""
+    forbidden_visual_ids = {"visual_009", "visual_010", "visual_011", "visual_012"}
+    registry = plan.get("character_registry", [])
+    if not isinstance(registry, list) or not registry:
+        raise ValueError("Real-world story is missing its human character registry.")
+    for item in registry:
+        if not isinstance(item, dict):
+            raise ValueError("Character registry entries must be objects.")
+        visual_id = item.get("visual_id")
+        if visual_id in forbidden_visual_ids:
+            raise ValueError(f"Real-world story selected a non-human visual model: {item.get('name')}")
+        species = str(item.get("species") or "human").strip().casefold()
+        if species not in ("human", "human being", "person"):
+            raise ValueError(f"Real-world story contains a non-human character: {item.get('name')} ({species}).")
+        item["species"] = "human"
+        importance = str(item.get("importance", "supporting")).strip().casefold()
+        if importance in ("creature", "fantasy_creature"):
+            item["importance"] = "supporting"
+            importance = "supporting"
+        role = str(item.get("role", "")).strip()
+        if "creature" in role.casefold() or "fantasy" in role.casefold():
+            fallback = {
+                "protagonist": "human lead character",
+                "villain": "human antagonist",
+                "supporting": "human supporting character",
+            }.get(importance, "human supporting character")
+            item["role"] = fallback
+
+
 def validate_scene_image_set(scenes_dir, expected_count=50, expected_size=None):
     """Check scene image integrity, resolution, blank outputs, and near-duplicates."""
     scenes_dir = Path(scenes_dir)
@@ -731,19 +761,19 @@ Do not add JSON, quotation marks, headings or explanatory text.
         villain_entries = [item for item in registry if item.get("importance") == "villain"]
         if not villain_name or villain_name not in names or len(villain_entries) != 1 or villain_entries[0]["name"] != villain_name:
             raise ValueError("Every book must define exactly one registered principal villain.")
-        if not fantasy_mode:
-            forbidden_visual_ids = {"visual_009", "visual_010", "visual_011", "visual_012"}
-            forbidden_terms = ("dragon", "goblin", "unicorn", "fantasy creature", "mythical", "magical", "supernatural", "talking panda")
-            for item in registry:
-                identity_text = " ".join(str(item.get(key, "")) for key in ("role", "importance", "immutable_identity", "visual_bible")).lower()
-                if item.get("visual_id") in forbidden_visual_ids or item.get("importance") in ("creature", "fantasy_creature") or any(term in identity_text for term in forbidden_terms):
-                    raise ValueError(f"Real-world story contains a fantasy character: {item.get('name')}")
         plan["character_bible"] = "\\n\\n".join(
             f"{item['name']} — {item.get('role', '')}: {item.get('visual_bible', '')}"
             for item in registry
         )
         if plan_path:
             plan_path.write_text(json.dumps(plan, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    if not fantasy_mode:
+        normalize_real_world_registry(plan)
+        plan["character_bible"] = "\\n\\n".join(
+            f"{item.get('name', '')} — {item.get('role', '')}: {item.get('visual_bible', '')}"
+            for item in plan.get("character_registry", []) if isinstance(item, dict)
+        )
 
     cached_outline_missing = missing_registered_outline_names(
         plan.get("outline", []), plan.get("character_registry", [])
