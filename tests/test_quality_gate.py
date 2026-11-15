@@ -58,6 +58,23 @@ class PublicationQualityGateTests(unittest.TestCase):
         self.assertEqual(entry["importance"], "supporting")
         self.assertEqual(entry["role"], "human supporting character")
 
+
+    def test_real_world_registry_keeps_mislabelled_principal_villain_registered(self):
+        plan = {
+            "principal_villain": "Olivia Lee",
+            "character_registry": [{
+                "name": "Olivia Lee",
+                "species": "human",
+                "role": "creature",
+                "importance": "creature",
+                "visual_id": "visual_003",
+            }]
+        }
+        engine.normalize_real_world_registry(plan)
+        entry = plan["character_registry"][0]
+        self.assertEqual(entry["importance"], "villain")
+        self.assertEqual(entry["role"], "human antagonist")
+
     def test_real_world_registry_rejects_nonhuman_species(self):
         plan = {"character_registry": [{
             "name": "Drako",
