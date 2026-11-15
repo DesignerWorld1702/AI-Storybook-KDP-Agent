@@ -42,6 +42,35 @@ def scene_image_dimensions(trim, max_side=None):
     return width, height
 
 
+GENERIC_CHARACTER_LABELS = {
+    "minion", "minions", "guard", "guards", "soldier", "soldiers",
+    "villager", "villagers", "townsperson", "townspeople", "crowd", "crowds",
+    "bandit", "bandits", "enemy", "enemies", "victim", "victims",
+    "suspect", "suspects", "witness", "witnesses", "officer", "officers",
+    "police", "detective", "detectives", "doctor", "doctors", "nurse", "nurses",
+    "reporter", "reporters", "driver", "drivers", "clerk", "clerks",
+    "stranger", "strangers", "attacker", "attackers", "criminal", "criminals",
+    "judge", "judges", "lawyer", "lawyers", "prosecutor", "prosecutors",
+    "agent", "agents", "investigator", "investigators", "bodyguard", "bodyguards",
+    "worker", "workers", "passenger", "passengers", "customer", "customers",
+    "man", "men", "woman", "women", "child", "children", "boy", "boys",
+    "girl", "girls", "people", "person", "bystander", "bystanders",
+    "crew", "staff", "audience", "family", "family members", "officials"
+}
+
+
+def normalize_scene_cast_names(names):
+    """Keep exact named cast entries; omit generic unnamed extras from the cast list."""
+    if not isinstance(names, list):
+        raise ValueError("characters_present must be a list.")
+    normalized = []
+    for name in names:
+        if isinstance(name, str) and name.strip().casefold() in GENERIC_CHARACTER_LABELS:
+            continue
+        normalized.append(name.strip() if isinstance(name, str) else name)
+    return list(dict.fromkeys(normalized))
+
+
 def validate_scene_image_set(scenes_dir, expected_count=50, expected_size=None):
     """Check scene image integrity, resolution, blank outputs, and near-duplicates."""
     scenes_dir = Path(scenes_dir)
@@ -740,36 +769,7 @@ No extra keys, no markdown fences, no text outside JSON.
                 raise ValueError(f"Scene {number} characters_present must be a list.")
             # Permanent visual slots have no story names. The current book's
             # registry is the sole authority for character names.
-            character_aliases = {}
-            # These are unnamed role/group descriptors, not character names.
-            # Important recurring people must still receive a canonical registry name.
-            generic_labels = {
-                "minion", "minions", "guard", "guards", "soldier", "soldiers",
-                "villager", "villagers", "townsperson", "townspeople", "crowd", "crowds",
-                "bandit", "bandits", "enemy", "enemies", "victim", "victims",
-                "suspect", "suspects", "witness", "witnesses", "officer", "officers",
-                "police", "detective", "detectives", "doctor", "doctors", "nurse", "nurses",
-                "reporter", "reporters", "driver", "drivers", "clerk", "clerks",
-                "stranger", "strangers", "attacker", "attackers", "criminal", "criminals",
-                "judge", "judges", "lawyer", "lawyers", "prosecutor", "prosecutors",
-                "agent", "agents", "investigator", "investigators", "bodyguard", "bodyguards",
-                "worker", "workers", "passenger", "passengers", "customer", "customers",
-                "man", "men", "woman", "women", "child", "children", "boy", "boys",
-                "girl", "girls", "people", "person", "bystander", "bystanders",
-                "crew", "staff", "audience", "family", "family members", "officials"
-            }
-            normalized_names = []
-            for name in visible_names:
-                if not isinstance(name, str):
-                    normalized_names.append(name)
-                    continue
-                clean_name = name.strip()
-                if clean_name.casefold() in generic_labels:
-                    continue
-                normalized_names.append(
-                    character_aliases.get(clean_name, character_aliases.get(clean_name.casefold(), clean_name))
-                )
-            visible_names = list(dict.fromkeys(normalized_names))
+            visible_names = normalize_scene_cast_names(visible_names)
             # Repair small model spelling drift only when there is exactly one
             # unambiguous registered-name match. Never silently accept a new cast member.
             corrected_names = []
