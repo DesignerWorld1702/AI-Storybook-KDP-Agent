@@ -82,6 +82,18 @@ def build_one_book(book_date, config):
         story_path = outdir / "story.json"
         if story_path.exists():
             story = json.loads(story_path.read_text(encoding="utf-8"))
+            # A resumed/cached story must pass the same full-book quality gate
+            # as a newly generated story; never let cached JSON bypass review.
+            plan_path = outdir / "story_plan.json"
+            outline = []
+            if plan_path.is_file():
+                try:
+                    cached_plan = json.loads(plan_path.read_text(encoding="utf-8"))
+                    outline = cached_plan.get("outline", []) if isinstance(cached_plan, dict) else []
+                except (OSError, ValueError):
+                    logging.warning("Could not read cached outline; reviewing the complete saved story without it.")
+            story["quality_review"] = engine.review_story_quality(story, outline, outdir)
+            story_path.write_text(json.dumps(story, indent=2, ensure_ascii=False), encoding="utf-8")
         else:
             genres = config["genre_cycle"]
             genre = genres[(book_date - date.fromisoformat(config["first_run_date"])).days % len(genres)]
