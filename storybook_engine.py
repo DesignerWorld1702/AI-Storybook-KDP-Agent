@@ -830,6 +830,7 @@ clue discovery, argument, journey, or other event with slightly changed wording.
                 if unknown_cast:
                     rows = sanitize_outline_unregistered_names(rows, registry)
                     unknown_cast = unregistered_named_entities_in_outline(rows, registry)
+                    missing_cast = missing_registered_outline_names(rows, registry)
                     logging.warning("Sanitized unregistered outline names; remaining: %s", unknown_cast)
                 if all(len(str(item.get("beat", "")).split()) >= 8 for item in rows) and len({
                     re.sub(r"[^a-z0-9 ]", "", str(item.get("beat", "")).lower()).strip()
