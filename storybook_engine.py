@@ -177,7 +177,8 @@ def normalize_real_world_registry(plan):
             item["role"] = fallback
         if item.get("visual_id"):
             item["visual_bible"] = (
-                f"{item.get('name', '')} — {item.get('immutable_identity', '')}; "
+                f"{item.get('name', '')}: human physical identity "
+                f"{json.dumps(item.get('immutable_identity', {}), ensure_ascii=False)}; "
                 f"story costume: {item.get('story_costume', '')}"
             )
 
