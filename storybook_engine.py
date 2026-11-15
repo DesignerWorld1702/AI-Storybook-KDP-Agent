@@ -499,7 +499,7 @@ def sanitize_outline_unregistered_names(outline, registry):
             else:
                 # Remove invented aliases after role phrases, leaving the role unnamed.
                 beat = re.sub(
-                    r",?\s+(?:named|called|known as|known only as)\s+[\"']?" + escaped + r"[\"']?",
+                    r",?\s+(?:named|called|known as|known only as)\s+[\"']?" + escaped + r"[\"']?,?",
                     "", beat, flags=re.IGNORECASE
                 )
                 role_patterns = (
@@ -516,7 +516,7 @@ def sanitize_outline_unregistered_names(outline, registry):
                     beat = re.sub(pattern, replacement, beat, flags=re.IGNORECASE)
                 beat = re.sub(
                     r"(\b(?:victim|partner|informant|businessman|socialite|hacker|bartender|owner|"
-                    r"thief|leader|mentor|figure|guard|suspect|witness)\b)\s*,\s*" + escaped,
+                    r"thief|leader|mentor|figure|guard|suspect|witness)\b)\s*,\s*" + escaped + r",?",
                     r"\1", beat, flags=re.IGNORECASE
                 )
                 beat = re.sub(
