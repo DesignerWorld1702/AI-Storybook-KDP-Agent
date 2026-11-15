@@ -1018,6 +1018,15 @@ No extra keys, no markdown fences, no text outside JSON.
             visible_names = list(dict.fromkeys(corrected_names))
             scene["characters_present"] = visible_names
             unknown_names = [name for name in visible_names if name not in known_names]
+            scene_name_audit_text = " ".join(
+                str(scene.get(field, "")) for field in ("heading", "text", "visual_prompt")
+            )
+            unknown_names.extend(
+                unregistered_named_entities_in_outline(
+                    [{"beat": scene_name_audit_text}], plan.get("character_registry", [])
+                )
+            )
+            unknown_names = list(dict.fromkeys(unknown_names))
             if unknown_names:
                 # Attempt a focused canonical-name repair before rejecting the book.
                 # The model must map aliases/surnames to exact registry names and
@@ -1057,10 +1066,14 @@ No extra keys, no markdown fences, no text outside JSON.
                 if not 40 <= len(str(scene.get("text", "")).split()) <= 55:
                     raise ValueError(f"Scene {number} name repair returned page text outside 40–55 words.")
                 remaining_unknown = [name for name in repaired_names if name not in known_names]
-                if remaining_unknown:
+                remaining_named_people = unregistered_named_entities_in_outline(
+                    [{"beat": " ".join(str(scene.get(field, "")) for field in ("heading", "text", "visual_prompt"))}],
+                    plan.get("character_registry", [])
+                )
+                if remaining_unknown or remaining_named_people:
                     raise ValueError(
                         f"Scene {number} still uses unregistered character name(s) "
-                        f"{remaining_unknown} after targeted repair."
+                        f"{list(dict.fromkeys(remaining_unknown + remaining_named_people))} after targeted repair."
                     )
                 scene["characters_present"] = list(dict.fromkeys(repaired_names))
                 logging.info(
