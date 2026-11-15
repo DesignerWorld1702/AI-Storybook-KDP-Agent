@@ -56,6 +56,11 @@ class PublicationQualityGateTests(unittest.TestCase):
                 engine.review_story_quality(self.valid_story(), [])
 
 
+
+    def test_unnamed_role_labels_are_not_treated_as_named_characters(self):
+        names = engine.normalize_scene_cast_names(["Hero", "victim", "Guard", "The Shade", "Hero"])
+        self.assertEqual(names, ["Hero", "The Shade"])
+
     def test_rejects_incomplete_book_before_model_review(self):
         story = self.valid_story()
         story["scenes"].pop()
