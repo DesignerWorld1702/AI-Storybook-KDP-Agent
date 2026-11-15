@@ -525,7 +525,7 @@ def sanitize_outline_unregistered_names(outline, registry, extra_names=None):
                     "professor", "inspector", "sergeant", "lieutenant", "mayor", "sheriff"
                 ):
                     beat = re.sub(
-                        r"\\b" + title_prefix + r"\\s+" + escaped,
+                        r"\b" + title_prefix + r"\s+" + escaped,
                         canonical, beat, flags=re.IGNORECASE
                     )
                 beat = re.sub(
