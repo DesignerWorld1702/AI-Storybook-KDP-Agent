@@ -609,7 +609,7 @@ def ensure_concrete_story_costumes(plan):
         if any(term in role for term in ("detective", "police", "officer", "inspector", "sheriff")):
             return (
                 "A dark navy field jacket with a silver badge over a pale blue shirt, "
-                "charcoal trousers, black leather boots, and a plain black duty belt."
+                "charcoal trousers, black leather boots, and a black duty belt."
             )
         if any(term in role for term in ("journalist", "reporter", "writer")):
             return (
