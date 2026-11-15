@@ -152,6 +152,13 @@ class PublicationQualityGateTests(unittest.TestCase):
             engine.normalize_scene_cast_names(["Hero", {"name": "Unknown"}])
 
 
+
+    def test_page_word_count_gate_is_exactly_40_to_55_words(self):
+        self.assertFalse(engine.page_text_word_count_valid("word " * 39))
+        self.assertTrue(engine.page_text_word_count_valid("word " * 40))
+        self.assertTrue(engine.page_text_word_count_valid("word " * 55))
+        self.assertFalse(engine.page_text_word_count_valid("word " * 56))
+
     def test_outline_rejects_unregistered_named_people(self):
         outline = [
             {"number": 1, "beat": "The victim, Sarah Lee, reports the strange break-in."},
