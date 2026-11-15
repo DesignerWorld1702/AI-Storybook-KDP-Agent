@@ -1553,7 +1553,7 @@ def build_scene_prompt(story, scene, style):
     cast_names = scene.get("characters_present", [])
     cast = ", ".join(cast_names) or "no named character; environment-focused scene"
     registry = {item.get("name"): item for item in story.get("character_registry", [])}
-    scene_bibles = "\\n".join(
+    scene_bibles = "\n".join(
         f"{name}: immutable physical identity: {registry[name].get('immutable_identity', registry[name].get('visual_bible', ''))}; this book's costume: {registry[name].get('story_costume', 'follow visual_bible')}; full visual bible: {registry[name].get('visual_bible', '')}"
         for name in cast_names if name in registry
     )
@@ -1577,6 +1577,9 @@ def build_scene_prompt(story, scene, style):
         "Use the planned shot_type, camera_angle, composition, action_pose and gaze as the scene-specific director's plan when they are clear. The camera coverage guide reminds the model to vary angles; it must not force an unmotivated shot. Think of 360-degree coverage as placing the camera at different positions around the actors across scenes: front, side, rear, over-the-shoulder, high and low. "
         "Blocking and eyeline rules: characters face and look toward the person they address, the object they handle, or the action they follow. Do not make characters face the viewer by default. No front-facing lineup, cast portrait, or everyone looking into the lens. A speaker must not look into the lens when speaking to another person. Use natural backs, profiles, over-the-shoulder views and off-camera eyelines when the shot calls for them. "
         f"Style lock: {STYLE_LOCK}. Create one composed feature-film frame with strong foreground, midground and background depth, motivated camera placement, natural anatomy and believable physical action. Preserve each character's exact identity and costume across all scenes; only camera angle, pose and expression may change. "
+        f"Scene-specific visual direction: {scene.get('visual_prompt', '')}. "
+        f"FINAL NON-NEGOTIABLE IDENTITY LOCK — this overrides any conflicting appearance detail above: {scene_bibles}. "
+        "Every visible recurring character must retain the exact same face, hair, eye colour, permanent marks, body type, and fixed outfit defined in the registry. Never add a disguise, alternate hairstyle, changed eye colour, different build, or new identifying mark. "
         "Do not add characters who are not in this scene. No words, lettering, logos or watermark."
     )
 
