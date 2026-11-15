@@ -513,6 +513,13 @@ def sanitize_outline_unregistered_names(outline, registry, extra_names=None):
                     (r"\bmr\.?\s+" + escaped, "the man"),
                     (r"\bmrs\.?\s+" + escaped, "the woman"),
                     (r"\bprofessor\s+" + escaped, "the professor"),
+                    (r"\bcaptain\s+" + escaped, "the captain"),
+                    (r"\bagent\s+" + escaped, "the agent"),
+                    (r"\bjudge\s+" + escaped, "the judge"),
+                    (r"\bsergeant\s+" + escaped, "the sergeant"),
+                    (r"\blieutenant\s+" + escaped, "the lieutenant"),
+                    (r"\bmayor\s+" + escaped, "the mayor"),
+                    (r"\bsheriff\s+" + escaped, "the sheriff"),
                 )
                 for pattern, replacement in role_patterns:
                     beat = re.sub(pattern, replacement, beat, flags=re.IGNORECASE)
