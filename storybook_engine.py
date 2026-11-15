@@ -146,8 +146,8 @@ def normalize_real_world_registry(plan):
         item["species"] = "human"
         importance = str(item.get("importance", "supporting")).strip().casefold()
         if importance in ("creature", "fantasy_creature"):
-            item["importance"] = "supporting"
-            importance = "supporting"
+            importance = "villain" if str(item.get("name", "")).strip() == str(plan.get("principal_villain", "")).strip() else "supporting"
+            item["importance"] = importance
         role = str(item.get("role", "")).strip()
         if "creature" in role.casefold() or "fantasy" in role.casefold():
             fallback = {
@@ -616,11 +616,13 @@ Return one compact valid JSON object, no markdown, with these keys:
  "principal_villain":"Exact name of the single principal villain",
  "art_direction":"Consistent palette, lighting and world atmosphere"
 }
-Keep the registry concise and plot-driven: create only the characters the story genuinely needs. A typical story may have one to three protagonists, supporting roles as required, and a consequential antagonist; do not pad the cast to hit a fixed count. In real-world mode every character must be human and grounded. In fantasy mode add creatures only if they serve the plot. Never include an outline or extra keys.
+Keep the registry concise and plot-driven: create only the characters the story genuinely needs. A typical story may have one to three protagonists, supporting roles as required, and a consequential antagonist; do not pad the cast to hit a fixed count. In real-world mode every character must be human and grounded; importance must be protagonist, supporting, or villain only (never creature). In fantasy mode add creatures only if they serve the plot. Never include an outline or extra keys.
 """
         plan = extract_json(cf_text(metadata_prompt, max_tokens=2600), "compact book metadata and character registry")
         if not isinstance(plan, dict):
             raise ValueError("Book metadata response was not a JSON object.")
+        if not fantasy_mode:
+            normalize_real_world_registry(plan)
 
         # Repair a common metadata inconsistency before spending tokens on the outline.
         registry_for_villain = plan.get("character_registry", [])
@@ -774,6 +776,8 @@ Do not add JSON, quotation marks, headings or explanatory text.
             f"{item.get('name', '')} — {item.get('role', '')}: {item.get('visual_bible', '')}"
             for item in plan.get("character_registry", []) if isinstance(item, dict)
         )
+        if plan_path:
+            plan_path.write_text(json.dumps(plan, indent=2, ensure_ascii=False), encoding="utf-8")
 
     cached_outline_missing = missing_registered_outline_names(
         plan.get("outline", []), plan.get("character_registry", [])
