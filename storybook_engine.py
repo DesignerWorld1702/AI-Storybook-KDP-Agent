@@ -519,6 +519,15 @@ def sanitize_outline_unregistered_names(outline, registry, extra_names=None):
                 item["beat"] = re.sub(r"\s{2,}", " ", beat).strip()
                 continue
             if canonical:
+                for title_prefix in (
+                    "police chief", "chief", "detective", "officer", "dr\\.?", "mr\\.?",
+                    "mrs\\.?", "ms\\.?", "captain", "agent", "judge", "doctor",
+                    "professor", "inspector", "sergeant", "lieutenant", "mayor", "sheriff"
+                ):
+                    beat = re.sub(
+                        r"\\b" + title_prefix + r"\\s+" + escaped,
+                        canonical, beat, flags=re.IGNORECASE
+                    )
                 beat = re.sub(
                     r"(?<![A-Za-z])" + escaped + r"(?![A-Za-z])",
                     canonical, beat, flags=re.IGNORECASE
