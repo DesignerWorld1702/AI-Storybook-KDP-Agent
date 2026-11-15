@@ -148,11 +148,17 @@ jobs:
                   pdf_header_ok = handle.read(5) == b"%PDF-"
               reader = PdfReader(str(pdf))
               pdf_page_count = len(reader.pages)
-              if pdf_page_count == 50:
+              expected_sizes = {
+                  "8.5 × 8.5 in — square picture book": (612.0, 612.0),
+                  "8.5 × 11 in — portrait picture book": (612.0, 792.0),
+                  "6 × 9 in — standard paperback": (432.0, 648.0),
+              }
+              expected_size = expected_sizes.get(story.get("trim_size"))
+              if pdf_page_count == 50 and expected_size:
                   first_page = reader.pages[0]
                   pdf_size_ok = (
-                      abs(float(first_page.mediabox.width) - 612.0) < 1.0
-                      and abs(float(first_page.mediabox.height) - 612.0) < 1.0
+                      abs(float(first_page.mediabox.width) - expected_size[0]) < 1.0
+                      and abs(float(first_page.mediabox.height) - expected_size[1]) < 1.0
                   )
           else:
               pdf_header_ok = False
@@ -161,7 +167,7 @@ jobs:
           print("Story scenes:", len(story.get("scenes", [])), "/ 50")
           print("PDF header:", "valid" if pdf_header_ok else "invalid")
           print("PDF page count:", pdf_page_count, "/ 50")
-          print("PDF trim size:", "8.5 x 8.5 in" if pdf_size_ok else "invalid")
+          print("PDF trim size:", story.get("trim_size", "missing"), "valid" if pdf_size_ok else "invalid")
           print("Listing metadata:", "valid" if metadata_ok else "incomplete")
           if (status.get("status") != "completed" or len(scenes) != 50 or len(pages) != 50
               or len(story.get("scenes", [])) != 50 or missing or not pdf_header_ok
