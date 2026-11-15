@@ -267,6 +267,17 @@ class PublicationQualityGateTests(unittest.TestCase):
             [],
         )
 
+
+    def test_outline_sanitizer_handles_title_plus_first_name_only(self):
+        outline = [{"number": 1, "beat": "Detective James reviews the hidden clue."}]
+        engine.sanitize_outline_unregistered_names(outline, [{"name": "Kate Matthews"}])
+        self.assertEqual(outline[0]["beat"], "the detective reviews the hidden clue.")
+
+    def test_outline_sanitizer_expands_partial_name_to_registered_full_name(self):
+        outline = [{"number": 1, "beat": "Detective James reviews the hidden clue."}]
+        engine.sanitize_outline_unregistered_names(outline, [{"name": "James Reed"}])
+        self.assertEqual(outline[0]["beat"], "James Reed reviews the hidden clue.")
+
     def test_outline_sanitizer_removes_extra_people_and_keeps_registered_cast(self):
         registry = [{"name": "James Winter"}, {"name": "Emily Taylor"}]
         outline = [
