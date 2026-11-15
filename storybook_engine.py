@@ -471,6 +471,13 @@ def sanitize_outline_unregistered_names(outline, registry, extra_names=None):
     unknown = list(dict.fromkeys(
         unregistered_named_entities_in_outline(outline, registry) + list(extra_names or [])
     ))
+    unknown = [
+        name for name in unknown
+        if not any(
+            name.casefold() != other.casefold() and name.casefold() in other.casefold()
+            for other in unknown
+        )
+    ]
     registered = [
         str(item.get("name", "")).strip()
         for item in registry if isinstance(item, dict) and str(item.get("name", "")).strip()
