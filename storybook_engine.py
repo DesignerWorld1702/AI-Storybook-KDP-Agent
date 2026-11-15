@@ -563,6 +563,104 @@ def sanitize_scene_unregistered_cast(scene, registry):
     return scene
 
 
+def validate_outline_rows(rows, registry):
+    """Validate outline shape, page-beat length, cast coverage, and extra named people."""
+    if not isinstance(rows, list) or len(rows) != 50:
+        raise ValueError(f"Outline must contain exactly 50 beats; received {len(rows) if isinstance(rows, list) else 'invalid data'}.")
+    if any(not isinstance(item, dict) for item in rows):
+        raise ValueError("Every outline beat must be an object.")
+    if [item.get("number") for item in rows] != list(range(1, 51)):
+        raise ValueError("Outline beats must be numbered sequentially from 1 through 50.")
+    for item in rows:
+        count = len(str(item.get("beat", "")).split())
+        if not 8 <= count <= 18:
+            raise ValueError(f"Outline beat {item['number']} has {count} words; required range is 8–18.")
+    normalized = [
+        re.sub(r"[^a-z0-9 ]", "", str(item.get("beat", "")).lower()).strip()
+        for item in rows
+    ]
+    if len(set(normalized)) < 45:
+        raise ValueError("Outline contains repeated or near-identical scene beats.")
+    rows = sanitize_outline_unregistered_names(rows, registry)
+    missing = missing_registered_outline_names(rows, registry)
+    unknown = unregistered_named_entities_in_outline(rows, registry)
+    if missing or unknown:
+        raise ValueError(
+            "Outline cast mismatch after sanitization. Missing: "
+            + ", ".join(missing) + "; unregistered: " + ", ".join(unknown)
+        )
+    return rows
+
+
+def review_story_outline(plan, outline, workdir=None):
+    """Editorially check plot logic and the ending before spending resources on scenes."""
+    prompt = (
+        "You are a strict senior story editor. Audit this 50-beat story outline BEFORE scene writing. "
+        "Judge cause-and-effect, a clear central mystery, useful clues, believable motives, escalating "
+        "stakes, distinct events, character roles, principal-villain payoff, and a satisfying complete "
+        "ending. Reject contradictions, unexplained kidnappings/rescues, repeated events, villains who "
+        "escape accountability, victims who remain unresolved, sacrifices that happen without a coherent "
+        "story payoff, and final-scene cliffhangers that leave the main case unresolved. The exact registered "
+        "principal villain must drive the central conflict and face a clear consequence. The story must be "
+        "standalone and close its main mystery. Use very simple English. Score plot, continuity, pacing, "
+        "character consistency, and ending from 0 to 10. Return ONLY JSON with passed, score (0–100), "
+        "critical_issues (specific scene numbers and reasons), minor_issues, and dimension_scores. "
+        "Set passed=false if any major contradiction, unresolved central mystery, weak ending, or any "
+        "dimension below 7 remains. Do not inflate scores.\\n\\n"
+        + json.dumps({
+            "title": plan.get("title", ""),
+            "description": plan.get("description", ""),
+            "principal_villain": plan.get("principal_villain", ""),
+            "character_registry": plan.get("character_registry", []),
+            "outline": outline
+        }, ensure_ascii=False)
+    )
+    report = extract_json(cf_text(prompt, max_tokens=1200), "strict pre-scene outline editorial review")
+    if not isinstance(report, dict) or not isinstance(report.get("passed"), bool):
+        raise ValueError("Outline reviewer returned an invalid report.")
+    if workdir:
+        (Path(workdir) / "outline_quality_review.json").write_text(
+            json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+    return report
+
+
+def repair_outline_from_review(plan, outline, report):
+    """Rewrite the whole outline around reviewer feedback without changing the registered cast."""
+    prompt = (
+        "Rewrite this entire story outline to fix every critical issue in the editorial review. "
+        "This is an automatic quality repair, not a new unrelated story. Preserve the title, genre, "
+        "setting, all registered character names, their roles, and the exact principal villain. "
+        "Use ONLY exact full names from the character registry; no aliases and no new named people. "
+        "Keep the story grounded in its existing world. Make cause and effect clear in every beat. "
+        "Every clue must lead somewhere and receive a payoff. Every kidnapping or rescue must have "
+        "one clear sequence. The villain must be exposed, confronted, and face a believable consequence. "
+        "If people are abducted, rescue them before the ending; do not let an unexplained sacrifice happen. "
+        "The final ten beats must resolve the main case, rescue or account for victims, expose the truth, "
+        "hold the villain accountable, and give the protagonists emotional closure. No unresolved "
+        "anonymous threat or sequel cliffhanger. Keep English very easy: common words and short sentences. "
+        "Return ONLY valid JSON with exactly two keys: description (100–140 words, matching the repaired "
+        "story) and outline (an array of exactly 50 objects, each with number 1–50 and beat 8–18 words). "
+        "No extra keys.\\n\\nEDITORIAL REVIEW:\\n"
+        + json.dumps(report, ensure_ascii=False)
+        + "\\n\\nLOCKED BOOK AND CAST:\\n"
+        + json.dumps({
+            "title": plan.get("title", ""),
+            "principal_villain": plan.get("principal_villain", ""),
+            "character_registry": plan.get("character_registry", []),
+            "current_outline": outline
+        }, ensure_ascii=False)
+    )
+    repaired = extract_json(cf_text(prompt, max_tokens=5200), "full outline repair after editorial rejection")
+    if not isinstance(repaired, dict) or not isinstance(repaired.get("outline"), list):
+        raise ValueError("Outline repair did not return the required JSON structure.")
+    repaired_outline = validate_outline_rows(repaired["outline"], plan.get("character_registry", []))
+    description = str(repaired.get("description", "")).strip()
+    if len(description.split()) < 80:
+        raise ValueError("Repaired book description is too short to explain the complete story.")
+    return repaired_outline, description
+
+
 def review_story_quality(story, outline, workdir=None):
     """Reject books with broken cast continuity, weak plot logic, or hard-to-read prose."""
     # Deterministic structural gates run before the language-model editorial review.
