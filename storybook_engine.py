@@ -191,11 +191,14 @@ def _parse_json_once(text):
         raise ValueError("The text model did not return a JSON object.")
     candidate = text[start:end + 1]
     try:
-        return json.loads(candidate)
+        # Small instruction models sometimes emit literal line breaks or tabs
+        # inside JSON string values. Accept those control characters rather than
+        # discarding an otherwise complete story/outline response.
+        return json.loads(candidate, strict=False)
     except json.JSONDecodeError:
         # Repair the common trailing-comma mistake before asking the model again.
         candidate = re.sub(r",\s*([}\]])", r"\1", candidate)
-        return json.loads(candidate)
+        return json.loads(candidate, strict=False)
 
 def extract_json(text, repair_context="story data"):
     try:
