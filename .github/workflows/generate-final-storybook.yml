@@ -121,19 +121,35 @@ jobs:
           status = json.loads(status_file.read_text(encoding="utf-8")) if status_file.exists() else {}
           print("Book folder:", book)
           print("Status:", status.get("status", "unknown"))
-          for name in ["story.json", "storybook_interior.pdf", "kindle_story.html", "kindle_story.epub",
-                       "kdp_listing_draft.json", "kdp_listing_draft.txt",
-                       "publishing_checklist.txt", "scene_contact_sheet.jpg"]:
+          required = ["story.json", "storybook_interior.pdf", "kindle_story.html", "kindle_story.epub",
+                      "kdp_listing_draft.json", "kdp_listing_draft.txt",
+                      "publishing_checklist.txt", "scene_contact_sheet.jpg",
+                      "quality_review.json", "image_quality_report.json"]
+          missing = []
+          for name in required:
               path = book / name
-              print(f"{name}: {'present' if path.exists() else 'missing'}")
+              exists = path.is_file() and path.stat().st_size > 1024
+              print(f"{name}: {'present' if exists else 'missing/too small'}")
+              if not exists:
+                  missing.append(name)
           scenes = list((book / "scenes").glob("scene_*.png")) if (book / "scenes").exists() else []
           pages = list((book / "pages").glob("page_*.png")) if (book / "pages").exists() else []
           print("Scene illustrations:", len(scenes), "/ 50")
           print("Integrated text-overlay pages:", len(pages), "/ 50")
           print("Story quality report:", "present" if (book / "quality_review.json").is_file() else "missing")
+          story_file = book / "story.json"
+          story = json.loads(story_file.read_text(encoding="utf-8")) if story_file.is_file() else {}
+          pdf = book / "storybook_interior.pdf"
+          if pdf.is_file():
+              with pdf.open("rb") as handle:
+                  pdf_header_ok = handle.read(5) == b"%PDF-"
+          else:
+              pdf_header_ok = False
+          print("Story scenes:", len(story.get("scenes", [])), "/ 50")
+          print("PDF header:", "valid" if pdf_header_ok else "invalid")
           if (status.get("status") != "completed" or len(scenes) != 50 or len(pages) != 50
-              or not (book / "quality_review.json").is_file()
-              or not (book / "kindle_story.epub").is_file()):
+              or len(story.get("scenes", [])) != 50 or missing or not pdf_header_ok):
+              print("Final package validation failed.")
               sys.exit(1)
           PY
 
