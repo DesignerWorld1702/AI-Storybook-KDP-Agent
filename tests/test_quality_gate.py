@@ -160,6 +160,27 @@ class PublicationQualityGateTests(unittest.TestCase):
         self.assertFalse(engine.page_text_word_count_valid("word " * 56))
 
 
+
+    def test_scene_sanitizer_anonymizes_unregistered_people_and_keeps_registered_cast(self):
+        scene = {
+            "heading": "Captain Rachel Jenkins arrives",
+            "text": "Captain Rachel Jenkins arrives and questions James Winter.",
+            "visual_prompt": "Captain Rachel Jenkins stands beside James Winter.",
+            "characters_present": ["Captain Rachel Jenkins", "James Winter"],
+        }
+        engine.sanitize_scene_unregistered_cast(
+            scene, [{"name": "James Winter"}]
+        )
+        self.assertEqual(scene["characters_present"], ["James Winter"])
+        self.assertEqual(scene["text"], "the captain arrives and questions James Winter.")
+        self.assertEqual(scene["heading"], "the captain arrives")
+        self.assertEqual(
+            engine.unregistered_named_entities_in_outline(
+                [{"beat": scene["text"]}], [{"name": "James Winter"}]
+            ),
+            [],
+        )
+
     def test_outline_sanitizer_removes_extra_people_and_keeps_registered_cast(self):
         registry = [{"name": "James Winter"}, {"name": "Emily Taylor"}]
         outline = [
