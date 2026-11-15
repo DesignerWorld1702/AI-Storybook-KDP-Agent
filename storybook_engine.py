@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 import requests
 from dotenv import load_dotenv
-from PIL import Image, ImageOps, ImageDraw, ImageFont
+from PIL import Image, ImageOps, ImageDraw, ImageFont, ImageStat
 from reportlab.lib.pagesizes import inch
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
@@ -40,6 +40,46 @@ def scene_image_dimensions(trim, max_side=None):
     if width * height > 4_000_000:
         raise ValueError("Selected full-page dimensions exceed FLUX.2 Klein's 4MP output limit.")
     return width, height
+
+
+def validate_scene_image_set(scenes_dir, expected_count=50, expected_size=None):
+    """Check scene image integrity, resolution, blank outputs, and near-duplicates."""
+    scenes_dir = Path(scenes_dir)
+    paths = sorted(scenes_dir.glob("scene_*.png"))
+    if len(paths) != expected_count:
+        raise ValueError(f"Image quality gate: expected {expected_count} scene images; found {len(paths)}.")
+    hashes = {}
+    for path in paths:
+        try:
+            with Image.open(path) as opened:
+                opened.verify()
+            with Image.open(path) as opened:
+                image = opened.convert("RGB")
+                if expected_size and image.size != tuple(expected_size):
+                    raise ValueError(f"Image quality gate: {path.name} is {image.size}; expected {tuple(expected_size)}.")
+                if min(image.size) < 1024:
+                    raise ValueError(f"Image quality gate: {path.name} is below 1024 pixels on one side.")
+                if path.stat().st_size < 1024:
+                    raise ValueError(f"Image quality gate: {path.name} is suspiciously small.")
+                gray = image.convert("L")
+                deviation = ImageStat.Stat(gray).stddev[0]
+                if deviation < 5.0:
+                    raise ValueError(f"Image quality gate: {path.name} appears blank or nearly uniform.")
+                tiny = gray.resize((8, 8), Image.Resampling.LANCZOS)
+                pixels = list(tiny.getdata())
+                average = sum(pixels) / len(pixels)
+                image_hash = sum((1 << index) for index, value in enumerate(pixels) if value >= average)
+                for prior_name, prior_hash in hashes.items():
+                    if (image_hash ^ prior_hash).bit_count() <= 1:
+                        raise ValueError(
+                            f"Image quality gate: {path.name} is nearly identical to {prior_name}."
+                        )
+                hashes[path.name] = image_hash
+        except (OSError, ValueError) as exc:
+            if str(exc).startswith("Image quality gate:"):
+                raise
+            raise ValueError(f"Image quality gate: {path.name} is not a valid readable PNG: {exc}") from exc
+    return {"checked_images": len(paths), "dimensions": list(expected_size) if expected_size else None}
 
 
 def load_character_library():
