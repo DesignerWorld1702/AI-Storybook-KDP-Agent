@@ -67,6 +67,14 @@ class PublicationQualityGateTests(unittest.TestCase):
 
 
 
+
+    def test_title_and_clear_name_variants_map_to_canonical_registry_name(self):
+        names = engine.normalize_scene_cast_names(
+            ["Chief Jameson", "victim", "Winter"],
+            [{"name": "James Winter"}],
+        )
+        self.assertEqual(names, ["James Winter"])
+
     def test_rejects_non_string_scene_cast_entries(self):
         with self.assertRaisesRegex(ValueError, "must be a string"):
             engine.normalize_scene_cast_names(["Hero", {"name": "Unknown"}])
