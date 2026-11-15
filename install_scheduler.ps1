@@ -14,7 +14,7 @@ if (-not $EnableScheduling) {
 $Project = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Python = (Get-Command python.exe -ErrorAction Stop).Source
 $Runner = Join-Path $Project "daily_runner.py"
-$Action = New-ScheduledTaskAction -Execute $Python -Argument ('"' + $Runner + '" --run-now') -WorkingDirectory $Project
+$Action = New-ScheduledTaskAction -Execute $Python -Argument ('"' + $Runner + '"') -WorkingDirectory $Project
 $Daily = New-ScheduledTaskTrigger -Daily -At 8:00PM
 $Logon = New-ScheduledTaskTrigger -AtLogOn
 $Settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Hours 18) -MultipleInstances IgnoreNew -WakeToRun
