@@ -10,11 +10,11 @@ class JsonParsingTests(unittest.TestCase):
 
     def test_accepts_literal_newline_inside_string(self):
         parsed = _parse_json_once('{"title":"A story\\nwith a line break"}')
-        self.assertEqual(parsed["title"], "A story\\nwith a line break")
+        self.assertEqual(parsed["title"], "A story\nwith a line break")
 
     def test_accepts_literal_tab_inside_string(self):
         parsed = _parse_json_once('{"title":"A story\\twith a tab"}')
-        self.assertEqual(parsed["title"], "A story\\twith a tab")
+        self.assertEqual(parsed["title"], "A story\twith a tab")
 
     def test_rejects_broken_json(self):
         with self.assertRaises(Exception):
