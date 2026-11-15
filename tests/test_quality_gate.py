@@ -20,7 +20,7 @@ class PublicationQualityGateTests(unittest.TestCase):
                 {
                     "number": number,
                     "heading": f"Scene {number}",
-                    "text": "The hero takes a clear step forward and discovers one useful clue. The new clue changes the plan and gives the team a reason to keep moving toward the truth.",
+                    "text": "The hero takes a clear step forward and discovers one useful clue. The new clue changes the plan and gives the team a reason to keep moving toward the truth. Before sunset, they compare the marks, check the locked gate, and agree to follow the safest path together.",
                     "visual_prompt": f"A distinct cinematic illustration for scene {number}.",
                     "characters_present": ["Hero"] if number < 50 else ["Hero", "The Shade"],
                 }
