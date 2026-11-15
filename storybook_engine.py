@@ -445,7 +445,7 @@ def unregistered_named_entities_in_outline(outline, registry):
     )
     patterns = (
         r"\b(?:named|called|known as|known only as)\s+[\"']?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)",
-        r"\b(?:chief|detective|officer|dr\.?|mr\.?|mrs\.?|ms\.?|captain|agent|judge|doctor|professor|inspector|sergeant|lieutenant|mayor|sheriff)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)",
+        r"\b(?i:chief|detective|officer|dr\.?|mr\.?|mrs\.?|ms\.?|captain|agent|judge|doctor|professor|inspector|sergeant|lieutenant|mayor|sheriff)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)",
         r"\b(?:victim|partner|informant|businessman|socialite|hacker|bartender|owner|thief|leader|mentor|figure|guard|suspect|witness|police chief)\s*,\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)",
     )
     found = []
