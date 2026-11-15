@@ -59,10 +59,20 @@ GENERIC_CHARACTER_LABELS = {
 }
 
 
-def normalize_scene_cast_names(names):
-    """Keep exact named cast entries; omit generic unnamed extras from the cast list."""
+def normalize_scene_cast_names(names, registry=None):
+    """Keep canonical names, map clear title/surname variants, and omit unnamed extras."""
     if not isinstance(names, list):
         raise ValueError("characters_present must be a list.")
+    registered = [
+        str(item.get("name", "")).strip()
+        for item in (registry or []) if isinstance(item, dict) and str(item.get("name", "")).strip()
+    ]
+    role_prefix = re.compile(
+        r"^(?:chief|detective|officer|dr\.?|mr\.?|mrs\.?|ms\.?|miss|captain|agent|"
+        r"judge|doctor|professor|inspector|sergeant|lieutenant|commander|mayor|"
+        r"constable|sheriff|director)\s+",
+        re.IGNORECASE
+    )
     normalized = []
     for name in names:
         if not isinstance(name, str):
@@ -70,8 +80,25 @@ def normalize_scene_cast_names(names):
         clean_name = name.strip()
         if not clean_name or clean_name.casefold() in GENERIC_CHARACTER_LABELS:
             continue
-        normalized.append(clean_name)
+        candidate_text = role_prefix.sub("", clean_name).strip()
+        exact = next((item for item in registered if item.casefold() == candidate_text.casefold()), None)
+        if exact:
+            normalized.append(exact)
+            continue
+        words = re.findall(r"[A-Za-z]+", candidate_text.casefold())
+        candidates = set()
+        for registered_name in registered:
+            registered_words = re.findall(r"[A-Za-z]+", registered_name.casefold())
+            if any(
+                word == known
+                or (len(word) >= 4 and len(known) >= 4
+                    and difflib.SequenceMatcher(None, word, known).ratio() >= 0.80)
+                for word in words for known in registered_words
+            ):
+                candidates.add(registered_name)
+        normalized.append(next(iter(candidates)) if len(candidates) == 1 else clean_name)
     return list(dict.fromkeys(normalized))
+
 
 
 def validate_scene_image_set(scenes_dir, expected_count=50, expected_size=None):
@@ -841,7 +868,7 @@ No extra keys, no markdown fences, no text outside JSON.
                 raise ValueError(f"Scene {number} characters_present must be a list.")
             # Permanent visual slots have no story names. The current book's
             # registry is the sole authority for character names.
-            visible_names = normalize_scene_cast_names(visible_names)
+            visible_names = normalize_scene_cast_names(visible_names, plan.get('character_registry', []))
             # Repair small model spelling drift only when there is exactly one
             # unambiguous registered-name match. Never silently accept a new cast member.
             corrected_names = []
