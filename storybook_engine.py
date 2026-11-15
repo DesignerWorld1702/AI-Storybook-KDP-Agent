@@ -85,6 +85,8 @@ def normalize_scene_cast_names(names, registry=None, return_aliases=False):
         exact = next((item for item in registered if item.casefold() == candidate_text.casefold()), None)
         if exact:
             normalized.append(exact)
+            if clean_name.casefold() != exact.casefold():
+                aliases[clean_name] = exact
             continue
         words = re.findall(r"[A-Za-z]+", candidate_text.casefold())
         candidates = set()
