@@ -548,13 +548,13 @@ def sanitize_scene_unregistered_cast(scene, registry):
     if aliases:
         apply_scene_cast_aliases(scene, aliases)
     unknown_cast = [name for name in normalized if name not in known]
+    for field in fields:
+        value = scene.get(field)
+        if isinstance(value, str) and value:
+            temporary = [{"beat": value}]
+            sanitize_outline_unregistered_names(temporary, registry, extra_names=unknown_cast)
+            scene[field] = temporary[0]["beat"]
     if unknown_cast:
-        for field in fields:
-            value = scene.get(field)
-            if isinstance(value, str) and value:
-                temporary = [{"beat": value}]
-                sanitize_outline_unregistered_names(temporary, registry, extra_names=unknown_cast)
-                scene[field] = temporary[0]["beat"]
         logging.warning(
             "Anonymized incidental unregistered scene cast entries: %s",
             unknown_cast
