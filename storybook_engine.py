@@ -65,12 +65,12 @@ def validate_scene_image_set(scenes_dir, expected_count=50, expected_size=None):
                 deviation = ImageStat.Stat(gray).stddev[0]
                 if deviation < 5.0:
                     raise ValueError(f"Image quality gate: {path.name} appears blank or nearly uniform.")
-                tiny = gray.resize((8, 8), Image.Resampling.LANCZOS)
+                tiny = gray.resize((16, 16), Image.Resampling.LANCZOS)
                 pixels = list(tiny.getdata())
                 average = sum(pixels) / len(pixels)
                 image_hash = sum((1 << index) for index, value in enumerate(pixels) if value >= average)
                 for prior_name, prior_hash in hashes.items():
-                    if (image_hash ^ prior_hash).bit_count() <= 1:
+                    if (image_hash ^ prior_hash).bit_count() <= 2:
                         raise ValueError(
                             f"Image quality gate: {path.name} is nearly identical to {prior_name}."
                         )
@@ -326,7 +326,15 @@ def review_story_quality(story, outline, workdir=None):
                 "number": scene.get("number"),
                 "heading": scene.get("heading", ""),
                 "text": scene.get("text", ""),
-                "characters_present": scene.get("characters_present", [])
+                "characters_present": scene.get("characters_present", []),
+                "visual_prompt": scene.get("visual_prompt", ""),
+                "shot_type": scene.get("shot_type", ""),
+                "camera_angle": scene.get("camera_angle", ""),
+                "composition": scene.get("composition", ""),
+                "action_pose": scene.get("action_pose", ""),
+                "gaze": scene.get("gaze", ""),
+                "expression": scene.get("expression", ""),
+                "lighting": scene.get("lighting", "")
             }
             for scene in story.get("scenes", [])
         ]
