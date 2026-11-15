@@ -861,7 +861,7 @@ Replace repeated scenes with new actions, discoveries, decisions and consequence
 Do not add JSON, quotation marks, headings or explanatory text.
 """
         if parsed_outline is None:
-            raise ValueError(f"Outline generation failed after 3 attempts: {last_outline_error}")
+            raise ValueError(f"Outline generation failed after 5 attempts: {last_outline_error}")
         plan["outline"] = parsed_outline
         plan["character_bible"] = "\n".join(
             f'{item.get("name", "")}: {item.get("visual_bible", "")}'
