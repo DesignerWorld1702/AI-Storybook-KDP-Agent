@@ -887,7 +887,12 @@ No extra keys, no markdown fences, no text outside JSON.
                 raise ValueError(f"Scene {number} characters_present must be a list.")
             # Permanent visual slots have no story names. The current book's
             # registry is the sole authority for character names.
-            visible_names = normalize_scene_cast_names(visible_names, plan.get('character_registry', []))
+            visible_names, cast_aliases = normalize_scene_cast_names(
+                visible_names, plan.get("character_registry", []), return_aliases=True
+            )
+            if cast_aliases:
+                apply_scene_cast_aliases(scene, cast_aliases)
+                logging.warning("Canonicalized scene %s character aliases: %s", number, cast_aliases)
             # Repair small model spelling drift only when there is exactly one
             # unambiguous registered-name match. Never silently accept a new cast member.
             corrected_names = []
