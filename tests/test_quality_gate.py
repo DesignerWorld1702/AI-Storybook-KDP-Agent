@@ -41,6 +41,45 @@ class PublicationQualityGateTests(unittest.TestCase):
             "score": score
         }
 
+
+    def test_real_world_registry_corrects_mislabelled_human_creature_role(self):
+        plan = {
+            "character_registry": [{
+                "name": "Emily Patel",
+                "species": "human",
+                "role": "creature",
+                "importance": "creature",
+                "visual_id": "visual_001",
+            }]
+        }
+        engine.normalize_real_world_registry(plan)
+        entry = plan["character_registry"][0]
+        self.assertEqual(entry["species"], "human")
+        self.assertEqual(entry["importance"], "supporting")
+        self.assertEqual(entry["role"], "human supporting character")
+
+    def test_real_world_registry_rejects_nonhuman_species(self):
+        plan = {"character_registry": [{
+            "name": "Drako",
+            "species": "dragon",
+            "role": "antagonist",
+            "importance": "villain",
+            "visual_id": None,
+        }]}
+        with self.assertRaisesRegex(ValueError, "non-human character"):
+            engine.normalize_real_world_registry(plan)
+
+    def test_real_world_registry_rejects_fantasy_visual_slot(self):
+        plan = {"character_registry": [{
+            "name": "Bamboo",
+            "species": "human",
+            "role": "supporting",
+            "importance": "supporting",
+            "visual_id": "visual_012",
+        }]}
+        with self.assertRaisesRegex(ValueError, "non-human visual model"):
+            engine.normalize_real_world_registry(plan)
+
     def test_seven_out_of_ten_is_minimum_and_report_is_saved(self):
         with tempfile.TemporaryDirectory() as tmp:
             with patch.object(engine, "cf_text", return_value=json.dumps(self.report(70))):
