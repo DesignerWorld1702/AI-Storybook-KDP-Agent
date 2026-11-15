@@ -59,7 +59,7 @@ GENERIC_CHARACTER_LABELS = {
 }
 
 
-def normalize_scene_cast_names(names, registry=None):
+def normalize_scene_cast_names(names, registry=None, return_aliases=False):
     """Keep canonical names, map clear title/surname variants, and omit unnamed extras."""
     if not isinstance(names, list):
         raise ValueError("characters_present must be a list.")
@@ -74,6 +74,7 @@ def normalize_scene_cast_names(names, registry=None):
         re.IGNORECASE
     )
     normalized = []
+    aliases = {}
     for name in names:
         if not isinstance(name, str):
             raise ValueError("Every characters_present entry must be a string.")
@@ -96,8 +97,26 @@ def normalize_scene_cast_names(names, registry=None):
                 for word in words for known in registered_words
             ):
                 candidates.add(registered_name)
-        normalized.append(next(iter(candidates)) if len(candidates) == 1 else clean_name)
-    return list(dict.fromkeys(normalized))
+        canonical = next(iter(candidates)) if len(candidates) == 1 else clean_name
+        normalized.append(canonical)
+        if canonical != clean_name:
+            aliases[clean_name] = canonical
+    result = list(dict.fromkeys(normalized))
+    return (result, aliases) if return_aliases else result
+
+
+def apply_scene_cast_aliases(scene, aliases):
+    """Replace clear cast-list aliases with their canonical full registry names."""
+    fields = ("heading", "text", "visual_prompt", "composition", "action_pose", "gaze", "expression")
+    for alias, canonical in sorted(aliases.items(), key=lambda pair: len(pair[0]), reverse=True):
+        for field in fields:
+            value = scene.get(field)
+            if isinstance(value, str) and value:
+                scene[field] = re.sub(
+                    r"(?<![A-Za-z])" + re.escape(alias) + r"(?![A-Za-z])",
+                    canonical, value, flags=re.IGNORECASE
+                )
+    return scene
 
 
 
