@@ -129,21 +129,40 @@ def apply_scene_cast_aliases(scene, aliases):
 
 
 def normalize_real_world_registry(plan):
-    """Enforce human species while correcting the model's occasional 'creature' role label."""
-    forbidden_visual_ids = {"visual_009", "visual_010", "visual_011", "visual_012"}
+    """Enforce human species and replace accidentally selected fantasy portraits with human ones."""
+    fantasy_visual_ids = {"visual_009", "visual_010", "visual_011", "visual_012"}
+    human_models = [
+        model for model in load_character_library()
+        if model.get("visual_id") and model.get("visual_id") not in fantasy_visual_ids
+    ]
     registry = plan.get("character_registry", [])
     if not isinstance(registry, list) or not registry:
         raise ValueError("Real-world story is missing its human character registry.")
+    used_human_ids = {
+        item.get("visual_id") for item in registry
+        if isinstance(item, dict) and item.get("visual_id") and item.get("visual_id") not in fantasy_visual_ids
+    }
     for item in registry:
         if not isinstance(item, dict):
             raise ValueError("Character registry entries must be objects.")
-        visual_id = item.get("visual_id")
-        if visual_id in forbidden_visual_ids:
-            raise ValueError(f"Real-world story selected a non-human visual model: {item.get('name')}")
         species = str(item.get("species") or "human").strip().casefold()
         if species not in ("human", "human being", "person"):
             raise ValueError(f"Real-world story contains a non-human character: {item.get('name')} ({species}).")
         item["species"] = "human"
+        visual_id = item.get("visual_id")
+        if visual_id in fantasy_visual_ids:
+            replacement = next((model for model in human_models if model.get("visual_id") not in used_human_ids), None)
+            if replacement is None:
+                raise ValueError(
+                    f"Real-world character {item.get('name')} selected a fantasy portrait and no unused human portrait remains."
+                )
+            item["visual_id"] = replacement.get("visual_id")
+            item["immutable_identity"] = replacement.get("immutable_identity")
+            used_human_ids.add(replacement.get("visual_id"))
+            logging.warning(
+                "Replaced non-human visual slot %s with human slot %s for %s.",
+                visual_id, item.get("visual_id"), item.get("name")
+            )
         importance = str(item.get("importance", "supporting")).strip().casefold()
         if importance in ("creature", "fantasy_creature"):
             importance = "villain" if str(item.get("name", "")).strip() == str(plan.get("principal_villain", "")).strip() else "supporting"
@@ -156,6 +175,12 @@ def normalize_real_world_registry(plan):
                 "supporting": "human supporting character",
             }.get(importance, "human supporting character")
             item["role"] = fallback
+        if item.get("visual_id"):
+            item["visual_bible"] = (
+                f"{item.get('name', '')} — {item.get('immutable_identity', '')}; "
+                f"story costume: {item.get('story_costume', '')}"
+            )
+
 
 
 def validate_scene_image_set(scenes_dir, expected_count=50, expected_size=None):
