@@ -421,6 +421,11 @@ STYLE_LOCK = (
     "childish cartoon, photorealism, or a mixture of unrelated art styles."
 )
 
+def page_text_word_count_valid(text):
+    """Publication page text must stay inside the exact 40–55 word range."""
+    return 40 <= len(str(text).split()) <= 55
+
+
 def missing_registered_outline_names(outline, registry):
     """Return cast names that the outline failed to use exactly as registered."""
     outline_text = " ".join(
@@ -936,7 +941,7 @@ No extra keys, no markdown fences, no text outside JSON.
                     f"character identities, story costumes and art direction. Scene details: {scene.get('text', '')}"
                 )
             word_count = len(str(scene.get("text", "")).split())
-            if word_count < 40 or word_count > 55:
+            if not page_text_word_count_valid(scene.get('text', '')):
                 # Repair an out-of-range page locally instead of failing the whole book.
                 # Keep the existing scene's events, characters and tone; only revise its prose.
                 # Keep the full original page unchanged across retries. Previously, each
@@ -961,7 +966,7 @@ No extra keys, no markdown fences, no text outside JSON.
                     candidate = cf_text(repair_prompt, max_tokens=700)
                     candidate = candidate.strip().strip('"').strip()
                     candidate_count = len(candidate.split())
-                    if 40 <= candidate_count <= 55:
+                    if page_text_word_count_valid(candidate):
                         repaired_text = candidate
                         break
                     last_repair_error = f"repair {repair_attempt} returned {candidate_count} words"
@@ -977,7 +982,7 @@ No extra keys, no markdown fences, no text outside JSON.
                 scene["text"] = repaired_text
                 logging.info("Repaired scene %s page text to %s words.", number, len(repaired_text.split()))
             final_word_count = len(str(scene.get("text", "")).split())
-            if not 40 <= final_word_count <= 55:
+            if not page_text_word_count_valid(scene.get('text', '')):
                 raise ValueError(
                     f"Scene {number} has {final_word_count} words; every page must contain 40–55 words."
                 )
