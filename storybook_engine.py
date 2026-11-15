@@ -468,6 +468,14 @@ def unregistered_named_entities_in_outline(outline, registry):
 
 def sanitize_outline_unregistered_names(outline, registry, extra_names=None):
     """Map clear aliases to canonical cast names and anonymize incidental named extras."""
+    # Small text models occasionally duplicate a first name (for example, "Sophia Sophia").
+    # Treat this as an accidental unnamed extra rather than a new character identity.
+    for item in outline:
+        if isinstance(item, dict):
+            beat = str(item.get("beat", ""))
+            item["beat"] = re.sub(
+                r"\\b([A-Z][a-z]+)\\s+\\1\\b", "the person", beat
+            )
     unknown = list(dict.fromkeys(
         unregistered_named_entities_in_outline(outline, registry) + list(extra_names or [])
     ))
