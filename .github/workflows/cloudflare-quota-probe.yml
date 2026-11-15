@@ -1,4 +1,4 @@
-name: Cloudflare quota probe and one-time storybook resume # Human-world registry normalization QA trigger
+name: Cloudflare quota probe and one-time storybook resume # Strict outline cast validation QA trigger
 
 on:
   push:
