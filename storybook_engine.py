@@ -770,7 +770,7 @@ Do not add JSON, quotation marks, headings or explanatory text.
 
     if not fantasy_mode:
         normalize_real_world_registry(plan)
-        plan["character_bible"] = "\\n\\n".join(
+        plan["character_bible"] = "\n\n".join(
             f"{item.get('name', '')} — {item.get('role', '')}: {item.get('visual_bible', '')}"
             for item in plan.get("character_registry", []) if isinstance(item, dict)
         )
