@@ -179,6 +179,30 @@ class PublicationQualityGateTests(unittest.TestCase):
         self.assertIn("fixed story costume", item["visual_bible"])
         self.assertIn("Ethan Thompson", plan["character_bible"])
 
+
+    def test_vague_costume_uses_concrete_role_based_fallback(self):
+        plan = {
+            "genre": "Real-world crime suspense thriller",
+            "title": "Test Book",
+            "character_registry": [{
+                "name": "Kate Matthews",
+                "role": "detective",
+                "importance": "protagonist",
+                "species": "human",
+                "immutable_identity": {"hair": "dark hair", "eyes": "brown"},
+                "story_costume": "Police Department uniform",
+            }],
+        }
+        response = {"costumes": [{
+            "name": "Kate Matthews",
+            "story_costume": "Police Department uniform",
+        }]}
+        with patch.object(engine, "cf_text", return_value=json.dumps(response)):
+            engine.ensure_concrete_story_costumes(plan)
+        costume = plan["character_registry"][0]["story_costume"]
+        self.assertIn("navy field jacket", costume)
+        self.assertIn("black leather boots", costume)
+
     def test_outline_review_computes_score_and_enforces_core_dimensions(self):
         report = {
             "passed": True,
