@@ -57,6 +57,22 @@ class PublicationQualityGateTests(unittest.TestCase):
 
 
 
+
+    def test_outline_requires_exact_registered_names(self):
+        outline = [
+            {"number": 1, "beat": "Jameson arrives at the mansion."},
+            {"number": 2, "beat": "Rodriguez finds the hidden evidence."},
+        ]
+        registry = [
+            {"name": "James Winter"},
+            {"name": "Sarah Taylor"},
+            {"name": "Victor Vex"},
+        ]
+        self.assertEqual(
+            engine.missing_registered_outline_names(outline, registry),
+            ["James Winter", "Sarah Taylor", "Victor Vex"],
+        )
+
     def test_unnamed_role_labels_are_not_treated_as_named_characters(self):
         names = engine.normalize_scene_cast_names(["Hero", "victim", "Guard", "The Shade", "Hero"])
         self.assertEqual(names, ["Hero", "The Shade"])
