@@ -73,10 +73,10 @@ class PublicationQualityGateTests(unittest.TestCase):
         names, aliases = engine.normalize_scene_cast_names(
             ["Chief Jameson"], [{"name": "James Winter"}], return_aliases=True
         )
-        scene = {"text": "Chief Jameson enters the room.", "heading": "Chief Jameson arrives."}
+        scene = {"text": "Chief Jameson enters. Jameson checks the door.", "heading": "Chief Jameson arrives."}
         engine.apply_scene_cast_aliases(scene, aliases)
         self.assertEqual(names, ["James Winter"])
-        self.assertEqual(scene["text"], "James Winter enters the room.")
+        self.assertEqual(scene["text"], "James Winter enters. James Winter checks the door.")
         self.assertEqual(scene["heading"], "James Winter arrives.")
 
     def test_title_and_clear_name_variants_map_to_canonical_registry_name(self):
