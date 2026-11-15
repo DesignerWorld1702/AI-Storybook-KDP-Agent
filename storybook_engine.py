@@ -1130,6 +1130,8 @@ No extra keys, no markdown fences, no text outside JSON.
                     corrected_names.append(visible_name)
             visible_names = list(dict.fromkeys(corrected_names))
             scene["characters_present"] = visible_names
+            scene = sanitize_scene_unregistered_cast(scene, plan.get("character_registry", []))
+            visible_names = scene.get("characters_present", [])
             unknown_names = [name for name in visible_names if name not in known_names]
             scene_name_audit_text = " ".join(
                 str(scene.get(field, "")) for field in ("heading", "text", "visual_prompt")
@@ -1176,7 +1178,9 @@ No extra keys, no markdown fences, no text outside JSON.
                 repaired_names = scene.get("characters_present")
                 if not isinstance(repaired_names, list):
                     raise ValueError(f"Scene {number} name repair returned an invalid cast list.")
-                if not 40 <= len(str(scene.get("text", "")).split()) <= 55:
+                scene = sanitize_scene_unregistered_cast(scene, plan.get("character_registry", []))
+                repaired_names = scene.get("characters_present", [])
+                if not page_text_word_count_valid(scene.get("text", "")):
                     raise ValueError(f"Scene {number} name repair returned page text outside 40–55 words.")
                 remaining_unknown = [name for name in repaired_names if name not in known_names]
                 remaining_named_people = unregistered_named_entities_in_outline(
