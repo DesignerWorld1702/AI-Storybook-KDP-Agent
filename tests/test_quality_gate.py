@@ -268,6 +268,15 @@ class PublicationQualityGateTests(unittest.TestCase):
         )
 
 
+
+    def test_outline_sanitizer_does_not_expand_overlapping_aliases_twice(self):
+        outline = [{"number": 1, "beat": "An old informant named Detective James reveals the clue."}]
+        engine.sanitize_outline_unregistered_names(outline, [{"name": "James Reed"}])
+        self.assertEqual(
+            outline[0]["beat"],
+            "An old informant named James Reed reveals the clue.",
+        )
+
     def test_outline_sanitizer_handles_title_plus_first_name_only(self):
         outline = [{"number": 1, "beat": "Detective James reviews the hidden clue."}]
         engine.sanitize_outline_unregistered_names(outline, [{"name": "Kate Matthews"}])
