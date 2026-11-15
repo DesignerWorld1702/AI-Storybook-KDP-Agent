@@ -1,4 +1,4 @@
-name: Cloudflare quota probe and one-time storybook resume # Canonical-cast outline validation QA trigger
+name: Cloudflare quota probe and one-time storybook resume # Canonical-cast alias normalization QA trigger
 
 on:
   push:
