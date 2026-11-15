@@ -749,7 +749,7 @@ clue discovery, argument, journey, or other event with slightly changed wording.
 """
         last_outline_error = None
         parsed_outline = None
-        for outline_attempt in range(1, 4):
+        for outline_attempt in range(1, 6):
             raw_outline = cf_text(outline_prompt, max_tokens=2400)
             rows = []
             for line in raw_outline.splitlines():
@@ -775,7 +775,7 @@ clue discovery, argument, journey, or other event with slightly changed wording.
                     last_outline_error = "Outline contains short or repeated scene beats."
             else:
                 last_outline_error = f"Expected 50 numbered lines; parsed {len(rows)}."
-            if outline_attempt < 3:
+            if outline_attempt < 5:
                 outline_prompt += f"""
 
 RETRY {outline_attempt}: {last_outline_error}
