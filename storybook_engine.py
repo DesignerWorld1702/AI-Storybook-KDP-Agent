@@ -563,6 +563,58 @@ def sanitize_scene_unregistered_cast(scene, registry):
     return scene
 
 
+def ensure_concrete_story_costumes(plan):
+    """Give every character one concrete, repeatable outfit for the entire book."""
+    registry = plan.get("character_registry", [])
+    if not registry:
+        raise ValueError("Cannot lock costumes without a character registry.")
+    prompt = (
+        "You are a professional costume designer for a cinematic storybook. Create ONE fixed, "
+        "concrete outfit for each registered character. Every outfit must name actual garments, "
+        "colours, footwear, and any small accessories. Avoid vague phrases such as 'police uniform', "
+        "'journalist attire', 'ordinary clothes', 'dark clothing', 'disguise', or 'deception'. "
+        "Each character wears this exact same outfit throughout the entire book. No costume changes, "
+        "disguises, alternate looks, or unexplained accessories. Do not change character names, roles, "
+        "species, or physical identities. Return ONLY JSON: {costumes:[{name,story_costume}]}. "
+        "Each story_costume should be 10–24 simple words.\\n\\n"
+        + json.dumps({
+            "genre": plan.get("genre", ""),
+            "title": plan.get("title", ""),
+            "character_registry": registry
+        }, ensure_ascii=False)
+    )
+    response = extract_json(cf_text(prompt, max_tokens=1800), "fixed character costume design")
+    costumes = response.get("costumes", []) if isinstance(response, dict) else []
+    mapping = {
+        str(item.get("name", "")).strip(): str(item.get("story_costume", "")).strip()
+        for item in costumes if isinstance(item, dict)
+    }
+    expected_names = [str(item.get("name", "")).strip() for item in registry]
+    if len(mapping) != len(expected_names) or any(name not in mapping for name in expected_names):
+        raise ValueError("Costume designer did not return one exact costume for every registered character.")
+    garment_terms = (
+        "jacket", "coat", "shirt", "blouse", "trousers", "pants", "jeans", "skirt",
+        "dress", "boots", "shoes", "uniform", "blazer", "sweater", "vest", "robe",
+        "tunic", "belt", "gloves", "scarf", "overalls", "suit", "waistcoat"
+    )
+    for item in registry:
+        name = str(item.get("name", "")).strip()
+        costume = mapping[name]
+        if not 10 <= len(costume.split()) <= 24 or sum(term in costume.casefold() for term in garment_terms) < 2:
+            raise ValueError(f"Costume for {name} is not concrete enough to lock across the book.")
+        item["story_costume"] = costume
+        item["visual_bible"] = (
+            f"{name}: immutable physical identity "
+            f"{json.dumps(item.get('immutable_identity', {}), ensure_ascii=False)}; "
+            f"fixed story costume: {costume}"
+        )
+    plan["character_bible"] = "\n\n".join(
+        f"{item.get('name', '')} — {item.get('role', '')}: {item.get('visual_bible', '')}"
+        for item in registry
+    )
+    return plan
+
+
 def validate_outline_rows(rows, registry):
     """Validate outline shape, page-beat length, cast coverage, and extra named people."""
     if not isinstance(rows, list) or len(rows) != 50:
