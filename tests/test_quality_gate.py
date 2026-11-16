@@ -256,6 +256,33 @@ class PublicationQualityGateTests(unittest.TestCase):
         result = engine.validate_outline_rows(rows, [])
         self.assertEqual(len(result), 50)
 
+    def test_book_description_is_grounded_and_names_protagonist_and_villain(self):
+        plan = {
+            "title": "The Last Clue",
+            "principal_villain": "Victor LaGrange",
+            "character_registry": [
+                {"name": "Kate Matthews", "importance": "protagonist"},
+                {"name": "Victor LaGrange", "importance": "villain"},
+            ],
+        }
+        outline = [
+            {"number": i, "beat": f"Scene {i} advances the investigation with a distinct action and clear consequence"}
+            for i in range(1, 51)
+        ]
+        description = (
+            "Detective Kate Matthews follows a trail of stolen records after a witness is threatened. "
+            "The first clue points to Victor LaGrange, a powerful crime boss who hides his role behind "
+            "a trusted business. Kate works with her partner to trace the payments and protect the witness. "
+            "Each new record brings them closer to the truth, but Victor sends people to stop them. "
+            "Kate uses the evidence to expose his crime and bring him before the law. "
+            "The case closes, the witness is safe, and Kate can finally return home with peace."
+        )
+        with patch.object(engine, "cf_text", return_value=description):
+            result = engine.synchronize_book_description(plan, outline)
+        self.assertEqual(result, description)
+        self.assertIn("Kate Matthews", plan["description"])
+        self.assertIn("Victor LaGrange", plan["description"])
+
     def test_outline_review_computes_score_and_enforces_core_dimensions(self):
         report = {
             "passed": True,
