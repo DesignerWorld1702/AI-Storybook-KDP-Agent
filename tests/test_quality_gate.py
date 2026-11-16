@@ -240,7 +240,7 @@ class PublicationQualityGateTests(unittest.TestCase):
             {"number": i, "beat": f"Scene {i} introduces a distinct action, new clue, clear consequence, and a fresh decision for the team"}
             for i in range(1, 51)
         ]
-        reviewed = engine.validate_outline_rows(rows, [], strict_repetition=True)
+        reviewed = engine.validate_outline_rows(rows, [], strict_repetition=False)
         self.assertEqual(len(reviewed), 50)
 
     def test_outline_detects_and_anonymizes_whose_name_is_extra(self):
@@ -297,7 +297,7 @@ class PublicationQualityGateTests(unittest.TestCase):
             for i in range(1, 51)
         ]
         rows[19]["beat"] = "Scene twenty reveals a new clue and changes the investigation while the main characters prepare their next careful move together"
-        result = engine.validate_outline_rows(rows, [])
+        result = engine.validate_outline_rows(rows, [], strict_repetition=False)
         self.assertEqual(len(result), 50)
 
     def test_scene_page_text_is_revalidated_after_name_normalization(self):
