@@ -147,6 +147,18 @@ def review_and_repair_scene_images(story: dict, scenes_dir: Path, workdir: Path,
             try:
                 last = _vision_review(account, token, board, scene, story)
             except Exception as exc:
+                error_text = str(exc).casefold()
+                quota_exhausted = (
+                    "used up your daily free allocation" in error_text
+                    or "error code 4006" in error_text
+                    or '"code":4006' in error_text
+                    or '"code": 4006' in error_text
+                )
+                if quota_exhausted:
+                    raise RuntimeError(
+                        "Cloudflare daily Workers AI allocation is exhausted; stopping visual review "
+                        "without wasting retries. Resume after the account allocation resets."
+                    ) from exc
                 if attempt == max_regenerations:
                     raise RuntimeError(f"Visual review could not complete for scene {index}: {exc}") from exc
                 logging.warning("Visual review error on scene %s; retrying review: %s", index, exc)
