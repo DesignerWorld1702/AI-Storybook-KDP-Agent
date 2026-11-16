@@ -168,6 +168,38 @@ def build_one_book(book_date, config):
         logging.exception("Book generation failed for %s: %s", book_date, exc)
         return False
 
+def find_latest_incomplete_book_date():
+    """Find the newest book folder that has not completed its full build."""
+    if not OUTROOT.exists():
+        return None
+    for folder in sorted(OUTROOT.glob("*_daily_story"), reverse=True):
+        date_token = folder.name[:8]
+        if len(date_token) != 8 or not date_token.isdigit():
+            continue
+        status_path = folder / "job_status.json"
+        try:
+            status = json.loads(status_path.read_text(encoding="utf-8")) if status_path.is_file() else {}
+        except (OSError, ValueError):
+            status = {}
+        if status.get("status") != "completed":
+            try:
+                return datetime.strptime(date_token, "%Y%m%d").date()
+            except ValueError:
+                continue
+    return None
+
+
+def resume_latest_incomplete_book():
+    """Resume the newest incomplete book, even if its scheduled date was yesterday."""
+    config = load_config()
+    book_date = find_latest_incomplete_book_date()
+    if book_date is None:
+        logging.error("No incomplete storybook folder is available to resume.")
+        return 1
+    logging.info("Resuming incomplete storybook dated %s.", book_date.isoformat())
+    return 0 if build_one_book(book_date, config) else 1
+
+
 def run_due_jobs(force=False, today_only=False):
     config = load_config()
     state = load_state(config)
@@ -217,5 +249,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--run-now", action="store_true", help="Generate immediately.")
     parser.add_argument("--today-only", action="store_true", help="Generate only today's Pakistan-date book; do not process older catch-up dates.")
+    parser.add_argument("--resume-incomplete", action="store_true", help="Resume the newest incomplete book folder, including one started on an earlier Pakistan date.")
     args = parser.parse_args()
+    if args.resume_incomplete:
+        sys.exit(resume_latest_incomplete_book())
     sys.exit(run_due_jobs(force=args.run_now, today_only=args.today_only))
