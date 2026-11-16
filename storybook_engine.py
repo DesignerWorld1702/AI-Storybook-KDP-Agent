@@ -603,6 +603,48 @@ def sanitize_outline_unregistered_names(outline, registry, extra_names=None):
                     "the person", beat, flags=re.IGNORECASE
                 )
                 item["beat"] = re.sub(r"\s{2,}", " ", beat).strip()
+    # Expand a unique surname/first-name alias to its exact registered full name.
+    combined_text = " ".join(
+        str(item.get("beat", "")) for item in outline if isinstance(item, dict)
+    )
+    title_words = {
+        "detective", "officer", "doctor", "professor", "captain", "agent",
+        "judge", "inspector", "sergeant", "lieutenant", "mayor", "sheriff",
+        "chief", "police", "mr", "mrs", "ms", "dr"
+    }
+    for character in registry:
+        if not isinstance(character, dict):
+            continue
+        full_name = str(character.get("name", "")).strip()
+        if not full_name or full_name.casefold() in combined_text.casefold():
+            continue
+        tokens = [
+            token for token in re.findall(r"[A-Za-z]+", full_name)
+            if len(token) >= 4 and token.casefold() not in title_words
+        ]
+        for token in tokens:
+            other_owners = [
+                item for item in registry if isinstance(item, dict)
+                and str(item.get("name", "")).strip() != full_name
+                and token.casefold() in str(item.get("name", "")).casefold().split()
+            ]
+            if other_owners:
+                continue
+            if re.search(r"(?<![A-Za-z])" + re.escape(token) + r"(?![A-Za-z])",
+                         combined_text, flags=re.IGNORECASE):
+                for item in outline:
+                    if not isinstance(item, dict):
+                        continue
+                    beat = str(item.get("beat", ""))
+                    beat = re.sub(
+                        r"(?<![A-Za-z])" + re.escape(token) + r"(?![A-Za-z])",
+                        full_name, beat, flags=re.IGNORECASE
+                    )
+                    item["beat"] = re.sub(r"\s{2,}", " ", beat).strip()
+                combined_text = " ".join(
+                    str(item.get("beat", "")) for item in outline if isinstance(item, dict)
+                )
+                break
     return outline
 
 
