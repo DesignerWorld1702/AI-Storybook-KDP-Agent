@@ -1019,6 +1019,8 @@ def repair_outline_from_review(plan, outline, report):
         "Never reveal a business partner, henchman, anonymous leader, or another registered character "
         "as the mastermind. Every mastermind reference must name the exact registered principal villain. "
         "Use ONLY exact full names from the character registry; no aliases and no new named people. "
+        "The exact registered principal villain must be named in a meaningful clue or event within scenes 1-15. "
+        "Every registered supporting character must be necessary to the case; do not introduce an unregistered helper. "
         "Keep the story grounded in its existing world. Make cause and effect clear in every beat. "
         "Every clue must lead somewhere and receive a payoff. Every kidnapping or rescue must have "
         "one clear sequence. Before a suspect is revealed, introduce that suspect earlier and plant at "
@@ -1479,6 +1481,8 @@ Do not substitute aliases or invent any named person. Remove every unregistered 
 from the outline; use an unnamed extra only when a one-scene background person is essential.
 Return all 50 lines again, using the exact two-digit number | event format.
 Replace repeated scenes with new actions, discoveries, decisions and consequences.
+Ensure the exact registered principal villain is named in a meaningful clue or event within scenes 1-15.
+Every registered supporting character must be necessary to the case; do not introduce an unregistered helper.
 Do not add JSON, quotation marks, headings or explanatory text.
 """
         if parsed_outline is None:
