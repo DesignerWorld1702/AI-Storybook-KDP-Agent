@@ -930,6 +930,13 @@ def ground_editorial_issues(issues, outline):
         number = issue.get("scene_number", issue.get("number"))
         quote = str(issue.get("evidence_quote", "")).strip()
         reason = str(issue.get("reason", "")).strip()
+        if number is None and quote:
+            matches = [
+                scene_number for scene_number, beat_text in by_number.items()
+                if quote.casefold() in beat_text.casefold()
+            ]
+            if len(matches) == 1:
+                number = matches[0]
         beat = by_number.get(number, "")
         if isinstance(number, int) and beat and quote and quote.casefold() in beat.casefold() and reason:
             supported.append({"number": number, "reason": reason, "evidence_quote": quote})
