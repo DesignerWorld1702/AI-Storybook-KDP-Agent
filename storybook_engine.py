@@ -910,8 +910,8 @@ def enforce_principal_villain_identity(outline, principal_villain):
 
 
 def repair_outline_from_review(plan, outline, report):
-    """Rewrite the whole outline around reviewer feedback without changing the registered cast."""
-    prompt = (
+    """Repair an outline, retrying model outputs that still contain repeated beats."""
+    base_prompt = (
         "Rewrite this entire story outline to fix every critical issue in the editorial review. "
         "This is an automatic quality repair, not a new unrelated story. Preserve the title, genre, "
         "setting, all registered character names, their roles, and the exact principal villain. "
@@ -932,10 +932,12 @@ def repair_outline_from_review(plan, outline, report):
         "The final ten beats must resolve the main case, rescue or account for victims, expose the truth, "
         "hold the villain accountable, and give the protagonists emotional closure. No unresolved "
         "anonymous threat or sequel cliffhanger. Keep English very easy: common words and short sentences. "
-        "Return ONLY valid JSON with exactly two keys: description (100–140 words, 5–6 complete simple "
-        "sentences that match the repaired story) and outline (an array of exactly 50 objects, each with "
-        "number 1–50 and beat 8–45 words). Never make the description shorter than 100 words. "
-        "No extra keys.\\n\\nEDITORIAL REVIEW:\\n"
+        "Every one of the 50 beats MUST describe a different concrete event or decision. Do not repeat "
+        "the same discovery, confrontation, rescue, travel, discussion, or resolution in different words. "
+        "Advance the story in every beat. Return ONLY valid JSON with exactly two keys: description "
+        "(100–140 words, 5–6 complete simple sentences that match the repaired story) and outline "
+        "(an array of exactly 50 objects, each with number 1–50 and beat 8–45 words). Never make the "
+        "description shorter than 100 words. No extra keys.\\n\\nEDITORIAL REVIEW:\\n"
         + json.dumps(report, ensure_ascii=False)
         + "\\n\\nLOCKED BOOK AND CAST:\\n"
         + json.dumps({
@@ -945,42 +947,66 @@ def repair_outline_from_review(plan, outline, report):
             "current_outline": outline
         }, ensure_ascii=False)
     )
-    repaired = extract_json(cf_text(prompt, max_tokens=5200), "full outline repair after editorial rejection")
-    if not isinstance(repaired, dict) or not isinstance(repaired.get("outline"), list):
-        raise ValueError("Outline repair did not return the required JSON structure.")
-    repaired_outline = validate_outline_rows(
-        repaired["outline"], plan.get("character_registry", []), strict_repetition=False
-    )
-    repaired_outline = enforce_principal_villain_identity(
-        repaired_outline, plan.get("principal_villain", "")
-    )
-    description = str(repaired.get("description", "")).strip()
-    if len(description.split()) < 80:
-        expansion_prompt = (
-            "Write a complete, easy-English book description in 100–140 words and 5–6 short sentences. "
-            "Describe the exact story below, including the main characters, mystery, stakes, key discovery, "
-            "villain, and resolved ending. Do not invent events or characters. Return only the description.\n\n"
-            + json.dumps({
-                "title": plan.get("title", ""),
-                "genre": plan.get("genre", ""),
-                "character_registry": plan.get("character_registry", []),
-                "principal_villain": plan.get("principal_villain", ""),
-                "outline": repaired_outline,
-                "short_draft": description
-            }, ensure_ascii=False)
+    last_error = None
+    for attempt in range(1, 4):
+        prompt = base_prompt
+        if last_error:
+            prompt += (
+                "\\n\\nREPAIR RETRY " + str(attempt) + ": The previous answer was rejected because "
+                + last_error + ". Rewrite all 50 beats again. Ensure every beat is distinct and pass "
+                "the full cast and numbering rules."
+            )
+        repaired = extract_json(
+            cf_text(prompt, max_tokens=5200),
+            "full outline repair after editorial rejection"
         )
-        expanded = cf_text(expansion_prompt, max_tokens=500).strip()
-        if 80 <= len(expanded.split()) <= 160:
-            description = expanded
-        else:
-            original_description = str(plan.get("description", "")).strip()
-            if len(original_description.split()) >= 80:
-                description = original_description
-            elif len(expanded.split()) >= 50:
+        if not isinstance(repaired, dict) or not isinstance(repaired.get("outline"), list):
+            last_error = "the JSON did not contain a 50-beat outline"
+            continue
+        try:
+            repaired_outline = validate_outline_rows(
+                repaired["outline"], plan.get("character_registry", []), strict_repetition=True
+            )
+            repaired_outline = enforce_principal_villain_identity(
+                repaired_outline, plan.get("principal_villain", "")
+            )
+        except ValueError as exc:
+            last_error = str(exc)
+            logging.warning(
+                "Outline repair attempt %s/3 rejected: %s", attempt, last_error
+            )
+            continue
+        description = str(repaired.get("description", "")).strip()
+        if len(description.split()) < 80:
+            expansion_prompt = (
+                "Write a complete, easy-English book description in 100–140 words and 5–6 short sentences. "
+                "Describe the exact story below, including the main characters, mystery, stakes, key discovery, "
+                "villain, and resolved ending. Do not invent events or characters. Return only the description.\\n\\n"
+                + json.dumps({
+                    "title": plan.get("title", ""),
+                    "genre": plan.get("genre", ""),
+                    "character_registry": plan.get("character_registry", []),
+                    "principal_villain": plan.get("principal_villain", ""),
+                    "outline": repaired_outline,
+                    "short_draft": description
+                }, ensure_ascii=False)
+            )
+            expanded = cf_text(expansion_prompt, max_tokens=500).strip()
+            if 80 <= len(expanded.split()) <= 160:
                 description = expanded
             else:
-                raise ValueError("Could not produce a complete readable description for the repaired story.")
-    return repaired_outline, description
+                original_description = str(plan.get("description", "")).strip()
+                if len(original_description.split()) >= 80:
+                    description = original_description
+                elif len(expanded.split()) >= 50:
+                    description = expanded
+                else:
+                    raise ValueError("Could not produce a complete readable description for the repaired story.")
+        return repaired_outline, description
+    raise ValueError(
+        "Automatic outline repair failed after 3 attempts: "
+        + (last_error or "the model did not return a valid outline")
+    )
 
 
 def review_story_quality(story, outline, workdir=None):
