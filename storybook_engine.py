@@ -457,6 +457,10 @@ def unregistered_named_entities_in_outline(outline, registry):
     for pattern in patterns:
         for match in re.finditer(pattern, text):
             candidate = re.sub(r"['\".,;:!?]+$", "", match.group(1)).strip()
+            # Models sometimes repeat a first name as a malformed full name.
+            candidate = re.sub(
+                r"\b([A-Z][a-z]+)\s+\1\b", r"\1", candidate
+            )
             if candidate and candidate.casefold() not in known:
                 found.append((match.start(), candidate))
     ordered = []
