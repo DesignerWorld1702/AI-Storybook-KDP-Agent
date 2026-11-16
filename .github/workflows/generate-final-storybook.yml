@@ -134,6 +134,7 @@ jobs:
           PY
 
       - name: Generate one complete 50-scene book
+        id: generate_book
         if: steps.daily_guard.outputs.skip != 'true'
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -179,8 +180,35 @@ jobs:
             git push origin HEAD:main
           fi
 
+      - name: Report generation failure without cascading validation errors
+        if: always() && steps.daily_guard.outputs.skip != 'true' && steps.generate_book.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "::error::Storybook generation failed before package verification. The original generation error above is the primary failure; package checks are intentionally skipped because incomplete output is expected."
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          folders = sorted(Path("output").glob("*_daily_story"))
+          if not folders:
+              print("No book output folder was created.")
+              raise SystemExit(0)
+          book = folders[-1]
+          status_path = book / "job_status.json"
+          if not status_path.is_file():
+              print("No job_status.json was written.")
+              raise SystemExit(0)
+          try:
+              status = json.loads(status_path.read_text(encoding="utf-8"))
+          except Exception as exc:
+              print("Could not read job status:", exc)
+              raise SystemExit(0)
+          print("Book folder:", book)
+          print("Generation status:", status.get("status", "unknown"))
+          print("Primary error:", status.get("error", "See generation step logs."))
+          PY
+
       - name: Verify final book files
-        if: always() && steps.daily_guard.outputs.skip != 'true'
+        if: always() && steps.daily_guard.outputs.skip != 'true' && steps.generate_book.outcome == 'success'
         run: |
           python - <<'PY'
           from pathlib import Path
