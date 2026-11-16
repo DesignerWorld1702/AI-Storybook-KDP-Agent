@@ -21,8 +21,11 @@ class PublicationQualityGateTests(unittest.TestCase):
                     "number": number,
                     "heading": f"Scene {number}",
                     "text": (
-                        "Hero takes a clear step forward and discovers one useful clue. The new clue changes the plan and gives the team a reason to keep moving toward the truth. Before sunset, they compare the marks, check the locked gate, and agree to follow the safest path together."
-                        + (" The Shade's mark appears on the evidence." if number in {5, 10, 15, 42, 46, 50} else "")
+                        "Hero checks the old map and finds a small red mark. "
+                        "The team sees the mark near the gate and asks who left it. "
+                        "They share what they know, make a safe plan, and move on. "
+                        "The next clue gives them hope and shows where to look."
+                        + (" The Shade's mark is on the proof." if number in {5, 10, 15, 42, 46, 50} else "")
                     ),
                     "visual_prompt": f"A distinct cinematic illustration for scene {number}.",
                     "characters_present": ["Hero", "The Shade"] if number in {5, 10, 15, 42, 46, 50} else ["Hero"],
@@ -119,7 +122,7 @@ class PublicationQualityGateTests(unittest.TestCase):
         report = self.report(80)
         report["dimension_scores"]["easy_english"] = 6.0
         with patch.object(engine, "cf_text", return_value=json.dumps(report)):
-            with self.assertRaisesRegex(ValueError, "easy_english"):
+            with self.assertRaisesRegex(ValueError, "very easy English"):
                 engine.review_story_quality(self.valid_story(), [])
 
     def test_below_seven_is_rejected_even_if_model_says_passed(self):
@@ -668,6 +671,15 @@ class PublicationQualityGateTests(unittest.TestCase):
             engine.discard_cached_story_plan(plan, workdir)
             self.assertFalse(plan.exists())
             self.assertTrue(all(not batch.exists() for batch in batches))
+
+    def test_outline_duplicate_error_identifies_both_scene_numbers(self):
+        rows = [
+            {"number": i, "beat": f"the team takes a distinct action in scene {i} and finds a useful new clue"}
+            for i in range(1, 51)
+        ]
+        rows[16]["beat"] = rows[4]["beat"]
+        with self.assertRaisesRegex(ValueError, "beats 5 and 17 repeat the same event"):
+            engine.validate_outline_rows(rows, [], strict_repetition=False)
 
     def test_outline_rejects_ending_padded_with_epilogue_only_beats(self):
         rows = [
