@@ -921,8 +921,14 @@ def repair_outline_from_review(plan, outline, report):
         "Use ONLY exact full names from the character registry; no aliases and no new named people. "
         "Keep the story grounded in its existing world. Make cause and effect clear in every beat. "
         "Every clue must lead somewhere and receive a payoff. Every kidnapping or rescue must have "
-        "one clear sequence. The villain must be exposed, confronted, and face a believable consequence. "
-        "If people are abducted, rescue them before the ending; do not let an unexplained sacrifice happen. "
+        "one clear sequence. Before a suspect is revealed, introduce that suspect earlier and plant at "
+        "least one fair clue. Before heroes locate or capture anyone, show the clue, witness, record, "
+        "tracking step, or deduction that reveals the location. Never let a character appear suddenly "
+        "only to solve the mystery. Before anyone is declared guilty, show concrete evidence and a "
+        "believable legal or public accountability process. Never state that evidence exists without "
+        "showing where it came from. The villain must be exposed, confronted, and face a believable "
+        "consequence. If people are abducted, rescue them before the ending; do not let an unexplained "
+        "sacrifice happen. Every registered character must keep the same identity, name, and role. "
         "The final ten beats must resolve the main case, rescue or account for victims, expose the truth, "
         "hold the villain accountable, and give the protagonists emotional closure. No unresolved "
         "anonymous threat or sequel cliffhanger. Keep English very easy: common words and short sentences. "
@@ -1389,10 +1395,10 @@ Do not add JSON, quotation marks, headings or explanatory text.
 
     outline = validate_outline_rows(plan["outline"], plan.get("character_registry", []))
     outline_report = review_story_outline(plan, outline, workdir)
-    for repair_attempt in range(1, 6):
+    for repair_attempt in range(1, 7):
         if outline_report.get("passed"):
             break
-        if repair_attempt == 5:
+        if repair_attempt == 6:
             break
         logging.warning(
             "Outline quality review failed (%s/100); automatically repairing story structure.",
