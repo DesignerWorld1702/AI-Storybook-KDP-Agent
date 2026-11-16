@@ -1243,6 +1243,14 @@ def review_story_quality(story, outline, workdir=None):
     if not villain_name or villain_name not in registered_names or len(villains) != 1 or villains[0].get("name") != villain_name:
         raise ValueError("Quality gate: exactly one registered principal villain is required.")
     registered_set = set(registered_names)
+    scene_outline_rows = [
+        {
+            "number": scene.get("number"),
+            "beat": str(scene.get("heading", "")) + " " + str(scene.get("text", "")),
+        }
+        for scene in scenes
+    ]
+    validate_outline_cast_distribution(scene_outline_rows, registry)
     for scene in scenes:
         present = scene.get("characters_present", [])
         if not isinstance(present, list):
