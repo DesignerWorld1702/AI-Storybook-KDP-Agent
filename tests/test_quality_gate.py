@@ -286,6 +286,14 @@ class PublicationQualityGateTests(unittest.TestCase):
         self.assertEqual(found, ["Sophia"])
 
 
+
+    def test_outline_sanitizer_expands_unique_registered_surname_alias(self):
+        outline = [{"number": 1, "beat": "Jameson finds the final clue and confronts the villain."}]
+        registry = [{"name": "Detective Jameson"}, {"name": "Maya Kanzaki"}]
+        engine.sanitize_outline_unregistered_names(outline, registry)
+        self.assertIn("Detective Jameson", outline[0]["beat"])
+        self.assertEqual(engine.missing_registered_outline_names(outline, registry), [])
+
     def test_outline_sanitizer_final_sweep_removes_unregistered_full_names(self):
         outline = [
             {"number": 1, "beat": "The detective meets Naomi Tanaka outside the station."},
