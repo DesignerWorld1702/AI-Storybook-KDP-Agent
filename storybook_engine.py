@@ -478,7 +478,7 @@ def sanitize_outline_unregistered_names(outline, registry, extra_names=None):
         if isinstance(item, dict):
             beat = str(item.get("beat", ""))
             item["beat"] = re.sub(
-                r"\b([A-Z][a-z]+)\s+\1\b", "the person", beat
+                r"\b([A-Z][a-z]+)\s+\1\b", r"\1", beat
             )
     unknown = list(dict.fromkeys(
         unregistered_named_entities_in_outline(outline, registry) + list(extra_names or [])
