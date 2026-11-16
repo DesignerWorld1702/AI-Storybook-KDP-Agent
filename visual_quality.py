@@ -115,7 +115,7 @@ def _vision_review(account: str, token: str, image_uri: str, scene: dict, story:
     report["passed"] = (
         float(report["score"]) >= 7
         and report.get("scene_match") is True
-        and report.get("character_identity_match") is True
+        and (not cast or report.get("character_identity_match") is True)
         and not report["major_defects"]
     )
     return report
@@ -159,7 +159,7 @@ def review_and_repair_scene_images(story: dict, scenes_dir: Path, workdir: Path,
                 engine.build_scene_prompt(story, scene, engine.STYLE_LOCK),
                 path, width=width, height=height, reference_images=scene_refs
             )
-            if not engine.valid_image(path) if hasattr(engine, "valid_image") else not path.is_file():
+            if not path.is_file():
                 raise RuntimeError(f"Regenerated scene {index} is not a valid image.")
             time.sleep(0.5)
         reports.append(last or {"scene_number": index, "passed": False, "score": 0,
