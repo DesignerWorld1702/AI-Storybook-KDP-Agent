@@ -210,7 +210,8 @@ class PublicationQualityGateTests(unittest.TestCase):
             {"number": i, "beat": f"Scene {i} introduces a distinct action, new clue, clear consequence, and a fresh decision for the team"}
             for i in range(1, 51)
         ]
-        rows[49]["beat"] = rows[48]["beat"]
+        for index in range(44, 50):
+            rows[index]["beat"] = rows[43]["beat"]
         with self.assertRaises(ValueError):
             engine.validate_outline_rows(rows, [])
         reviewed = engine.validate_outline_rows(rows, [], strict_repetition=False)
