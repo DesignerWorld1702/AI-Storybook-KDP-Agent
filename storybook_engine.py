@@ -586,6 +586,23 @@ def sanitize_outline_unregistered_names(outline, registry, extra_names=None):
                     "the person", beat, flags=re.IGNORECASE
                 )
             item["beat"] = re.sub(r"\s{2,}", " ", beat).strip()
+    # Final deterministic sweep: if an unknown full name survives contextual
+    # cleanup, replace every exact occurrence rather than retrying the model.
+    for _ in range(2):
+        remaining = unregistered_named_entities_in_outline(outline, registry)
+        if not remaining:
+            break
+        for unknown_name in remaining:
+            escaped_unknown = re.escape(unknown_name)
+            for item in outline:
+                if not isinstance(item, dict):
+                    continue
+                beat = str(item.get("beat", ""))
+                beat = re.sub(
+                    r"(?<![A-Za-z])" + escaped_unknown + r"(?![A-Za-z])",
+                    "the person", beat, flags=re.IGNORECASE
+                )
+                item["beat"] = re.sub(r"\s{2,}", " ", beat).strip()
     return outline
 
 
