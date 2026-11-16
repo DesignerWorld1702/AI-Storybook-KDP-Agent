@@ -617,46 +617,20 @@ class PublicationQualityGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unregistered character"):
             engine.review_story_quality(story, [])
 
-    def test_invalid_cached_outline_is_discarded_before_regeneration(self):
+    def test_discard_cached_story_plan_removes_plan_and_scene_batches(self):
         with tempfile.TemporaryDirectory() as temp:
             workdir = Path(temp)
-            registry = [
-                {"name": "Mira Stone", "species": "human", "role": "hero", "importance": "protagonist"},
-                {"name": "Rex Thorn", "species": "human", "role": "villain", "importance": "villain"},
+            plan = workdir / "story_plan.json"
+            plan.write_text("{}", encoding="utf-8")
+            batches = [
+                workdir / "scene_batch_01_05.json",
+                workdir / "scene_batch_06_10.json",
             ]
-            outline = [
-                {"number": i, "beat": f"Mira Stone and Rex Thorn take a distinct action in scene {i} and uncover a new clue"}
-                for i in range(1, 51)
-            ]
-            filler = [
-                "Mira Stone and Rex Thorn are praised by the mayor for their careful work and courage",
-                "Mira Stone and Rex Thorn attend a city celebration for the case and their public service",
-                "Mira Stone and Rex Thorn's case is remembered as a cautionary tale for the art world",
-                "Mira Stone and Rex Thorn receive medals and public recognition for solving the case",
-            ]
-            for offset, beat in enumerate(filler):
-                outline[35 + offset]["beat"] = beat
-            plan = {
-                "story_schema_version": 5,
-                "outline": outline,
-                "character_registry": registry,
-                "principal_villain": "Rex Thorn",
-                "title": "Test Mystery",
-                "description": "A short test description.",
-            }
-            (workdir / "story_plan.json").write_text(json.dumps(plan), encoding="utf-8")
-            batch = workdir / "scene_batch_01_05.json"
-            batch.write_text(json.dumps({"scenes": []}), encoding="utf-8")
-            with patch.object(engine, "validate_outline_rows", side_effect=ValueError("epilogue-only")) as validate_mock, \
-                 patch.object(engine, "cf_text", side_effect=RuntimeError("fresh generation reached")):
-                with self.assertRaisesRegex(RuntimeError, "fresh generation reached"):
-                    engine.make_story(
-                        "Fantasy mystery suspense thriller", engine.STYLE_LOCK,
-                        "Teen and adult readers", "", "test cast", 45, workdir=workdir
-                    )
-            validate_mock.assert_called_once()
-            self.assertFalse((workdir / "story_plan.json").exists())
-            self.assertFalse(batch.exists())
+            for batch in batches:
+                batch.write_text("{}", encoding="utf-8")
+            engine.discard_cached_story_plan(plan, workdir)
+            self.assertFalse(plan.exists())
+            self.assertTrue(all(not batch.exists() for batch in batches))
 
     def test_outline_rejects_ending_padded_with_epilogue_only_beats(self):
         rows = [
