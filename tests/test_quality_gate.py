@@ -285,6 +285,19 @@ class PublicationQualityGateTests(unittest.TestCase):
         found = engine.unregistered_named_entities_in_outline(outline, [{"name": "Sophia Bennett"}])
         self.assertEqual(found, ["Sophia"])
 
+
+    def test_outline_sanitizer_final_sweep_removes_unregistered_full_names(self):
+        outline = [
+            {"number": 1, "beat": "The detective meets Naomi Tanaka outside the station."},
+            {"number": 2, "beat": "A witness named Naomi Tanaka gives the clue to the team."},
+        ]
+        engine.sanitize_outline_unregistered_names(outline, [{"name": "Maya Kanzaki"}])
+        self.assertEqual(
+            engine.unregistered_named_entities_in_outline(outline, [{"name": "Maya Kanzaki"}]),
+            [],
+        )
+        self.assertNotIn("Naomi Tanaka", " ".join(row["beat"] for row in outline))
+
     def test_outline_sanitizer_resolves_repeated_first_name_to_registered_character(self):
         outline = [{"number": 1, "beat": "The witness is named Sophia Sophia."}]
         engine.sanitize_outline_unregistered_names(outline, [{"name": "Sophia Bennett"}])
