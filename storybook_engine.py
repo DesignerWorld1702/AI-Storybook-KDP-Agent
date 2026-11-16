@@ -950,8 +950,17 @@ def validate_outline_rows(rows, registry, strict_repetition=True):
         re.sub(r"[^a-z0-9 ]", "", str(item.get("beat", "")).lower()).strip()
         for item in rows
     ]
-    if len(set(normalized)) != len(normalized):
-        raise ValueError("Outline contains repeated or near-identical scene beats.")
+    seen_beats = {}
+    for index, beat in enumerate(normalized, start=1):
+        if beat in seen_beats:
+            first = seen_beats[beat]
+            excerpt = str(rows[index - 1].get("beat", "")).strip()
+            raise ValueError(
+                f"Outline beats {first} and {index} repeat the same event: "
+                + repr(excerpt[:180])
+                + ". Rewrite the later beat as a new action that advances the plot."
+            )
+        seen_beats[beat] = index
     validate_outline_ending_progression(rows)
     if strict_repetition:
         for first_index in range(len(normalized)):
