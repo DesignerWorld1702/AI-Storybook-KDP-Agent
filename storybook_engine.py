@@ -221,7 +221,25 @@ def validate_scene_image_set(scenes_dir, expected_count=50, expected_size=None):
             if str(exc).startswith("Image quality gate:"):
                 raise
             raise ValueError(f"Image quality gate: {path.name} is not a valid readable PNG: {exc}") from exc
-    return {"checked_images": len(paths), "dimensions": list(expected_size) if expected_size else None}
+    return {
+        "checked_images": len(paths),
+        "dimensions": list(expected_size) if expected_size else None,
+        "automated_checks": [
+            "valid PNG files",
+            "expected image dimensions",
+            "minimum resolution",
+            "non-blank image content",
+            "near-duplicate image detection"
+        ],
+        "character_consistency_verified": False,
+        "visual_story_match_verified": False,
+        "human_visual_review_required": True,
+        "limitations": (
+            "These automated checks do not judge whether each image matches its scene, "
+            "keeps faces and costumes consistent, or has strong composition. Review the "
+            "contact sheet and all 50 page images before publication."
+        )
+    }
 
 
 def load_character_library():
@@ -2524,6 +2542,16 @@ BOOK DETAILS
 [ ] Review description, keywords, categories, language, reading age if relevant
 [ ] Verify rights and ownership of all generated content
 [ ] Disclose AI-generated text/images accurately under current KDP rules
+
+ILLUSTRATION AND CHARACTER REVIEW — REQUIRED BEFORE PUBLICATION
+[ ] Review the 50-scene contact sheet and all 50 full-size page images
+[ ] Check that every character keeps the same face, hair, eyes, body, and identifying marks
+[ ] Check that each character's clothing stays consistent within the book
+[ ] Check that every image matches its scene action, emotion, and camera direction
+[ ] Check that story text is readable and does not cover important image details
+[ ] Fix any weak, repeated, distorted, or mismatched illustrations
+NOTE: Automated image checks verify file integrity, resolution, blank images, and near-duplicates.
+They do NOT verify character identity, scene accuracy, or artistic quality.
 
 PAPERBACK
 [ ] Confirm current trim size and bleed settings
