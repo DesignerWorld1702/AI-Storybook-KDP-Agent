@@ -785,6 +785,28 @@ def ensure_concrete_story_costumes(plan):
     return plan
 
 
+
+def validate_principal_villain_foreshadowing(outline, principal_villain, max_scene=15):
+    """Require the registered antagonist to be seeded early, not introduced as a late twist."""
+    villain = str(principal_villain or "").strip()
+    if not villain:
+        raise ValueError("A registered principal villain is required.")
+    early_beats = [
+        item for item in outline
+        if isinstance(item, dict) and isinstance(item.get("number"), int)
+        and 1 <= item["number"] <= max_scene
+    ]
+    if not any(
+        villain.casefold() in str(item.get("beat", "")).casefold()
+        for item in early_beats
+    ):
+        raise ValueError(
+            f"The registered principal villain {villain} must be foreshadowed by full name "
+            f"within scenes 1-{max_scene}."
+        )
+    return outline
+
+
 def validate_outline_rows(rows, registry, strict_repetition=True):
     """Validate outline shape, page-beat length, cast coverage, and extra named people."""
     if not isinstance(rows, list) or len(rows) != 50:
@@ -980,6 +1002,9 @@ def repair_outline_from_review(plan, outline, report):
             )
             repaired_outline = enforce_principal_villain_identity(
                 repaired_outline, plan.get("principal_villain", "")
+            )
+            repaired_outline = validate_principal_villain_foreshadowing(
+                repaired_outline, plan.get("principal_villain", ""), max_scene=15
             )
         except ValueError as exc:
             last_error = str(exc)
@@ -1460,6 +1485,9 @@ Do not add JSON, quotation marks, headings or explanatory text.
         )
 
     outline = validate_outline_rows(plan["outline"], plan.get("character_registry", []))
+    outline = validate_principal_villain_foreshadowing(
+        outline, plan.get("principal_villain", ""), max_scene=15
+    )
     outline_report = review_story_outline(plan, outline, workdir)
     for repair_attempt in range(1, 7):
         if outline_report.get("passed"):
