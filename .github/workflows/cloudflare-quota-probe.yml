@@ -1,4 +1,4 @@
-name: Cloudflare quota probe and one-time storybook resume # Retry current-day book after enforcing registered mastermind identity
+name: Cloudflare quota probe and one-time storybook resume # Retry current-day book after non-blocking minor-note handling
 
 on:
   push:
