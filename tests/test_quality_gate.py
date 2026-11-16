@@ -280,6 +280,23 @@ class PublicationQualityGateTests(unittest.TestCase):
         result = engine.validate_outline_rows(rows, [])
         self.assertEqual(len(result), 50)
 
+    def test_scene_page_text_is_revalidated_after_name_normalization(self):
+        scene = {
+            "number": 22,
+            "heading": "Tracking Down the Leader",
+            "text": " ".join(["Original"] * 56),
+        }
+        repaired = " ".join(["Clear"] * 45)
+        with patch.object(engine, "cf_text", return_value=repaired):
+            result = engine.repair_scene_page_text(
+                scene,
+                {"title": "The Art of Deception", "character_registry": [{"name": "James Winter"}],
+                 "principal_villain": "Marcus Blackwood"},
+                22,
+            )
+        self.assertEqual(len(result["text"].split()), 45)
+        self.assertEqual(result["text"], repaired)
+
     def test_book_description_is_grounded_and_names_protagonist_and_villain(self):
         plan = {
             "title": "The Last Clue",
