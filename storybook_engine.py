@@ -441,10 +441,11 @@ def missing_registered_outline_names(outline, registry):
 
 def unregistered_named_entities_in_outline(outline, registry):
     """Find named people introduced by the outline who are absent from the locked cast."""
-    known = {
-        str(item.get("name", "")).strip().casefold()
+    known_names = [
+        str(item.get("name", "")).strip()
         for item in registry if isinstance(item, dict) and str(item.get("name", "")).strip()
-    }
+    ]
+    known = {name.casefold() for name in known_names}
     text = " ".join(
         str(item.get("beat", "")) for item in outline if isinstance(item, dict)
     )
@@ -461,7 +462,14 @@ def unregistered_named_entities_in_outline(outline, registry):
             candidate = re.sub(
                 r"\b([A-Z][a-z]+)\s+\1\b", r"\1", candidate
             )
-            if candidate and candidate.casefold() not in known:
+            is_registered_alias = any(
+                re.search(
+                    r"(?<![A-Za-z])" + re.escape(candidate) + r"(?![A-Za-z])",
+                    registered_name, flags=re.IGNORECASE
+                )
+                for registered_name in known_names
+            )
+            if candidate and candidate.casefold() not in known and not is_registered_alias:
                 found.append((match.start(), candidate))
     ordered = []
     for _, candidate in sorted(found, key=lambda item: item[0]):
