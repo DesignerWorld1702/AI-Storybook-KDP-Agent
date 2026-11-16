@@ -869,17 +869,17 @@ def enforce_principal_villain_identity(outline, principal_villain):
         beat = str(item.get("beat", ""))
         if villain.casefold() not in beat.casefold():
             match = re.search(
-                r"\\bthe mastermind behind (.+?) is revealed to be (.+?)(?=[,.;]|$)",
+                r"\bthe mastermind behind (.+?) is revealed to be (.+?)(?=[,.;]|$)",
                 beat, flags=re.IGNORECASE
             )
             if match:
                 replacement = f"{villain} is revealed as the mastermind behind {match.group(1)}"
                 beat = beat[:match.start()] + replacement + beat[match.end():]
-            elif re.search(r"\\bthe mastermind\\b", beat, flags=re.IGNORECASE):
+            elif re.search(r"\bthe mastermind\\b", beat, flags=re.IGNORECASE):
                 beat = re.sub(
-                    r"\\bthe mastermind\\b", villain, beat, count=1, flags=re.IGNORECASE
+                    r"\bthe mastermind\\b", villain, beat, count=1, flags=re.IGNORECASE
                 )
-        item["beat"] = re.sub(r"\\s{2,}", " ", beat).strip()
+        item["beat"] = re.sub(r"\s{2,}", " ", beat).strip()
     return outline
 
 
