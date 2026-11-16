@@ -1901,6 +1901,17 @@ No extra keys, no markdown fences, no text outside JSON.
                 encoding="utf-8"
             )
 
+    # Final publication-boundary pass: run after every cast/name rewrite and
+    # cached-batch merge, immediately before the deterministic quality gate.
+    for final_scene in scenes:
+        final_number = int(final_scene.get("number", 0))
+        repair_scene_page_text(final_scene, plan, final_number)
+        final_word_count = len(str(final_scene.get("text", "")).split())
+        if not 40 <= final_word_count <= 55:
+            raise ValueError(
+                f"Final page-text normalization failed for scene {final_number}: "
+                f"{final_word_count} words."
+            )
     plan["scenes"] = scenes
     plan["art_direction"] = f"{STYLE_LOCK}\n{plan.get('art_direction', '')}"
     plan["quality_review"] = review_story_quality(plan, outline, workdir)
