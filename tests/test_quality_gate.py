@@ -205,16 +205,22 @@ class PublicationQualityGateTests(unittest.TestCase):
 
 
 
-    def test_repaired_outline_can_reach_editorial_review_with_repetition_flagged(self):
+    def test_repaired_outline_still_rejects_repeated_scene_beats(self):
         rows = [
             {"number": i, "beat": f"Scene {i} introduces a distinct action, new clue, clear consequence, and a fresh decision for the team"}
             for i in range(1, 51)
         ]
         for index in range(44, 50):
             rows[index]["beat"] = rows[43]["beat"]
-        with self.assertRaises(ValueError):
-            engine.validate_outline_rows(rows, [])
-        reviewed = engine.validate_outline_rows(rows, [], strict_repetition=False)
+        with self.assertRaisesRegex(ValueError, "repeated or near-identical"):
+            engine.validate_outline_rows(rows, [], strict_repetition=False)
+
+    def test_repaired_outline_accepts_fifty_distinct_scene_beats(self):
+        rows = [
+            {"number": i, "beat": f"Scene {i} introduces a distinct action, new clue, clear consequence, and a fresh decision for the team"}
+            for i in range(1, 51)
+        ]
+        reviewed = engine.validate_outline_rows(rows, [], strict_repetition=True)
         self.assertEqual(len(reviewed), 50)
 
     def test_outline_accepts_minor_beat_length_variation_up_to_22_words(self):
