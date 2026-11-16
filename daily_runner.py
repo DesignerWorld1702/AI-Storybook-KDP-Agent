@@ -14,6 +14,7 @@ from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 import storybook_engine as engine
 from kindle_epub import build_fixed_layout_epub
+from visual_quality import review_and_repair_scene_images
 
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
@@ -178,8 +179,25 @@ def build_one_book(book_date, config):
         image_report = engine.validate_scene_image_set(
             scenes_dir, expected_count=50, expected_size=(scene_width, scene_height)
         )
+        visual_report = review_and_repair_scene_images(
+            story, scenes_dir, outdir, references, engine, max_regenerations=2
+        )
+        image_report.update({
+            "visual_review_model": visual_report["model"],
+            "visual_reviewed_scenes": visual_report["reviewed_scenes"],
+            "visual_average_score": visual_report["average_score"],
+            "character_consistency_verified": visual_report["character_consistency_verified"],
+            "visual_story_match_verified": visual_report["scene_accuracy_verified"],
+            "human_visual_review_required": False,
+            "automated_checks": image_report.get("automated_checks", []) + [
+                "AI scene-to-illustration match review",
+                "AI character-reference consistency review",
+                "bounded automatic regeneration for failed scenes"
+            ],
+            "limitations": visual_report["limitations"]
+        })
         (outdir / "image_quality_report.json").write_text(
-            json.dumps(image_report, indent=2), encoding="utf-8"
+            json.dumps(image_report, indent=2, ensure_ascii=False), encoding="utf-8"
         )
         pages_dir = outdir / "pages"
         engine.build_page_images(story, scenes_dir, pages_dir, story["trim_size"])
