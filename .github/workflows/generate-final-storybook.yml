@@ -199,7 +199,7 @@ jobs:
           required = ["story.json", "storybook_interior.pdf", "kindle_story.html", "kindle_story.epub",
                       "kdp_listing_draft.json", "kdp_listing_draft.txt",
                       "publishing_checklist.txt", "scene_contact_sheet.jpg",
-                      "quality_review.json", "image_quality_report.json"]
+                      "quality_review.json", "image_quality_report.json", "visual_quality_report.json"]
           missing = []
           for name in required:
               path = book / name
@@ -238,6 +238,15 @@ jobs:
               pdf_header_ok = False
           listing = json.loads((book / "kdp_listing_draft.json").read_text(encoding="utf-8")) if (book / "kdp_listing_draft.json").is_file() else {}
           metadata_ok = bool(listing.get("title") and listing.get("author") and listing.get("description") and len(listing.get("keywords", [])) >= 5)
+          visual_path = book / "visual_quality_report.json"
+          visual = json.loads(visual_path.read_text(encoding="utf-8")) if visual_path.is_file() else {}
+          visual_ok = bool(
+              visual.get("passed") is True
+              and visual.get("reviewed_scenes") == 50
+              and visual.get("character_consistency_verified") is True
+              and visual.get("scene_accuracy_verified") is True
+          )
+          print("AI visual review:", "passed" if visual_ok else "FAILED / missing")
           print("Story scenes:", len(story.get("scenes", [])), "/ 50")
           print("PDF header:", "valid" if pdf_header_ok else "invalid")
           print("PDF page count:", pdf_page_count, "/ 50")
@@ -245,17 +254,17 @@ jobs:
           print("Listing metadata:", "valid" if metadata_ok else "incomplete")
           if (status.get("status") != "completed" or len(scenes) != 50 or len(pages) != 50
               or len(story.get("scenes", [])) != 50 or missing or not pdf_header_ok
-              or pdf_page_count != 50 or not pdf_size_ok or not metadata_ok):
+              or pdf_page_count != 50 or not pdf_size_ok or not metadata_ok or not visual_ok):
               print("Final package validation failed.")
               sys.exit(1)
           import datetime
           (book / "publication_package_verified.json").write_text(
               json.dumps({
                   "verified_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                  "verification": "structural package checks passed",
-                  "human_visual_review_required": True,
-                  "character_consistency_visually_verified": False,
-                  "scene_accuracy_visually_verified": False,
+                  "verification": "structural and AI-assisted visual quality checks passed",
+                  "human_visual_review_required": False,
+                  "character_consistency_visually_verified": True,
+                  "scene_accuracy_visually_verified": True,
                   "scene_images": len(scenes),
                   "integrated_pages": len(pages),
                   "pdf_pages": pdf_page_count
