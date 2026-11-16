@@ -308,6 +308,20 @@ class PublicationQualityGateTests(unittest.TestCase):
         engine.sanitize_outline_unregistered_names(outline, registry)
         self.assertIn("Detective Kate Matthews", outline[0]["beat"])
 
+
+    def test_outline_repair_keeps_registered_principal_villain_as_mastermind(self):
+        outline = [
+            {"number": 21, "beat": "The mastermind behind the burglaries is revealed to be Victor's business partner."},
+            {"number": 22, "beat": "The mastermind reveals a plan to frame Kate for the crimes."},
+        ]
+        engine.enforce_principal_villain_identity(outline, "Alexei Petrov")
+        self.assertIn(
+            "Alexei Petrov is revealed as the mastermind behind the burglaries",
+            outline[0]["beat"],
+        )
+        self.assertTrue(outline[1]["beat"].startswith("Alexei Petrov reveals"))
+        self.assertNotIn("business partner", outline[0]["beat"])
+
     def test_outline_sanitizer_expands_unique_registered_surname_alias(self):
         outline = [
             {"number": 1, "beat": "Jameson finds the final clue and confronts the villain."},
