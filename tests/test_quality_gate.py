@@ -386,6 +386,10 @@ class PublicationQualityGateTests(unittest.TestCase):
                     "reason": "A shootout happens here.",
                     "evidence_quote": "A shootout happens here.",
                 },
+                {
+                    "reason": "This is a minor issue about the setup.",
+                    "evidence_quote": outline[0]["beat"],
+                },
             ],
             "minor_issues": [],
             "dimension_scores": {
@@ -400,7 +404,7 @@ class PublicationQualityGateTests(unittest.TestCase):
             )
         self.assertTrue(result["passed"])
         self.assertEqual(result["critical_issues"], [])
-        self.assertEqual(len(result["minor_issues"]), 2)
+        self.assertEqual(len(result["minor_issues"]), 3)
         self.assertEqual(len(result["unverified_review_notes"]), 1)
 
     def test_outline_review_rejects_core_dimension_below_seven(self):
