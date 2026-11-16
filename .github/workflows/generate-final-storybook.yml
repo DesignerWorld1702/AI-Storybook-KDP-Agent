@@ -290,9 +290,9 @@ jobs:
               json.dumps({
                   "verified_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                   "verification": "structural and AI-assisted visual quality checks passed",
-                  "human_visual_review_required": False,
-                  "character_consistency_visually_verified": True,
-                  "scene_accuracy_visually_verified": True,
+                  "human_visual_review_required": True,
+                  "character_consistency_ai_review_passed": True,
+                  "scene_accuracy_ai_review_passed": True,
                   "scene_images": len(scenes),
                   "integrated_pages": len(pages),
                   "pdf_pages": pdf_page_count
