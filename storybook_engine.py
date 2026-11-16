@@ -434,19 +434,49 @@ def page_text_word_count_valid(text):
     return 40 <= len(str(text).split()) <= 55
 
 
+def simple_english_issues(text):
+    """Return deterministic readability problems for very easy storybook prose."""
+    source = str(text or "").strip()
+    words = re.findall(r"[A-Za-z]+(?:['’-][A-Za-z]+)?", source)
+    sentences = [
+        sentence.strip() for sentence in re.split(r"(?<=[.!?])\\s+", source)
+        if sentence.strip()
+    ]
+    issues = []
+    if not 3 <= len(sentences) <= 5:
+        issues.append(f"expected 3-5 short sentences, found {len(sentences)}")
+    sentence_lengths = [
+        len(re.findall(r"[A-Za-z]+(?:['’-][A-Za-z]+)?", sentence))
+        for sentence in sentences
+    ]
+    if sentence_lengths and max(sentence_lengths) > 18:
+        issues.append(f"longest sentence has {max(sentence_lengths)} words (maximum 18)")
+    if sentence_lengths and sum(sentence_lengths) / len(sentence_lengths) > 15:
+        issues.append("average sentence length is over 15 words")
+    difficult_words = sorted({
+        word.casefold() for word in words if len(word) > 12
+    })
+    if len(difficult_words) > 2:
+        issues.append("too many long or difficult words: " + ", ".join(difficult_words[:6]))
+    return issues
+
+
 def repair_scene_page_text(scene, plan, number):
     """Repair page prose after any cast-name normalization and enforce the print word limit."""
-    if page_text_word_count_valid(scene.get("text", "")):
+    current_text = str(scene.get("text", ""))
+    if page_text_word_count_valid(current_text) and not simple_english_issues(current_text):
         return scene
     source_text = str(scene.get("text", "")).strip()
     last_error = None
     for attempt in range(1, 6):
         prompt = (
             "Rewrite this illustrated storybook page as polished narrative prose of 45-50 words "
-            "(never fewer than 40 or more than 55). Preserve the exact events, facts, registered "
-            "character names, emotional beat, and continuity. Do not add a new event, heading, label, "
-            "or explanation. Do not rename or remove any registered character. Use very easy English. "
-            "Count the words before answering. Return only the page paragraph.\\n\\n"
+            "(never fewer than 40 or more than 55). Use 3-5 short sentences, with no sentence over "
+            "18 words and an average of no more than 15 words. Use common everyday words; avoid long "
+            "or difficult vocabulary. Preserve the exact events, facts, registered character names, "
+            "emotional beat, and continuity. Do not add a new event, heading, label, or explanation. "
+            "Do not rename or remove any registered character. Count the words before answering. "
+            "Return only the page paragraph.\\n\\n"
             f"Book: {plan.get('title', 'Untitled')}\\n"
             f"Registered cast: {json.dumps([x.get('name') for x in plan.get('character_registry', []) if isinstance(x, dict)])}\\n"
             f"Principal villain: {plan.get('principal_villain', '')}\\n"
@@ -455,14 +485,17 @@ def repair_scene_page_text(scene, plan, number):
             f"Original page text ({len(source_text.split())} words): {source_text}"
         )
         candidate = cf_text(prompt, max_tokens=700).strip().strip('"').strip()
-        if page_text_word_count_valid(candidate):
+        if page_text_word_count_valid(candidate) and not simple_english_issues(candidate):
             scene["text"] = candidate
             logging.info(
                 "Repaired scene %s final page text to %s words after cast normalization.",
                 number, len(candidate.split())
             )
             return scene
-        last_error = f"repair {attempt} returned {len(candidate.split())} words"
+        last_error = (
+            f"repair {attempt} returned {len(candidate.split())} words; "
+            + "; ".join(simple_english_issues(candidate))
+        )
     raise ValueError(
         f"Scene {number} page text could not be repaired to 40-55 words after cast normalization "
         f"({last_error})."
@@ -1255,6 +1288,12 @@ def review_story_quality(story, outline, workdir=None):
         words = len(str(scene.get("text", "")).split())
         if not 40 <= words <= 55:
             raise ValueError(f"Quality gate: scene {number} has {words} words; every page must contain 40–55 words.")
+        readability_issues = simple_english_issues(scene.get("text", ""))
+        if readability_issues:
+            raise ValueError(
+                f"Quality gate: scene {number} is not written in very easy English: "
+                + "; ".join(readability_issues)
+            )
         if not str(scene.get("heading", "")).strip():
             raise ValueError(f"Quality gate: scene {number} is missing its heading.")
         if not str(scene.get("visual_prompt", "")).strip():
