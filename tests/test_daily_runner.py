@@ -63,8 +63,25 @@ class DailyRunnerResumeTests(unittest.TestCase):
             (completed / "job_status.json").write_text(
                 json.dumps({"status": "completed"}), encoding="utf-8"
             )
+            (completed / "publication_package_verified.json").write_text(
+                json.dumps({"verification": "passed"}), encoding="utf-8"
+            )
             (incomplete / "job_status.json").write_text(
                 json.dumps({"status": "failed"}), encoding="utf-8"
+            )
+            with patch.object(daily_runner, "OUTROOT", root):
+                self.assertEqual(
+                    daily_runner.find_latest_incomplete_book_date(),
+                    date(2026, 11, 16),
+                )
+
+    def test_completed_but_unverified_book_remains_resumable(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            folder = root / "20261116_daily_story"
+            folder.mkdir()
+            (folder / "job_status.json").write_text(
+                json.dumps({"status": "completed"}), encoding="utf-8"
             )
             with patch.object(daily_runner, "OUTROOT", root):
                 self.assertEqual(
