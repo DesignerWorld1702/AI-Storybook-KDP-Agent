@@ -647,7 +647,8 @@ class PublicationQualityGateTests(unittest.TestCase):
             (workdir / "story_plan.json").write_text(json.dumps(plan), encoding="utf-8")
             batch = workdir / "scene_batch_01_05.json"
             batch.write_text(json.dumps({"scenes": []}), encoding="utf-8")
-            with patch.object(engine, "cf_text", side_effect=RuntimeError("fresh generation reached")):
+            with patch.object(engine, "validate_outline_rows", side_effect=ValueError("epilogue-only")), \
+                 patch.object(engine, "cf_text", side_effect=RuntimeError("fresh generation reached")):
                 with self.assertRaisesRegex(RuntimeError, "fresh generation reached"):
                     engine.make_story(
                         "Fantasy mystery suspense thriller", engine.STYLE_LOCK,
