@@ -1,4 +1,4 @@
-name: Cloudflare quota probe and one-time storybook resume # Retry current-day book after expanded editorial repair attempts
+name: Cloudflare quota probe and one-time storybook resume # Retry current-day book after repaired-description fallback
 
 on:
   push:
