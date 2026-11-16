@@ -956,10 +956,17 @@ def repair_outline_from_review(plan, outline, report):
                 + last_error + ". Rewrite all 50 beats again. Ensure every beat is distinct and pass "
                 "the full cast and numbering rules."
             )
-        repaired = extract_json(
-            cf_text(prompt, max_tokens=5200),
-            "full outline repair after editorial rejection"
-        )
+        try:
+            repaired = extract_json(
+                cf_text(prompt, max_tokens=5200),
+                "full outline repair after editorial rejection"
+            )
+        except (ValueError, TypeError) as exc:
+            last_error = "the model returned invalid JSON: " + str(exc)[:500]
+            logging.warning(
+                "Outline repair attempt %s/3 returned invalid JSON: %s", attempt, last_error
+            )
+            continue
         if not isinstance(repaired, dict) or not isinstance(repaired.get("outline"), list):
             last_error = "the JSON did not contain a 50-beat outline"
             continue
