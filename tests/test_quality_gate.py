@@ -300,6 +300,14 @@ class PublicationQualityGateTests(unittest.TestCase):
 
 
 
+
+    def test_registered_titled_full_name_partial_is_not_treated_as_new_person(self):
+        outline = [{"number": 1, "beat": "Kate Matthews discovers the hidden records."}]
+        registry = [{"name": "Detective Kate Matthews"}]
+        self.assertEqual(engine.unregistered_named_entities_in_outline(outline, registry), [])
+        engine.sanitize_outline_unregistered_names(outline, registry)
+        self.assertIn("Detective Kate Matthews", outline[0]["beat"])
+
     def test_outline_sanitizer_expands_unique_registered_surname_alias(self):
         outline = [
             {"number": 1, "beat": "Jameson finds the final clue and confronts the villain."},
