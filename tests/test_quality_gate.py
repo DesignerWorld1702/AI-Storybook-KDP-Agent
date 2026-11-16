@@ -269,6 +269,18 @@ class PublicationQualityGateTests(unittest.TestCase):
 
 
 
+
+    def test_outline_entity_detection_collapses_repeated_first_name(self):
+        outline = [{"number": 1, "beat": "The witness is named Sophia Sophia."}]
+        found = engine.unregistered_named_entities_in_outline(outline, [{"name": "Sophia Bennett"}])
+        self.assertEqual(found, ["Sophia"])
+
+    def test_outline_sanitizer_resolves_repeated_first_name_to_registered_character(self):
+        outline = [{"number": 1, "beat": "The witness is named Sophia Sophia."}]
+        engine.sanitize_outline_unregistered_names(outline, [{"name": "Sophia Bennett"}])
+        self.assertNotIn("Sophia Sophia", outline[0]["beat"])
+        self.assertIn("Sophia Bennett", outline[0]["beat"])
+
     def test_outline_sanitizer_does_not_expand_overlapping_aliases_twice(self):
         outline = [{"number": 1, "beat": "An old informant named Detective James reveals the clue."}]
         engine.sanitize_outline_unregistered_names(outline, [{"name": "James Reed"}])
