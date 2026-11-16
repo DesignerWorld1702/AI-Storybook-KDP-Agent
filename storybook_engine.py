@@ -892,16 +892,17 @@ def validate_outline_rows(rows, registry, strict_repetition=True):
     ]
     if len(set(normalized)) != len(normalized):
         raise ValueError("Outline contains repeated or near-identical scene beats.")
-    for first_index in range(len(normalized)):
-        for second_index in range(first_index + 1, len(normalized)):
-            similarity = difflib.SequenceMatcher(
-                None, normalized[first_index], normalized[second_index]
-            ).ratio()
-            if similarity >= 0.86:
-                raise ValueError(
-                    f"Outline beats {first_index + 1} and {second_index + 1} are near-identical "
-                    f"(similarity {similarity:.2f})."
-                )
+    if strict_repetition:
+        for first_index in range(len(normalized)):
+            for second_index in range(first_index + 1, len(normalized)):
+                similarity = difflib.SequenceMatcher(
+                    None, normalized[first_index], normalized[second_index]
+                ).ratio()
+                if similarity >= 0.86:
+                    raise ValueError(
+                        f"Outline beats {first_index + 1} and {second_index + 1} are near-identical "
+                        f"(similarity {similarity:.2f})."
+                    )
     rows = sanitize_outline_unregistered_names(rows, registry)
     missing = missing_registered_outline_names(rows, registry)
     unknown = unregistered_named_entities_in_outline(rows, registry)
