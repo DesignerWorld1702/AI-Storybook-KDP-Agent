@@ -720,7 +720,7 @@ def validate_outline_rows(rows, registry):
         raise ValueError("Outline beats must be numbered sequentially from 1 through 50.")
     for item in rows:
         count = len(str(item.get("beat", "")).split())
-        if not 8 <= count <= 18:
+        if not 8 <= count <= 22:
             raise ValueError(f"Outline beat {item['number']} has {count} words; required range is 8–22.")
     normalized = [
         re.sub(r"[^a-z0-9 ]", "", str(item.get("beat", "")).lower()).strip()
