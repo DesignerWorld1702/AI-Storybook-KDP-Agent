@@ -858,12 +858,40 @@ def review_story_outline(plan, outline, workdir=None):
     return report
 
 
+def enforce_principal_villain_identity(outline, principal_villain):
+    """Prevent an alternate or anonymous mastermind from replacing the registered villain."""
+    villain = str(principal_villain or "").strip()
+    if not villain:
+        raise ValueError("A registered principal villain is required to repair an outline.")
+    for item in outline:
+        if not isinstance(item, dict):
+            continue
+        beat = str(item.get("beat", ""))
+        if villain.casefold() not in beat.casefold():
+            match = re.search(
+                r"\\bthe mastermind behind (.+?) is revealed to be (.+?)(?=[,.;]|$)",
+                beat, flags=re.IGNORECASE
+            )
+            if match:
+                replacement = f"{villain} is revealed as the mastermind behind {match.group(1)}"
+                beat = beat[:match.start()] + replacement + beat[match.end():]
+            elif re.search(r"\\bthe mastermind\\b", beat, flags=re.IGNORECASE):
+                beat = re.sub(
+                    r"\\bthe mastermind\\b", villain, beat, count=1, flags=re.IGNORECASE
+                )
+        item["beat"] = re.sub(r"\\s{2,}", " ", beat).strip()
+    return outline
+
+
 def repair_outline_from_review(plan, outline, report):
     """Rewrite the whole outline around reviewer feedback without changing the registered cast."""
     prompt = (
         "Rewrite this entire story outline to fix every critical issue in the editorial review. "
         "This is an automatic quality repair, not a new unrelated story. Preserve the title, genre, "
         "setting, all registered character names, their roles, and the exact principal villain. "
+        "The principal villain is the ONLY mastermind, culprit, or person behind the central crime. "
+        "Never reveal a business partner, henchman, anonymous leader, or another registered character "
+        "as the mastermind. Every mastermind reference must name the exact registered principal villain. "
         "Use ONLY exact full names from the character registry; no aliases and no new named people. "
         "Keep the story grounded in its existing world. Make cause and effect clear in every beat. "
         "Every clue must lead somewhere and receive a payoff. Every kidnapping or rescue must have "
@@ -890,6 +918,9 @@ def repair_outline_from_review(plan, outline, report):
         raise ValueError("Outline repair did not return the required JSON structure.")
     repaired_outline = validate_outline_rows(
         repaired["outline"], plan.get("character_registry", []), strict_repetition=False
+    )
+    repaired_outline = enforce_principal_villain_identity(
+        repaired_outline, plan.get("principal_villain", "")
     )
     description = str(repaired.get("description", "")).strip()
     if len(description.split()) < 80:
