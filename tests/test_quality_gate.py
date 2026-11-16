@@ -122,7 +122,7 @@ class PublicationQualityGateTests(unittest.TestCase):
         report = self.report(80)
         report["dimension_scores"]["easy_english"] = 6.0
         with patch.object(engine, "cf_text", return_value=json.dumps(report)):
-            with self.assertRaisesRegex(ValueError, "very easy English"):
+            with self.assertRaisesRegex(ValueError, "easy_english"):
                 engine.review_story_quality(self.valid_story(), [])
 
     def test_below_seven_is_rejected_even_if_model_says_passed(self):
@@ -218,7 +218,7 @@ class PublicationQualityGateTests(unittest.TestCase):
         ]
         for index in range(44, 50):
             rows[index]["beat"] = rows[43]["beat"]
-        with self.assertRaisesRegex(ValueError, "repeated or near-identical"):
+        with self.assertRaisesRegex(ValueError, "repeat the same event"):
             engine.validate_outline_rows(rows, [], strict_repetition=False)
 
     def test_outline_rejects_even_five_exact_duplicate_beats(self):
@@ -228,7 +228,7 @@ class PublicationQualityGateTests(unittest.TestCase):
         ]
         for index in range(45, 50):
             rows[index]["beat"] = rows[44]["beat"]
-        with self.assertRaisesRegex(ValueError, "repeated or near-identical"):
+        with self.assertRaisesRegex(ValueError, "repeat the same event"):
             engine.validate_outline_rows(rows, [])
 
     def test_outline_rejects_semantically_near_identical_beats(self):
@@ -320,7 +320,12 @@ class PublicationQualityGateTests(unittest.TestCase):
             "heading": "Tracking Down the Leader",
             "text": " ".join(["Original"] * 56),
         }
-        repaired = " ".join(["Clear"] * 45)
+        repaired = (
+            "James checks the old map and finds a small red mark. "
+            "The team sees the mark near the gate and asks who left it. "
+            "They share what they know, make a safe plan, and move on. "
+            "The next clue gives them hope and shows where to look."
+        )
         with patch.object(engine, "cf_text", return_value=repaired):
             result = engine.repair_scene_page_text(
                 scene,
@@ -328,7 +333,7 @@ class PublicationQualityGateTests(unittest.TestCase):
                  "principal_villain": "Marcus Blackwood"},
                 22,
             )
-        self.assertEqual(len(result["text"].split()), 45)
+        self.assertEqual(len(result["text"].split()), 47)
         self.assertEqual(result["text"], repaired)
 
     def test_book_description_is_grounded_and_names_protagonist_and_villain(self):
