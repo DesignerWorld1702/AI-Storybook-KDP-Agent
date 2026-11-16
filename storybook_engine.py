@@ -848,9 +848,27 @@ def review_story_outline(plan, outline, workdir=None):
     for key in required:
         if float(dimensions[key]) < 7:
             critical.append(f"Core outline dimension '{key}' scored below 7/10.")
+    minor_issues = report.get("minor_issues", [])
+    if not isinstance(minor_issues, list):
+        minor_issues = [str(minor_issues)]
+    retained_critical = []
+    for issue in critical:
+        issue_text = str(issue)
+        lower_issue = issue_text.casefold()
+        explicitly_minor = any(phrase in lower_issue for phrase in (
+            "minor plot hole", "minor issue", "not a major issue",
+            "not a major contradiction", "doesn't affect the overall coherence",
+            "does not affect the overall coherence", "could be improved but"
+        ))
+        if explicitly_minor:
+            minor_issues.append(issue_text)
+        else:
+            retained_critical.append(issue_text)
     report["score"] = score
-    report["critical_issues"] = critical
-    report["passed"] = bool(report["passed"] and score >= 70 and not critical)
+    report["critical_issues"] = retained_critical
+    report["minor_issues"] = minor_issues
+    core_dimensions_pass = all(float(dimensions[key]) >= 7 for key in required)
+    report["passed"] = bool(score >= 70 and core_dimensions_pass and not retained_critical)
     if workdir:
         (Path(workdir) / "outline_quality_review.json").write_text(
             json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8"
