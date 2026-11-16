@@ -288,7 +288,10 @@ class PublicationQualityGateTests(unittest.TestCase):
 
 
     def test_outline_sanitizer_expands_unique_registered_surname_alias(self):
-        outline = [{"number": 1, "beat": "Jameson finds the final clue and confronts the villain."}]
+        outline = [
+            {"number": 1, "beat": "Jameson finds the final clue and confronts the villain."},
+            {"number": 2, "beat": "Maya Kanzaki brings the final evidence to the court."},
+        ]
         registry = [{"name": "Detective Jameson"}, {"name": "Maya Kanzaki"}]
         engine.sanitize_outline_unregistered_names(outline, registry)
         self.assertIn("Detective Jameson", outline[0]["beat"])
