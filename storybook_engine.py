@@ -801,7 +801,7 @@ def validate_outline_rows(rows, registry, strict_repetition=True):
         re.sub(r"[^a-z0-9 ]", "", str(item.get("beat", "")).lower()).strip()
         for item in rows
     ]
-    if strict_repetition and len(set(normalized)) < 45:
+    if len(set(normalized)) < 45:
         raise ValueError("Outline contains repeated or near-identical scene beats.")
     rows = sanitize_outline_unregistered_names(rows, registry)
     missing = missing_registered_outline_names(rows, registry)
