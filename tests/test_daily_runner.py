@@ -42,7 +42,12 @@ def valid_story():
         "trim_size": "8.5 × 8.5 in — square picture book",
         "pdf_text_size": 11,
         "scenes": [
-            {"number": n, "text": "cached", "heading": f"Scene {n}",
+            {"number": n, "text": (
+                 "Hero checks the old map and finds a small red mark. "
+                 "The team sees the mark near the gate and asks who left it. "
+                 "They share what they know, make a safe plan, and move on. "
+                 "The next clue gives them hope and shows where to look."
+             ), "heading": f"Scene {n}",
              "visual_prompt": f"Distinct illustration for scene {n}",
              "characters_present": ["Hero"]}
             for n in range(1, 51)
