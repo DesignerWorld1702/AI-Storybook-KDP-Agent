@@ -1,4 +1,4 @@
-name: Cloudflare quota probe and one-time storybook resume # Retry current-day book after editorial outline tolerance fix
+name: Cloudflare quota probe and one-time storybook resume # Retry current-day book after deterministic outline name sweep
 
 on:
   push:
