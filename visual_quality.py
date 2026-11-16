@@ -20,6 +20,17 @@ from PIL import Image, ImageDraw, ImageFont
 
 MODEL = os.getenv("CLOUDFLARE_VISION_MODEL", "@cf/moondream/moondream3.1-9B-A2B").strip()
 
+def _is_quota_exhaustion_error(error: Exception | str) -> bool:
+    """Recognize Cloudflare's exhausted daily free-allocation response."""
+    message = str(error).casefold()
+    return (
+        "used up your daily free allocation" in message
+        or "error code 4006" in message
+        or '"code":4006' in message
+        or '"code": 4006' in message
+    )
+
+
 
 def _data_uri(path: Path) -> str:
     with Image.open(path) as image:
@@ -147,14 +158,7 @@ def review_and_repair_scene_images(story: dict, scenes_dir: Path, workdir: Path,
             try:
                 last = _vision_review(account, token, board, scene, story)
             except Exception as exc:
-                error_text = str(exc).casefold()
-                quota_exhausted = (
-                    "used up your daily free allocation" in error_text
-                    or "error code 4006" in error_text
-                    or '"code":4006' in error_text
-                    or '"code": 4006' in error_text
-                )
-                if quota_exhausted:
+                if _is_quota_exhaustion_error(exc):
                     raise RuntimeError(
                         "Cloudflare daily Workers AI allocation is exhausted; stopping visual review "
                         "without wasting retries. Resume after the account allocation resets."
