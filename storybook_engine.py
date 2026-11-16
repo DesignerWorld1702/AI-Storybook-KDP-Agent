@@ -875,6 +875,32 @@ def validate_principal_villain_foreshadowing(outline, principal_villain, max_sce
     return outline
 
 
+def validate_outline_ending_progression(rows):
+    """Reject endings padded with too many awards, praise, and repeated aftermath beats."""
+    if not isinstance(rows, list) or len(rows) < 15:
+        return
+    ending = rows[-15:]
+    epilogue_patterns = (
+        r"\\b(?:praised|hailed|celebrated|honou?red|awarded|recognized|recognised)\\b",
+        r"\\b(?:remembered|cautionary tale|reminder of the importance)\\b",
+        r"\\b(?:bestseller|book is published|research is published|leading authority)\\b",
+        r"\\b(?:exhibition (?:is )?(?:extended|a huge success)|artwork is praised)\\b",
+        r"\\b(?:city.{0,35}(?:forever changed|revitalized|comes together))\\b",
+        r"\\b(?:career.{0,35}(?:success|recognition)|receives? (?:a )?(?:medal|award))\\b",
+    )
+    filler_numbers = []
+    for item in ending:
+        beat = str(item.get("beat", "")).casefold()
+        matches = sum(bool(re.search(pattern, beat)) for pattern in epilogue_patterns)
+        if matches:
+            filler_numbers.append(item.get("number"))
+    if len(filler_numbers) >= 4:
+        raise ValueError(
+            "Outline ending relies on too many epilogue-only praise, award, or aftermath beats "
+            f"in scenes {filler_numbers}; replace them with distinct story actions and consequences."
+        )
+
+
 def validate_outline_rows(rows, registry, strict_repetition=True):
     """Validate outline shape, page-beat length, cast coverage, and extra named people."""
     if not isinstance(rows, list) or len(rows) != 50:
@@ -893,6 +919,7 @@ def validate_outline_rows(rows, registry, strict_repetition=True):
     ]
     if len(set(normalized)) != len(normalized):
         raise ValueError("Outline contains repeated or near-identical scene beats.")
+    validate_outline_ending_progression(rows)
     if strict_repetition:
         for first_index in range(len(normalized)):
             for second_index in range(first_index + 1, len(normalized)):
