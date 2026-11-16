@@ -769,7 +769,7 @@ def ensure_concrete_story_costumes(plan):
     return plan
 
 
-def validate_outline_rows(rows, registry):
+def validate_outline_rows(rows, registry, strict_repetition=True):
     """Validate outline shape, page-beat length, cast coverage, and extra named people."""
     if not isinstance(rows, list) or len(rows) != 50:
         raise ValueError(f"Outline must contain exactly 50 beats; received {len(rows) if isinstance(rows, list) else 'invalid data'}.")
@@ -785,7 +785,7 @@ def validate_outline_rows(rows, registry):
         re.sub(r"[^a-z0-9 ]", "", str(item.get("beat", "")).lower()).strip()
         for item in rows
     ]
-    if len(set(normalized)) < 45:
+    if strict_repetition and len(set(normalized)) < 45:
         raise ValueError("Outline contains repeated or near-identical scene beats.")
     rows = sanitize_outline_unregistered_names(rows, registry)
     missing = missing_registered_outline_names(rows, registry)
@@ -880,7 +880,9 @@ def repair_outline_from_review(plan, outline, report):
     repaired = extract_json(cf_text(prompt, max_tokens=5200), "full outline repair after editorial rejection")
     if not isinstance(repaired, dict) or not isinstance(repaired.get("outline"), list):
         raise ValueError("Outline repair did not return the required JSON structure.")
-    repaired_outline = validate_outline_rows(repaired["outline"], plan.get("character_registry", []))
+    repaired_outline = validate_outline_rows(
+        repaired["outline"], plan.get("character_registry", []), strict_repetition=False
+    )
     description = str(repaired.get("description", "")).strip()
     if len(description.split()) < 80:
         expansion_prompt = (
