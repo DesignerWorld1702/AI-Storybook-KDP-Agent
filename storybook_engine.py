@@ -1998,6 +1998,12 @@ No extra keys, no markdown fences, no text outside JSON.
                 f"Final page-text normalization failed for scene {final_number}: "
                 f"{final_word_count} words."
             )
+        final_readability_issues = simple_english_issues(final_scene.get("text", ""))
+        if final_readability_issues:
+            raise ValueError(
+                f"Final page-text normalization failed the easy-English gate for scene "
+                f"{final_number}: " + "; ".join(final_readability_issues)
+            )
     plan["scenes"] = scenes
     plan["art_direction"] = f"{STYLE_LOCK}\n{plan.get('art_direction', '')}"
     plan["quality_review"] = review_story_quality(plan, outline, workdir)
