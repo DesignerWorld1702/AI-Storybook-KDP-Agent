@@ -204,6 +204,18 @@ class PublicationQualityGateTests(unittest.TestCase):
         self.assertIn("black leather boots", costume)
 
 
+
+    def test_repaired_outline_can_reach_editorial_review_with_repetition_flagged(self):
+        rows = [
+            {"number": i, "beat": f"Scene {i} introduces a distinct action, new clue, clear consequence, and a fresh decision for the team"}
+            for i in range(1, 51)
+        ]
+        rows[49]["beat"] = rows[48]["beat"]
+        with self.assertRaises(ValueError):
+            engine.validate_outline_rows(rows, [])
+        reviewed = engine.validate_outline_rows(rows, [], strict_repetition=False)
+        self.assertEqual(len(reviewed), 50)
+
     def test_outline_accepts_minor_beat_length_variation_up_to_22_words(self):
         rows = [
             {"number": i, "beat": f"Scene {i} introduces a distinct event with clear action, cause, consequence, and forward movement for the story"}
