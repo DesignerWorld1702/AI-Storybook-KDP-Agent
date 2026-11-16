@@ -275,12 +275,29 @@ class PublicationQualityGateTests(unittest.TestCase):
         self.assertTrue(result["passed"])
 
 
-    def test_outline_review_reclassifies_explicit_minor_notes_at_seven_ten_threshold(self):
+    def test_outline_review_reclassifies_only_evidence_grounded_minor_notes(self):
+        outline = [
+            {"number": i, "beat": f"Scene {i} contains a clear event with evidence and a consequence for the story."}
+            for i in range(1, 51)
+        ]
         report = {
             "passed": False,
             "critical_issues": [
-                {"number": 7, "reason": "This might be a minor plot hole, but it is not a major contradiction."},
-                {"number": 50, "reason": "The final shot is a minor issue that could be improved."},
+                {
+                    "number": 7,
+                    "reason": "This might be a minor plot hole, but it is not a major contradiction.",
+                    "evidence_quote": outline[6]["beat"],
+                },
+                {
+                    "number": 50,
+                    "reason": "The final shot is a minor issue that could be improved.",
+                    "evidence_quote": outline[49]["beat"],
+                },
+                {
+                    "number": 20,
+                    "reason": "A shootout happens here.",
+                    "evidence_quote": "A shootout happens here.",
+                },
             ],
             "minor_issues": [],
             "dimension_scores": {
@@ -291,11 +308,12 @@ class PublicationQualityGateTests(unittest.TestCase):
         with patch.object(engine, "cf_text", return_value=json.dumps(report)):
             result = engine.review_story_outline(
                 {"title": "Test", "character_registry": [], "principal_villain": "Villain"},
-                [{"number": 1, "beat": "A clear story beat with enough words for validation"}],
+                outline,
             )
         self.assertTrue(result["passed"])
         self.assertEqual(result["critical_issues"], [])
         self.assertEqual(len(result["minor_issues"]), 2)
+        self.assertEqual(len(result["unverified_review_notes"]), 1)
 
     def test_outline_review_rejects_core_dimension_below_seven(self):
         report = {
