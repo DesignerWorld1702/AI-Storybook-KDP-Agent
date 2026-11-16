@@ -786,6 +786,40 @@ def ensure_concrete_story_costumes(plan):
 
 
 
+
+def validate_outline_cast_distribution(outline, registry):
+    """Ensure every registered role has a meaningful, recurring presence in the plot."""
+    appearances = {}
+    for item in registry:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name", "")).strip()
+        if not name:
+            continue
+        appearances[name] = [
+            row.get("number") for row in outline if isinstance(row, dict)
+            and name.casefold() in str(row.get("beat", "")).casefold()
+        ]
+    for item in registry:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name", "")).strip()
+        role = str(item.get("importance", "")).casefold()
+        scenes = appearances.get(name, [])
+        if role == "protagonist" and len(scenes) < 8:
+            raise ValueError(f"Protagonist {name} appears in only {len(scenes)} outline beats; at least 8 are required.")
+        if role == "supporting" and len(scenes) < 3:
+            raise ValueError(f"Supporting character {name} appears in only {len(scenes)} outline beats; at least 3 are required.")
+        if role == "villain":
+            if len(scenes) < 5:
+                raise ValueError(f"Principal villain {name} appears in only {len(scenes)} outline beats; at least 5 are required.")
+            if not any(isinstance(n, int) and n <= 15 for n in scenes):
+                raise ValueError(f"Principal villain {name} must be foreshadowed within the first 15 scenes.")
+            if not any(isinstance(n, int) and n >= 41 for n in scenes):
+                raise ValueError(f"Principal villain {name} must remain active in the final ten scenes.")
+    return outline
+
+
 def validate_principal_villain_foreshadowing(outline, principal_villain, max_scene=15):
     """Require the registered antagonist to be seeded early, not introduced as a late twist."""
     villain = str(principal_villain or "").strip()
@@ -1081,6 +1115,9 @@ def repair_outline_from_review(plan, outline, report):
             )
             repaired_outline = validate_principal_villain_foreshadowing(
                 repaired_outline, plan.get("principal_villain", ""), max_scene=15
+            )
+            repaired_outline = validate_outline_cast_distribution(
+                repaired_outline, plan.get("character_registry", [])
             )
         except ValueError as exc:
             last_error = str(exc)
@@ -1450,7 +1487,13 @@ clue discovery, argument, journey, or other event with slightly changed wording.
                     villain_name.casefold() in str(item.get("beat", "")).casefold()
                     for item in rows[:15]
                 )
-                if all(len(str(item.get("beat", "")).split()) >= 8 for item in rows) and len({
+                cast_distribution_ok = True
+                try:
+                    validate_outline_cast_distribution(rows, registry)
+                except ValueError as exc:
+                    cast_distribution_ok = False
+                    last_outline_error = str(exc)
+                if cast_distribution_ok and all(len(str(item.get("beat", "")).split()) >= 8 for item in rows) and len({
                     re.sub(r"[^a-z0-9 ]", "", str(item.get("beat", "")).lower()).strip()
                     for item in rows
                 }) >= 45 and not missing_cast and not unknown_cast and villain_foreshadowed:
@@ -1565,6 +1608,9 @@ Do not add JSON, quotation marks, headings or explanatory text.
     outline = validate_outline_rows(plan["outline"], plan.get("character_registry", []))
     outline = validate_principal_villain_foreshadowing(
         outline, plan.get("principal_villain", ""), max_scene=15
+    )
+    outline = validate_outline_cast_distribution(
+        outline, plan.get("character_registry", [])
     )
     plan["description"] = synchronize_book_description(plan, outline)
     outline_report = review_story_outline(plan, outline, workdir)
