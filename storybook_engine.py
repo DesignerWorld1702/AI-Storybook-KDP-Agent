@@ -890,8 +890,18 @@ def validate_outline_rows(rows, registry, strict_repetition=True):
         re.sub(r"[^a-z0-9 ]", "", str(item.get("beat", "")).lower()).strip()
         for item in rows
     ]
-    if len(set(normalized)) < 45:
+    if len(set(normalized)) != len(normalized):
         raise ValueError("Outline contains repeated or near-identical scene beats.")
+    for first_index in range(len(normalized)):
+        for second_index in range(first_index + 1, len(normalized)):
+            similarity = difflib.SequenceMatcher(
+                None, normalized[first_index], normalized[second_index]
+            ).ratio()
+            if similarity >= 0.86:
+                raise ValueError(
+                    f"Outline beats {first_index + 1} and {second_index + 1} are near-identical "
+                    f"(similarity {similarity:.2f})."
+                )
     rows = sanitize_outline_unregistered_names(rows, registry)
     missing = missing_registered_outline_names(rows, registry)
     unknown = unregistered_named_entities_in_outline(rows, registry)
@@ -1531,7 +1541,7 @@ clue discovery, argument, journey, or other event with slightly changed wording.
                 if cast_distribution_ok and all(len(str(item.get("beat", "")).split()) >= 8 for item in rows) and len({
                     re.sub(r"[^a-z0-9 ]", "", str(item.get("beat", "")).lower()).strip()
                     for item in rows
-                }) >= 45 and not missing_cast and not unknown_cast and villain_foreshadowed:
+                }) == 50 and not missing_cast and not unknown_cast and villain_foreshadowed:
                     parsed_outline = rows
                     break
                 if missing_cast or unknown_cast:
