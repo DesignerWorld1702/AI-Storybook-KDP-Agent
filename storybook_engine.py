@@ -439,7 +439,7 @@ def simple_english_issues(text):
     source = str(text or "").strip()
     words = re.findall(r"[A-Za-z]+(?:['’-][A-Za-z]+)?", source)
     sentences = [
-        sentence.strip() for sentence in re.split(r"(?<=[.!?])\\s+", source)
+        sentence.strip() for sentence in re.split(r"(?<=[.!?])\s+", source)
         if sentence.strip()
     ]
     issues = []
