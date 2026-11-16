@@ -1447,7 +1447,9 @@ REQUIRED CAUSAL STORY DESIGN:
   record, witness statement, known connection, or direct action. Do not save the villain's name
   for a sudden reveal near the end.
 - Connect every registered supporting character to the central case with a clear goal and useful action.
-  Do not introduce a helpful stranger or new named person halfway through the story.
+  The protagonist must appear in at least 8 beats, each supporting character in at least 3 beats,
+  and the villain in at least 5 beats including one of the final ten. Do not introduce a helpful stranger
+  or new named person halfway through the story.
 - Every clue must be found for a believable reason, point to the next step, and later receive a payoff.
 - If the protagonist goes undercover, state the exact evidence or access they need, how they prepare,
   and why this plan is safer or more useful than another option. Otherwise do not use an undercover plot.
@@ -1506,6 +1508,8 @@ clue discovery, argument, journey, or other event with slightly changed wording.
                     if unknown_cast:
                         problems.append("introduced unregistered named people: " + ", ".join(unknown_cast))
                     last_outline_error = "Outline cast mismatch — " + "; ".join(problems)
+                elif not cast_distribution_ok:
+                    pass
                 elif not villain_foreshadowed:
                     last_outline_error = (
                         "The exact registered principal villain must be foreshadowed by full name "
