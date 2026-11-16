@@ -215,6 +215,26 @@ class PublicationQualityGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "repeated or near-identical"):
             engine.validate_outline_rows(rows, [], strict_repetition=False)
 
+    def test_outline_rejects_even_five_exact_duplicate_beats(self):
+        rows = [
+            {"number": i, "beat": f"Scene {i} reveals a new clue and creates a clear consequence for the investigation"}
+            for i in range(1, 51)
+        ]
+        for index in range(45, 50):
+            rows[index]["beat"] = rows[44]["beat"]
+        with self.assertRaisesRegex(ValueError, "repeated or near-identical"):
+            engine.validate_outline_rows(rows, [])
+
+    def test_outline_rejects_semantically_near_identical_beats(self):
+        rows = [
+            {"number": i, "beat": f"Scene {i} reveals a new clue and creates a clear consequence for the investigation"}
+            for i in range(1, 51)
+        ]
+        rows[1]["beat"] = "Scene two reveals a new clue and creates a clear consequence for the investigation"
+        rows[2]["beat"] = "Scene three reveals a new clue and creates a clear consequence for the investigation"
+        with self.assertRaisesRegex(ValueError, "near-identical"):
+            engine.validate_outline_rows(rows, [])
+
     def test_repaired_outline_accepts_fifty_distinct_scene_beats(self):
         rows = [
             {"number": i, "beat": f"Scene {i} introduces a distinct action, new clue, clear consequence, and a fresh decision for the team"}
