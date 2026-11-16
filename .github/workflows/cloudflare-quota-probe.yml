@@ -1,10 +1,7 @@
 name: Cloudflare quota probe and one-time storybook resume # One controlled generation after story-repair diagnostics and readability tests pass
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/cloudflare-quota-probe.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
