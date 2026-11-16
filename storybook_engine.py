@@ -721,7 +721,7 @@ def validate_outline_rows(rows, registry):
     for item in rows:
         count = len(str(item.get("beat", "")).split())
         if not 8 <= count <= 18:
-            raise ValueError(f"Outline beat {item['number']} has {count} words; required range is 8–18.")
+            raise ValueError(f"Outline beat {item['number']} has {count} words; required range is 8–22.")
     normalized = [
         re.sub(r"[^a-z0-9 ]", "", str(item.get("beat", "")).lower()).strip()
         for item in rows
@@ -806,7 +806,7 @@ def repair_outline_from_review(plan, outline, report):
         "hold the villain accountable, and give the protagonists emotional closure. No unresolved "
         "anonymous threat or sequel cliffhanger. Keep English very easy: common words and short sentences. "
         "Return ONLY valid JSON with exactly two keys: description (100–140 words, matching the repaired "
-        "story) and outline (an array of exactly 50 objects, each with number 1–50 and beat 8–18 words). "
+        "story) and outline (an array of exactly 50 objects, each with number 1–50 and beat 8–22 words). "
         "No extra keys.\\n\\nEDITORIAL REVIEW:\\n"
         + json.dumps(report, ensure_ascii=False)
         + "\\n\\nLOCKED BOOK AND CAST:\\n"
@@ -1107,7 +1107,7 @@ The outline, metadata and cast registry must describe the same story; do not rep
 with a generic detective, partner, businessman, victim, leader or other unnamed substitute.
 Return EXACTLY 50 numbered lines as plain text, not JSON, not markdown bullets.
 Format every line exactly: 01 | one or two sentences describing one distinct event.
-Use 8-18 words per scene. No quotation marks, no JSON, no headings, no blank lines.
+Use 8-22 words per scene. No quotation marks, no JSON, no headings, no blank lines.
 Five acts: scenes 1-10 setup and inciting mystery; 11-20 investigation and setback;
 21-30 revelation and changed plan; 31-40 escalation and sacrifice; 41-50 confrontation and resolution.
 Every scene must introduce a new physical action and consequence. Never repeat a chase,
