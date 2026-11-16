@@ -108,3 +108,29 @@ Each run creates a timestamped folder inside `output/` with:
 - Character continuity is treated as a required quality benchmark: recurring protagonists, supporting characters, creatures and the principal villain receive canonical visual bibles; recurring characters also receive identity portraits reused in scenes where they appear. The villain's costume and styling are designed for each new book, then held consistent within that book.
 - Image models can still produce occasional visual drift. The reference portraits and prompt checks reduce this risk but cannot guarantee pixel-perfect identity; review the contact sheet and regenerate any inconsistent scene before publishing.
 - The included KDP handoff is deliberately user-in-the-loop, not a hidden or unattended publishing bot. There is no claim of a supported public KDP publishing API.
+
+
+## Automated visual quality gate
+
+Before page layout and package verification, the runner now reviews every generated scene
+with Cloudflare Workers AI Moondream 3.1. It compares the illustration against the written
+scene direction and, where applicable, side-by-side character identity reference portraits.
+The review checks scene match, visible cast, identity resemblance, costume continuity,
+obvious anatomy defects, blur, and major composition problems.
+
+A scene scoring below 7/10, failing the scene-match check, or containing a major visual
+defect is regenerated up to two times and reviewed again. If it still fails, the run stops
+and the package cannot receive the publication verification marker. The workflow also
+requires a passing report for all 50 scenes before it marks the Pakistan-date book complete.
+
+The report is saved as `visual_quality_report.json`. The existing
+`image_quality_report.json` combines technical image checks with the visual-review
+summary. This is AI-assisted quality control, not a guarantee of perfect human-level
+art direction; a final author approval is still required before KDP publication.
+
+The visual reviewer uses the Cloudflare Workers AI model
+`@cf/moondream/moondream3.1-9B-A2B` by default. It shares the configured Cloudflare
+Workers AI account and token with image generation. Vision calls consume Workers AI
+usage separately from image generation, and availability/allowances depend on the
+Cloudflare account. If the vision model is unavailable or its response cannot be
+validated, the run fails closed rather than silently skipping visual review.
