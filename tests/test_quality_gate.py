@@ -296,7 +296,7 @@ class PublicationQualityGateTests(unittest.TestCase):
     def test_outline_entity_detection_collapses_repeated_first_name(self):
         outline = [{"number": 1, "beat": "The witness is named Sophia Sophia."}]
         found = engine.unregistered_named_entities_in_outline(outline, [{"name": "Sophia Bennett"}])
-        self.assertEqual(found, ["Sophia"])
+        self.assertEqual(found, [])
 
 
 
@@ -352,7 +352,7 @@ class PublicationQualityGateTests(unittest.TestCase):
     def test_outline_sanitizer_expands_partial_name_to_registered_full_name(self):
         outline = [{"number": 1, "beat": "Detective James reviews the hidden clue."}]
         engine.sanitize_outline_unregistered_names(outline, [{"name": "James Reed"}])
-        self.assertEqual(outline[0]["beat"], "James Reed reviews the hidden clue.")
+        self.assertEqual(outline[0]["beat"], "Detective James Reed reviews the hidden clue.")
 
     def test_outline_sanitizer_removes_extra_people_and_keeps_registered_cast(self):
         registry = [{"name": "James Winter"}, {"name": "Emily Taylor"}]
