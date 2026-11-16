@@ -188,7 +188,7 @@ def build_one_book(book_date, config):
             "visual_average_score": visual_report["average_score"],
             "character_consistency_verified": visual_report["character_consistency_verified"],
             "visual_story_match_verified": visual_report["scene_accuracy_verified"],
-            "human_visual_review_required": False,
+            "human_visual_review_required": True,
             "automated_checks": image_report.get("automated_checks", []) + [
                 "AI scene-to-illustration match review",
                 "AI character-reference consistency review",
