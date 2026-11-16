@@ -458,7 +458,7 @@ def unregistered_named_entities_in_outline(outline, registry):
         str(item.get("beat", "")) for item in outline if isinstance(item, dict)
     )
     patterns = (
-        r"\b(?:named|called|known as|known only as)\s+[\"']?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)",
+        r"\b(?:named|called|known as|known only as|whose name is)\s+[\"']?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)",
         r"\b(?i:chief|detective|officer|dr\.?|mr\.?|mrs\.?|ms\.?|captain|agent|judge|doctor|professor|inspector|sergeant|lieutenant|mayor|sheriff)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)",
         r"\b(?:victim|partner|informant|businessman|socialite|hacker|bartender|owner|thief|leader|mentor|figure|guard|suspect|witness|police chief)\s*,\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)",
     )
@@ -570,7 +570,7 @@ def sanitize_outline_unregistered_names(outline, registry, extra_names=None):
             else:
                 # Remove invented aliases after role phrases, leaving the role unnamed.
                 beat = re.sub(
-                    r",?\s+(?:named|called|known as|known only as)\s+[\"']?" + escaped + r"[\"']?,?",
+                    r",?\s+(?:named|called|known as|known only as|whose name is)\s+[\"']?" + escaped + r"[\"']?,?",
                     "", beat, flags=re.IGNORECASE
                 )
                 role_patterns = (
@@ -826,7 +826,11 @@ def review_story_outline(plan, outline, workdir=None):
         "principal villain must drive the central conflict and face a clear consequence. The story must be "
         "standalone and close its main mystery. Use very simple English. Score plot, continuity, pacing, "
         "character consistency, and ending from 0 to 10. Return ONLY JSON with passed, score (0–100), "
-        "critical_issues (specific scene numbers and reasons), minor_issues, and dimension_scores "
+        "critical_issues and minor_issues as arrays of objects with scene_number, reason, and "
+        "evidence_quote. Every evidence_quote MUST be copied verbatim from the exact numbered outline beat. "
+        "Never report a scene number unless the quoted words occur in that scene. Never invent an event, "
+        "kidnapping, shootout, court sentence, escape, character, or action that is not explicitly present. "
+        "If an issue cannot be tied to an exact beat quote, do not report it. Include dimension_scores "
         "with exactly these numeric keys from 0 to 10: plot, continuity, pacing, character_consistency, ending. "
         "Set passed=false if any major contradiction, unresolved central mystery, weak ending, or any "
         "dimension below 7 remains. Do not inflate scores.\\n\\n"
@@ -1299,6 +1303,25 @@ Format every line exactly: 01 | one or two sentences describing one distinct eve
 Use 8-45 words per scene. No quotation marks, no JSON, no headings, no blank lines.
 Five acts: scenes 1-10 setup and inciting mystery; 11-20 investigation and setback;
 21-30 revelation and changed plan; 31-40 escalation and sacrifice; 41-50 confrontation and resolution.
+REQUIRED CAUSAL STORY DESIGN:
+- Establish ONE clear central crime or threat, its victim/stakes, and why the protagonist must act.
+- Introduce the exact registered principal villain by full name within scenes 1-15 through a clue,
+  record, witness statement, known connection, or direct action. Do not save the villain's name
+  for a sudden reveal near the end.
+- Connect every registered supporting character to the central case with a clear goal and useful action.
+  Do not introduce a helpful stranger or new named person halfway through the story.
+- Every clue must be found for a believable reason, point to the next step, and later receive a payoff.
+- If the protagonist goes undercover, state the exact evidence or access they need, how they prepare,
+  and why this plan is safer or more useful than another option. Otherwise do not use an undercover plot.
+- Do not add a shootout, chase, kidnapping, rescue, escape, or ambush unless earlier beats establish
+  who causes it, how it happens, and what new consequence it creates.
+- The villain's final defeat must follow from evidence and a believable plan. Show the actual capture,
+  exposure, or other consequence. Do not invent a court sentence or legal result without a trial,
+  evidence, and process shown in the outline.
+- The final five scenes must close the central case, account for victims, show the villain's outcome,
+  and give the protagonist a clear emotional ending. No repeated wrap-up scenes.
+- Use only the registered character names. A role-only unnamed extra may appear briefly but must not
+  become a new recurring ally, suspect, mastermind, or plot solver.
 Every scene must introduce a new physical action and consequence. Never repeat a chase,
 clue discovery, argument, journey, or other event with slightly changed wording.
 """
@@ -1321,10 +1344,15 @@ clue discovery, argument, journey, or other event with slightly changed wording.
                     unknown_cast = unregistered_named_entities_in_outline(rows, registry)
                     missing_cast = missing_registered_outline_names(rows, registry)
                     logging.warning("Sanitized unregistered outline names; remaining: %s", unknown_cast)
+                villain_name = str(plan.get("principal_villain", "")).strip()
+                villain_foreshadowed = bool(villain_name) and any(
+                    villain_name.casefold() in str(item.get("beat", "")).casefold()
+                    for item in rows[:15]
+                )
                 if all(len(str(item.get("beat", "")).split()) >= 8 for item in rows) and len({
                     re.sub(r"[^a-z0-9 ]", "", str(item.get("beat", "")).lower()).strip()
                     for item in rows
-                }) >= 45 and not missing_cast and not unknown_cast:
+                }) >= 45 and not missing_cast and not unknown_cast and villain_foreshadowed:
                     parsed_outline = rows
                     break
                 if missing_cast or unknown_cast:
@@ -1334,6 +1362,11 @@ clue discovery, argument, journey, or other event with slightly changed wording.
                     if unknown_cast:
                         problems.append("introduced unregistered named people: " + ", ".join(unknown_cast))
                     last_outline_error = "Outline cast mismatch — " + "; ".join(problems)
+                elif not villain_foreshadowed:
+                    last_outline_error = (
+                        "The exact registered principal villain must be foreshadowed by full name "
+                        "in a meaningful clue or event within scenes 1-15."
+                    )
                 else:
                     last_outline_error = "Outline contains short or repeated scene beats."
             else:
