@@ -434,6 +434,39 @@ def page_text_word_count_valid(text):
     return 40 <= len(str(text).split()) <= 55
 
 
+def repair_scene_page_text(scene, plan, number):
+    """Repair page prose after any cast-name normalization and enforce the print word limit."""
+    if page_text_word_count_valid(scene.get("text", "")):
+        return scene
+    source_text = str(scene.get("text", "")).strip()
+    last_error = None
+    for attempt in range(1, 6):
+        prompt = (
+            "Rewrite this illustrated storybook page as polished narrative prose of 45-50 words "
+            "(never fewer than 40 or more than 55). Preserve the exact events, facts, registered "
+            "character names, emotional beat, and continuity. Do not add a new event, heading, label, "
+            "or explanation. Do not rename or remove any registered character. Use very easy English. "
+            "Count the words before answering. Return only the page paragraph.\\n\\n"
+            f"Book: {plan.get('title', 'Untitled')}\\n"
+            f"Registered cast: {json.dumps([x.get('name') for x in plan.get('character_registry', []) if isinstance(x, dict)])}\\n"
+            f"Principal villain: {plan.get('principal_villain', '')}\\n"
+            f"Scene {number}: {scene.get('heading', '')}\\n"
+            f"Required length: 45-50 words; absolute allowed range is 40-55 words.\\n"
+            f"Original page text ({len(source_text.split())} words): {source_text}"
+        )
+        candidate = cf_text(prompt, max_tokens=700).strip().strip('"').strip()
+        if page_text_word_count_valid(candidate):
+            scene["text"] = candidate
+            logging.info(
+                "Repaired scene %s final page text to %s words after cast normalization.",
+                number, len(candidate.split())
+            )
+            return scene
+        last_error = f"repair {attempt} returned {len(candidate.split())} words"
+    raise ValueError(
+        f"Scene {number} page text could not be repaired to 40-55 words after cast normalization "
+        f"({last_error})."
+    )
 def missing_registered_outline_names(outline, registry):
     """Return cast names that the outline failed to use exactly as registered."""
     outline_text = " ".join(
@@ -1720,52 +1753,7 @@ No extra keys, no markdown fences, no text outside JSON.
                     f"Show only the registered characters listed for this scene; use the established "
                     f"character identities, story costumes and art direction. Scene details: {scene.get('text', '')}"
                 )
-            word_count = len(str(scene.get("text", "")).split())
-            if not page_text_word_count_valid(scene.get('text', '')):
-                # Repair an out-of-range page locally instead of failing the whole book.
-                # Keep the existing scene's events, characters and tone; only revise its prose.
-                # Keep the full original page unchanged across retries. Previously, each
-                # too-short response replaced the source, causing later repairs to shrink further.
-                source_text = str(scene.get("text", "")).strip()
-                last_repair_error = None
-                repaired_text = None
-                previous_attempt_note = ""
-                for repair_attempt in range(1, 6):
-                    repair_prompt = (
-                        "Rewrite the following illustrated storybook page as polished narrative prose "
-                        "of 45–50 words (never fewer than 40 or more than 55). Preserve the exact events, facts, "
-                        "characters, emotional beat, and continuity. Do not add a new event, heading, "
-                        "label, or explanation. Do not summarize. Count the words before answering. "
-                        "Return only the page paragraph.\n\n"
-                        f"Book: {plan.get('title', 'Untitled')}\n"
-                        f"Scene {number}: {scene.get('heading', '')}\n"
-                        f"Required length: 45–50 words; absolute allowed range is 40–55 words.\n"
-                        f"{previous_attempt_note}"
-                        f"Original page text ({len(source_text.split())} words): {source_text}"
-                    )
-                    candidate = cf_text(repair_prompt, max_tokens=700)
-                    candidate = candidate.strip().strip('"').strip()
-                    candidate_count = len(candidate.split())
-                    if page_text_word_count_valid(candidate):
-                        repaired_text = candidate
-                        break
-                    last_repair_error = f"repair {repair_attempt} returned {candidate_count} words"
-                    previous_attempt_note = (
-                        f"Your previous attempt contained {candidate_count} words and was invalid. "
-                        "Rewrite the complete original page at the required length; do not shorten it.\\n"
-                    )
-                if repaired_text is None:
-                    raise ValueError(
-                        f"Scene {number} page text could not be repaired to 40–55 words "
-                        f"after 5 attempts ({last_repair_error})."
-                    )
-                scene["text"] = repaired_text
-                logging.info("Repaired scene %s page text to %s words.", number, len(repaired_text.split()))
-            final_word_count = len(str(scene.get("text", "")).split())
-            if not page_text_word_count_valid(scene.get('text', '')):
-                raise ValueError(
-                    f"Scene {number} has {final_word_count} words; every page must contain 40–55 words."
-                )
+            scene = repair_scene_page_text(scene, plan, number)
             for key in ("shot_type", "camera_angle", "composition", "action_pose", "gaze", "expression", "lighting"):
                 scene.setdefault(key, "")
             scene.setdefault("characters_present", [])
@@ -1855,8 +1843,7 @@ No extra keys, no markdown fences, no text outside JSON.
                     raise ValueError(f"Scene {number} name repair returned an invalid cast list.")
                 scene = sanitize_scene_unregistered_cast(scene, plan.get("character_registry", []))
                 repaired_names = scene.get("characters_present", [])
-                if not page_text_word_count_valid(scene.get("text", "")):
-                    raise ValueError(f"Scene {number} name repair returned page text outside 40–55 words.")
+                scene = repair_scene_page_text(scene, plan, number)
                 remaining_unknown = [name for name in repaired_names if name not in known_names]
                 remaining_named_people = unregistered_named_entities_in_outline(
                     [{"beat": " ".join(str(scene.get(field, "")) for field in ("heading", "text", "visual_prompt"))}],
@@ -1868,7 +1855,8 @@ No extra keys, no markdown fences, no text outside JSON.
                         f"{list(dict.fromkeys(remaining_unknown + remaining_named_people))} after targeted repair."
                     )
                 scene["characters_present"] = list(dict.fromkeys(repaired_names))
-                logging.info(
+            scene = repair_scene_page_text(scene, plan, number)
+            logging.info(
                     "Repaired scene %s unregistered character names: %s",
                     number, unknown_names
                 )
