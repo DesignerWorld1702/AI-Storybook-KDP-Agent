@@ -243,6 +243,14 @@ class PublicationQualityGateTests(unittest.TestCase):
         reviewed = engine.validate_outline_rows(rows, [], strict_repetition=False)
         self.assertEqual(len(reviewed), 50)
 
+    def test_outline_detects_unregistered_first_name_in_prose(self):
+        outline = [{"number": 1, "beat": "James Winter gathers evidence against Victor."}]
+        registry = [{"name": "James Winter"}, {"name": "Marcus Blackwood"}]
+        self.assertEqual(
+            engine.unregistered_named_entities_in_outline(outline, registry),
+            ["Victor"],
+        )
+
     def test_outline_detects_and_anonymizes_whose_name_is_extra(self):
         outline = [{"number": 1, "beat": "The woman, whose name is Sarah, explains the clue to Kate Matthews."}]
         registry = [{"name": "Kate Matthews"}]
