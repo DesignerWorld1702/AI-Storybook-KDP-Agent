@@ -244,6 +244,29 @@ class PublicationQualityGateTests(unittest.TestCase):
         self.assertEqual(result["score"], 80.0)
         self.assertTrue(result["passed"])
 
+
+    def test_outline_review_reclassifies_explicit_minor_notes_at_seven_ten_threshold(self):
+        report = {
+            "passed": False,
+            "critical_issues": [
+                {"number": 7, "reason": "This might be a minor plot hole, but it is not a major contradiction."},
+                {"number": 50, "reason": "The final shot is a minor issue that could be improved."},
+            ],
+            "minor_issues": [],
+            "dimension_scores": {
+                "plot": 8, "continuity": 7, "pacing": 8,
+                "character_consistency": 8, "ending": 7,
+            },
+        }
+        with patch.object(engine, "cf_text", return_value=json.dumps(report)):
+            result = engine.review_story_outline(
+                {"title": "Test", "character_registry": [], "principal_villain": "Villain"},
+                [{"number": 1, "beat": "A clear story beat with enough words for validation"}],
+            )
+        self.assertTrue(result["passed"])
+        self.assertEqual(result["critical_issues"], [])
+        self.assertEqual(len(result["minor_issues"]), 2)
+
     def test_outline_review_rejects_core_dimension_below_seven(self):
         report = {
             "passed": True,
