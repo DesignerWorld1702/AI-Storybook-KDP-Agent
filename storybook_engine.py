@@ -386,6 +386,14 @@ def extract_json(text, repair_context="story data"):
     try:
         return _parse_json_once(text)
     except (ValueError, json.JSONDecodeError) as original_error:
+        # Try a local structural JSON repair before spending another model call.
+        try:
+            from json_repair import repair_json
+            locally_repaired = repair_json(text, return_objects=True)
+            if isinstance(locally_repaired, (dict, list)):
+                return locally_repaired
+        except Exception:
+            pass
         repair_prompt = (
             "Repair the malformed JSON below. Return ONLY one valid JSON object. "
             "Preserve all keys and story content. Do not summarize or use markdown. "
