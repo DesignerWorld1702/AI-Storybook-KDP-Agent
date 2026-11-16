@@ -1431,11 +1431,13 @@ a group as a front-facing lineup. Use simple, natural English with common words 
 Avoid copyrighted characters, existing franchises and imitation of living artists.
 """
     plan = None
+    cached_plan_loaded = False
     if plan_path and plan_path.exists():
         try:
             cached = json.loads(plan_path.read_text(encoding="utf-8"))
             if cached.get("story_schema_version") == 5 and len(cached.get("outline", [])) == 50 and cached.get("character_registry") and cached.get("principal_villain"):
                 plan = cached
+                cached_plan_loaded = True
         except Exception:
             plan = None
 
@@ -1705,13 +1707,30 @@ Do not add JSON, quotation marks, headings or explanatory text.
             genre, style, audience, title_hint, character_notes, scene_words, workdir=workdir
         )
 
-    outline = validate_outline_rows(plan["outline"], plan.get("character_registry", []))
-    outline = validate_principal_villain_foreshadowing(
-        outline, plan.get("principal_villain", ""), max_scene=15
-    )
-    outline = validate_outline_cast_distribution(
-        outline, plan.get("character_registry", [])
-    )
+    try:
+        outline = validate_outline_rows(plan["outline"], plan.get("character_registry", []))
+        outline = validate_principal_villain_foreshadowing(
+            outline, plan.get("principal_villain", ""), max_scene=15
+        )
+        outline = validate_outline_cast_distribution(
+            outline, plan.get("character_registry", [])
+        )
+    except ValueError as exc:
+        if not cached_plan_loaded:
+            raise
+        logging.warning(
+            "Cached outline failed the current publication gates (%s); discarding its scene batches "
+            "and regenerating the story structure.",
+            exc
+        )
+        if plan_path and plan_path.exists():
+            plan_path.unlink()
+        if workdir:
+            for cached_batch in workdir.glob("scene_batch_*.json"):
+                cached_batch.unlink(missing_ok=True)
+        return make_story(
+            genre, style, audience, title_hint, character_notes, scene_words, workdir=workdir
+        )
     plan["description"] = synchronize_book_description(plan, outline)
     outline_report = review_story_outline(plan, outline, workdir)
     for repair_attempt in range(1, 7):
