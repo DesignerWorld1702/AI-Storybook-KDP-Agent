@@ -3,6 +3,7 @@ import argparse
 import json
 import logging
 import os
+import shutil
 import sys
 import time
 import traceback
@@ -76,38 +77,63 @@ def build_one_book(book_date, config):
     status_path = outdir / "job_status.json"
     status = {"scheduled_date": book_date.isoformat(), "status": "running", "updated_at": datetime.now(TZ).isoformat()}
     status_path.write_text(json.dumps(status, indent=2), encoding="utf-8")
+
+    def generate_fresh_story():
+        genres = config["genre_cycle"]
+        genre = genres[(book_date - date.fromisoformat(config["first_run_date"])).days % len(genres)]
+        fresh = engine.make_story(
+            genre, engine.STYLE_LOCK, "Teen and adult readers",
+            "", engine.DEFAULT_CHARACTER_POOL, int(config["scene_words"]), workdir=outdir
+        )
+        fresh["author"] = config["author"]
+        fresh["genre"] = genre
+        fresh["illustration_style"] = engine.STYLE_LOCK
+        fresh["trim_size"] = config["trim_size"]
+        fresh["pdf_text_size"] = int(config["pdf_text_size"])
+        fresh["scheduled_date"] = book_date.isoformat()
+        story_path.write_text(json.dumps(fresh, indent=2, ensure_ascii=False), encoding="utf-8")
+        return fresh
+
     try:
         logging.info("Checking the permanent 12-character reference library...")
         engine.ensure_character_library_references()
         story_path = outdir / "story.json"
         if story_path.exists():
             story = json.loads(story_path.read_text(encoding="utf-8"))
-            # A resumed/cached story must pass the same full-book quality gate
-            # as a newly generated story; never let cached JSON bypass review.
+            # Revalidate the saved outline against current deterministic gates before
+            # reusing its story or any cached scene illustrations.
             plan_path = outdir / "story_plan.json"
-            outline = []
-            if plan_path.is_file():
-                try:
-                    cached_plan = json.loads(plan_path.read_text(encoding="utf-8"))
-                    outline = cached_plan.get("outline", []) if isinstance(cached_plan, dict) else []
-                except (OSError, ValueError):
-                    logging.warning("Could not read cached outline; reviewing the complete saved story without it.")
-            story["quality_review"] = engine.review_story_quality(story, outline, outdir)
-            story_path.write_text(json.dumps(story, indent=2, ensure_ascii=False), encoding="utf-8")
+            try:
+                if not plan_path.is_file():
+                    raise ValueError("saved story has no matching outline cache")
+                cached_plan = json.loads(plan_path.read_text(encoding="utf-8"))
+                outline = cached_plan.get("outline", []) if isinstance(cached_plan, dict) else []
+                engine.validate_outline_rows(outline, story.get("character_registry", []))
+            except (OSError, ValueError) as exc:
+                logging.warning(
+                    "Saved story no longer passes current outline gates (%s); discarding its dependent "
+                    "images and regenerating the story before resuming.",
+                    exc
+                )
+                story_path.unlink(missing_ok=True)
+                engine.discard_cached_story_plan(plan_path, outdir)
+                for directory in ("scenes", "pages", "character_refs"):
+                    shutil.rmtree(outdir / directory, ignore_errors=True)
+                for filename in (
+                    "character_reference_sheet.png", "quality_review.json",
+                    "outline_quality_review.json", "image_quality_report.json",
+                    "scene_contact_sheet.jpg", "storybook_interior.pdf",
+                    "kindle_story.html", "kindle_story.epub",
+                    "kdp_listing_draft.json", "kdp_listing_draft.txt",
+                    "publishing_checklist.txt"
+                ):
+                    (outdir / filename).unlink(missing_ok=True)
+                story = generate_fresh_story()
+            else:
+                story["quality_review"] = engine.review_story_quality(story, outline, outdir)
+                story_path.write_text(json.dumps(story, indent=2, ensure_ascii=False), encoding="utf-8")
         else:
-            genres = config["genre_cycle"]
-            genre = genres[(book_date - date.fromisoformat(config["first_run_date"])).days % len(genres)]
-            story = engine.make_story(
-                genre, engine.STYLE_LOCK, "Teen and adult readers",
-                "", engine.DEFAULT_CHARACTER_POOL, int(config["scene_words"]), workdir=outdir
-            )
-            story["author"] = config["author"]
-            story["genre"] = genre
-            story["illustration_style"] = engine.STYLE_LOCK
-            story["trim_size"] = config["trim_size"]
-            story["pdf_text_size"] = int(config["pdf_text_size"])
-            story["scheduled_date"] = book_date.isoformat()
-            story_path.write_text(json.dumps(story, indent=2, ensure_ascii=False), encoding="utf-8")
+            story = generate_fresh_story()
 
         if story.get("story_schema_version") != 5:
             raise RuntimeError(
