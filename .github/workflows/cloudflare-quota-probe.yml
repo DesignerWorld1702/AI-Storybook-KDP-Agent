@@ -1,4 +1,4 @@
-name: Cloudflare quota probe and one-time storybook resume # Retry current-day book after allowing editorial review of repetition
+name: Cloudflare quota probe and one-time storybook resume # Retry current-day book after titled partial-name recognition
 
 on:
   push:
