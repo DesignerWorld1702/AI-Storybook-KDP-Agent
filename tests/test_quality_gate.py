@@ -223,6 +223,30 @@ class PublicationQualityGateTests(unittest.TestCase):
         reviewed = engine.validate_outline_rows(rows, [], strict_repetition=True)
         self.assertEqual(len(reviewed), 50)
 
+    def test_outline_detects_and_anonymizes_whose_name_is_extra(self):
+        outline = [{"number": 1, "beat": "The woman, whose name is Sarah, explains the clue to Kate Matthews."}]
+        registry = [{"name": "Kate Matthews"}]
+        self.assertEqual(
+            engine.unregistered_named_entities_in_outline(outline, registry),
+            ["Sarah"],
+        )
+        engine.sanitize_outline_unregistered_names(outline, registry)
+        self.assertNotIn("Sarah", outline[0]["beat"])
+        self.assertIn("Kate Matthews", outline[0]["beat"])
+
+    def test_registered_villain_must_be_foreshadowed_in_first_fifteen_scenes(self):
+        outline = [
+            {"number": i, "beat": f"Scene {i} shows a distinct action with new evidence and a clear consequence for the investigation"}
+            for i in range(1, 51)
+        ]
+        with self.assertRaisesRegex(ValueError, "within scenes 1-15"):
+            engine.validate_principal_villain_foreshadowing(outline, "Victor LaGrange")
+        outline[8]["beat"] += " The notebook names Victor LaGrange as the person paying the witness."
+        self.assertEqual(
+            len(engine.validate_principal_villain_foreshadowing(outline, "Victor LaGrange")),
+            50,
+        )
+
     def test_outline_accepts_minor_beat_length_variation_up_to_22_words(self):
         rows = [
             {"number": i, "beat": f"Scene {i} introduces a distinct event with clear action, cause, consequence, and forward movement for the story"}
