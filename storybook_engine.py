@@ -836,6 +836,30 @@ def validate_outline_rows(rows, registry, strict_repetition=True):
     return rows
 
 
+
+def ground_editorial_issues(issues, outline):
+    """Keep only reviewer findings tied to an exact quote in the cited outline beat."""
+    supported = []
+    unverified = []
+    by_number = {
+        item.get("number"): str(item.get("beat", ""))
+        for item in outline if isinstance(item, dict)
+    }
+    for issue in issues if isinstance(issues, list) else [issues]:
+        if not isinstance(issue, dict):
+            unverified.append(str(issue))
+            continue
+        number = issue.get("scene_number", issue.get("number"))
+        quote = str(issue.get("evidence_quote", "")).strip()
+        reason = str(issue.get("reason", "")).strip()
+        beat = by_number.get(number, "")
+        if isinstance(number, int) and beat and quote and quote.casefold() in beat.casefold() and reason:
+            supported.append({"number": number, "reason": reason, "evidence_quote": quote})
+        else:
+            unverified.append({"number": number, "reason": reason, "evidence_quote": quote})
+    return supported, unverified
+
+
 def review_story_outline(plan, outline, workdir=None):
     """Editorially check plot logic and the ending before spending resources on scenes."""
     prompt = (
@@ -876,15 +900,16 @@ def review_story_outline(plan, outline, workdir=None):
     ):
         raise ValueError("Outline reviewer returned missing or invalid dimension scores.")
     score = round(sum(float(dimensions[key]) for key in required) / len(required) * 10, 1)
-    critical = report.get("critical_issues", [])
-    if not isinstance(critical, list):
-        critical = [str(critical)]
+    critical, unverified_critical = ground_editorial_issues(
+        report.get("critical_issues", []), outline
+    )
+    minor_issues, unverified_minor = ground_editorial_issues(
+        report.get("minor_issues", []), outline
+    )
+    report["unverified_review_notes"] = unverified_critical + unverified_minor
     for key in required:
         if float(dimensions[key]) < 7:
             critical.append(f"Core outline dimension '{key}' scored below 7/10.")
-    minor_issues = report.get("minor_issues", [])
-    if not isinstance(minor_issues, list):
-        minor_issues = [str(minor_issues)]
     retained_critical = []
     for issue in critical:
         issue_text = str(issue)
