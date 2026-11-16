@@ -207,7 +207,8 @@ def find_latest_incomplete_book_date():
             status = json.loads(status_path.read_text(encoding="utf-8")) if status_path.is_file() else {}
         except (OSError, ValueError):
             status = {}
-        if status.get("status") != "completed":
+        package_verified = (folder / "publication_package_verified.json").is_file()
+        if status.get("status") != "completed" or not package_verified:
             try:
                 return datetime.strptime(date_token, "%Y%m%d").date()
             except ValueError:
