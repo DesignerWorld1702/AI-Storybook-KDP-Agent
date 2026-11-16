@@ -17,7 +17,7 @@ A local Windows-first starter app that creates an original 50-scene illustrated 
 ## Important publishing notes
 - You need to verify current KDP trim sizes, bleed, cover templates, image requirements, and accepted upload formats in KDP's own help pages before publishing.
 - This starter exports an interior PDF. A print cover is a separate full-wrap file whose dimensions depend on trim size, page count, paper type, and bleed; use KDP's cover calculator/template rather than treating the interior PDF as a cover.
-- For Kindle eBook, a print PDF is not a suitable universal eBook manuscript. The app exports a separate HTML story manuscript that can be converted/checked in Kindle Create or another KDP-supported workflow.
+- For Kindle eBook, a print PDF is not a suitable universal eBook manuscript. The agent exports a separate fixed-layout EPUB 3 picture-book file plus its HTML source. The EPUB receives ZIP, XML, page-count, and image-count integrity checks; still preview it in Kindle Previewer and confirm current KDP device compatibility before upload.
 - Amazon KDP requires disclosure of AI-generated content when applicable. Review current KDP policy and disclose accurately.
 - The app does not upload/publish without your explicit review and final action in KDP.
 
@@ -55,7 +55,7 @@ The daily runner stores progress in `state/scheduler_state.json` and writes book
 
 ## KDP workflow boundary
 
-The runner automatically prepares the interior PDF, Kindle HTML source, listing drafts, and checklist. It does not sign into Amazon, bypass account verification, or press the final publish button. KDP has no general public self-service publishing API for this project to rely on, so actual account submission and publication remain subject to KDP's supported interface and account controls. The HTML output is a source manuscript, not a validated Kindle EPUB. The print interior is not a full-wrap cover.
+The runner automatically prepares the interior PDF, Kindle HTML source, listing drafts, and checklist. It does not sign into Amazon, bypass account verification, or press the final publish button. KDP has no general public self-service publishing API for this project to rely on, so actual account submission and publication remain subject to KDP's supported interface and account controls. The EPUB receives structural integrity validation, but must still be previewed in Kindle Previewer. The print interior is not a full-wrap cover.
 
 ## Requirements
 - Windows 10/11, Python 3.11 or newer.
@@ -94,7 +94,8 @@ If a model is unavailable, change it to a model currently listed in your Cloudfl
 ## Outputs
 Each run creates a timestamped folder inside `output/` with:
 - `storybook_interior.pdf` — interior pages, including 50 scene pages.
-- `kindle_story.html` — reflowable HTML source for eBook conversion/review.
+- `kindle_story.html` — HTML source for the illustrated eBook.
+- `kindle_story.epub` — fixed-layout EPUB 3 picture-book package with 50 integrated illustrated pages.
 - `story.json` — structured story and scenes.
 - `kdp_listing_draft.json` and `kdp_listing_draft.txt` — metadata draft.
 - `scenes/scene_001.png` ... `scene_050.png`.
