@@ -1,4 +1,4 @@
-name: Cloudflare quota probe and one-time storybook resume # Retry current-day book after registered-name alias expansion
+name: Cloudflare quota probe and one-time storybook resume # Retry current-day book after expanded editorial repair attempts
 
 on:
   push:
