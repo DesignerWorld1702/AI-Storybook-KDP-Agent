@@ -1,4 +1,4 @@
-name: Cloudflare quota probe and one-time storybook resume # One controlled generation after final-boundary page word-count validation
+name: Cloudflare quota probe and one-time storybook resume # One controlled generation after story-repair diagnostics and readability tests pass
 
 on:
   push:
