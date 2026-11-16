@@ -66,6 +66,7 @@ def _vision_review(account: str, token: str, image_uri: str, scene: dict, story:
         item = registry.get(name, {})
         cast.append({
             "name": name,
+            "visual_id": item.get("visual_id", ""),
             "physical_identity": item.get("immutable_identity", {}),
             "story_costume": item.get("story_costume", ""),
             "role": item.get("role", "")
@@ -137,6 +138,11 @@ def review_and_repair_scene_images(story: dict, scenes_dir: Path, workdir: Path,
         for attempt in range(max_regenerations + 1):
             scene_refs = engine.scene_reference_images(story, scene, workdir, references[0])
             identity_refs = [Path(p) for p in scene_refs[1:]]
+            expected_cast = scene.get("characters_present", [])
+            if expected_cast and not identity_refs:
+                raise RuntimeError(
+                    f"Scene {index} lists recurring characters but has no identity reference portraits."
+                )
             board = _comparison_board(path, identity_refs)
             try:
                 last = _vision_review(account, token, board, scene, story)
