@@ -1389,6 +1389,15 @@ def review_story_quality(story, outline, workdir=None):
     return report
 
 
+def discard_cached_story_plan(plan_path, workdir):
+    """Remove an invalid cached outline and every scene batch tied to that story."""
+    if plan_path and Path(plan_path).exists():
+        Path(plan_path).unlink()
+    if workdir:
+        for cached_batch in Path(workdir).glob("scene_batch_*.json"):
+            cached_batch.unlink(missing_ok=True)
+
+
 def make_story(genre, style, audience, title_hint, character_notes, scene_words, workdir=None):
     """Create a 50-scene story, caching the outline and each small scene batch."""
     workdir = Path(workdir) if workdir else None
@@ -1698,11 +1707,7 @@ Do not add JSON, quotation marks, headings or explanatory text.
             "discarding the incompatible outline and scene batches.",
             cached_outline_missing, cached_outline_unknown
         )
-        if plan_path and plan_path.exists():
-            plan_path.unlink()
-        if workdir:
-            for cached_batch in workdir.glob("scene_batch_*.json"):
-                cached_batch.unlink(missing_ok=True)
+        discard_cached_story_plan(plan_path, workdir)
         return make_story(
             genre, style, audience, title_hint, character_notes, scene_words, workdir=workdir
         )
@@ -1723,11 +1728,7 @@ Do not add JSON, quotation marks, headings or explanatory text.
             "and regenerating the story structure.",
             exc
         )
-        if plan_path and plan_path.exists():
-            plan_path.unlink()
-        if workdir:
-            for cached_batch in workdir.glob("scene_batch_*.json"):
-                cached_batch.unlink(missing_ok=True)
+        discard_cached_story_plan(plan_path, workdir)
         return make_story(
             genre, style, audience, title_hint, character_notes, scene_words, workdir=workdir
         )
