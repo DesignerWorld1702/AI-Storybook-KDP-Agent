@@ -617,6 +617,34 @@ class PublicationQualityGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unregistered character"):
             engine.review_story_quality(story, [])
 
+    def test_outline_rejects_ending_padded_with_epilogue_only_beats(self):
+        rows = [
+            {"number": i, "beat": f"the team takes a distinct action in scene {i} and finds a useful new clue"}
+            for i in range(1, 51)
+        ]
+        filler = [
+            "the team is praised by the mayor for its careful work and courage",
+            "the city celebrates the heroes during a public ceremony in the main square",
+            "the case is remembered as a cautionary tale for everyone in the art world",
+            "the detective receives a medal and public recognition for solving the case",
+            "the artist's exhibition is extended and her work is praised by many visitors",
+        ]
+        for offset, beat in enumerate(filler):
+            rows[35 + offset]["beat"] = beat
+        with self.assertRaisesRegex(ValueError, "epilogue-only"):
+            engine.validate_outline_rows(rows, [], strict_repetition=False)
+
+    def test_outline_allows_a_small_number_of_meaningful_aftermath_beats(self):
+        rows = [
+            {"number": i, "beat": f"the team takes a distinct action in scene {i} and finds a useful new clue"}
+            for i in range(1, 51)
+        ]
+        rows[35]["beat"] = "the team is praised by the mayor for its careful work and courage"
+        rows[36]["beat"] = "the artist's exhibition is extended and her work is praised by many visitors"
+        rows[37]["beat"] = "the detective receives a medal for solving the case"
+        reviewed = engine.validate_outline_rows(rows, [], strict_repetition=False)
+        self.assertEqual(len(reviewed), 50)
+
     def test_critical_issue_is_rejected_even_with_high_score(self):
         with patch.object(engine, "cf_text", return_value=json.dumps(
             self.report(95, critical=["Scene 18 changes the lead character's name"])
