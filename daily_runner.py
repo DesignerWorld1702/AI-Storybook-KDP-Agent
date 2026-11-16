@@ -109,6 +109,13 @@ def build_one_book(book_date, config):
                 cached_plan = json.loads(plan_path.read_text(encoding="utf-8"))
                 outline = cached_plan.get("outline", []) if isinstance(cached_plan, dict) else []
                 engine.validate_outline_rows(outline, story.get("character_registry", []))
+                for cached_scene in story.get("scenes", []):
+                    readability_issues = engine.simple_english_issues(cached_scene.get("text", ""))
+                    if readability_issues:
+                        raise ValueError(
+                            f"scene {cached_scene.get('number')} fails easy-English checks: "
+                            + "; ".join(readability_issues)
+                        )
             except (OSError, ValueError) as exc:
                 logging.warning(
                     "Saved story no longer passes current outline gates (%s); discarding its dependent "
