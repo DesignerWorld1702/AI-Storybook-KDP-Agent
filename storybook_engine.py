@@ -864,8 +864,9 @@ def repair_outline_from_review(plan, outline, report):
         "The final ten beats must resolve the main case, rescue or account for victims, expose the truth, "
         "hold the villain accountable, and give the protagonists emotional closure. No unresolved "
         "anonymous threat or sequel cliffhanger. Keep English very easy: common words and short sentences. "
-        "Return ONLY valid JSON with exactly two keys: description (100–140 words, matching the repaired "
-        "story) and outline (an array of exactly 50 objects, each with number 1–50 and beat 8–45 words). "
+        "Return ONLY valid JSON with exactly two keys: description (100–140 words, 5–6 complete simple "
+        "sentences that match the repaired story) and outline (an array of exactly 50 objects, each with "
+        "number 1–50 and beat 8–45 words). Never make the description shorter than 100 words. "
         "No extra keys.\\n\\nEDITORIAL REVIEW:\\n"
         + json.dumps(report, ensure_ascii=False)
         + "\\n\\nLOCKED BOOK AND CAST:\\n"
@@ -882,7 +883,30 @@ def repair_outline_from_review(plan, outline, report):
     repaired_outline = validate_outline_rows(repaired["outline"], plan.get("character_registry", []))
     description = str(repaired.get("description", "")).strip()
     if len(description.split()) < 80:
-        raise ValueError("Repaired book description is too short to explain the complete story.")
+        expansion_prompt = (
+            "Write a complete, easy-English book description in 100–140 words and 5–6 short sentences. "
+            "Describe the exact story below, including the main characters, mystery, stakes, key discovery, "
+            "villain, and resolved ending. Do not invent events or characters. Return only the description.\n\n"
+            + json.dumps({
+                "title": plan.get("title", ""),
+                "genre": plan.get("genre", ""),
+                "character_registry": plan.get("character_registry", []),
+                "principal_villain": plan.get("principal_villain", ""),
+                "outline": repaired_outline,
+                "short_draft": description
+            }, ensure_ascii=False)
+        )
+        expanded = cf_text(expansion_prompt, max_tokens=500).strip()
+        if 80 <= len(expanded.split()) <= 160:
+            description = expanded
+        else:
+            original_description = str(plan.get("description", "")).strip()
+            if len(original_description.split()) >= 80:
+                description = original_description
+            elif len(expanded.split()) >= 50:
+                description = expanded
+            else:
+                raise ValueError("Could not produce a complete readable description for the repaired story.")
     return repaired_outline, description
 
 
