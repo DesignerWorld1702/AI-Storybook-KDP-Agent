@@ -234,6 +234,30 @@ class PublicationQualityGateTests(unittest.TestCase):
         self.assertNotIn("Sarah", outline[0]["beat"])
         self.assertIn("Kate Matthews", outline[0]["beat"])
 
+    def test_registered_cast_must_have_meaningful_repeated_presence(self):
+        registry = [
+            {"name": "Kate Matthews", "importance": "protagonist"},
+            {"name": "Alexander Petrov", "importance": "supporting"},
+            {"name": "Victor LaGrange", "importance": "villain"},
+        ]
+        outline = []
+        for number in range(1, 51):
+            names = []
+            if number <= 12 or number >= 41:
+                names.append("Kate Matthews")
+            if number in {3, 8, 15, 22}:
+                names.append("Alexander Petrov")
+            if number in {5, 12, 20, 35, 45, 49}:
+                names.append("Victor LaGrange")
+            outline.append({
+                "number": number,
+                "beat": f"Scene {number} advances the case with a distinct action and evidence. " + " ".join(names),
+            })
+        self.assertEqual(len(engine.validate_outline_cast_distribution(outline, registry)), 50)
+        registry[1]["name"] = "Sarah Lee"
+        with self.assertRaisesRegex(ValueError, "Supporting character Sarah Lee"):
+            engine.validate_outline_cast_distribution(outline, registry)
+
     def test_registered_villain_must_be_foreshadowed_in_first_fifteen_scenes(self):
         outline = [
             {"number": i, "beat": f"Scene {i} shows a distinct action with new evidence and a clear consequence for the investigation"}
