@@ -3,7 +3,7 @@
 A local Windows-first starter app that creates an original 50-scene illustrated storybook, generates scene images through Cloudflare Workers AI, places the story text at the bottom of each page, and exports a PDF plus metadata/checklists for Amazon KDP.
 
 ## What it does
-- Creates a 50-scene story with a clear group of adult protagonists, a substantial supporting ensemble, and exactly one principal villain.
+- Creates a 50-scene story with a concise, plot-driven cast and a consequential antagonist where required by the selected story format.
 - Builds a canonical character registry for every selected character, including supporting characters and the villain.
 - Generates dedicated identity portraits for recurring characters and reuses relevant portraits as scene-specific image references.
 - Repeats each visible character's exact visual bible in scene prompts and validates scene character names against the registry.
@@ -24,8 +24,8 @@ A local Windows-first starter app that creates an original 50-scene illustrated 
 ## Permanent character identity library
 
 - Permanent visual models live under `character_library/models/<visual_id>/` with an `identity.json` record and an optional local `reference.png`.
-- The immutable identity record describes face, facial proportions, skin tone, hair, eyes, body proportions and permanent marks. Story names, personalities, occupations, relationships, costumes and accessories are created anew for each book.
-- A model is selected only when it fits the plot; the library is not a fixed ensemble and characters are not forced into every story.
+- The immutable identity record describes face, facial proportions, skin tone, hair, eyes, body proportions and permanent marks. Story names, personalities, occupations, relationships, roles, costumes and accessories are created anew for each book.
+- The AI selects only the reusable visual models that genuinely fit the plot (including none when appropriate); the library is not a fixed ensemble and characters are never forced into a story. New names, personalities, relationships, occupations, roles and costumes are invented for each book, while selected characters retain their physical identity.
 - When a saved reference image is available locally, the illustration pipeline uses it as a physical-identity reference and explicitly tells the image model to follow the current book's costume instead of copying the reference outfit.
 - Story-specific cast names are recorded under `character_library/story_cast/` so future books can avoid reusing previous names.
 - Image references remain on the local computer unless the owner intentionally adds them to a private or public repository. Never commit `.env` credentials.
