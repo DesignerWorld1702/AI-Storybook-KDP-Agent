@@ -135,7 +135,8 @@ class DailyRunnerResumeTests(unittest.TestCase):
                  patch.object(daily_runner.engine, "validate_scene_image_set", return_value={"checked_images": 50}), \
                  patch.object(daily_runner, "review_and_repair_scene_images", return_value={
                      "model": "test-vision", "reviewed_scenes": 50, "average_score": 8.5,
-                     "character_consistency_verified": True, "scene_accuracy_verified": True
+                     "character_consistency_verified": True, "scene_accuracy_verified": True,
+                     "limitations": "test-only mock"
                  }), \
                  patch.object(daily_runner.engine, "build_page_images"), \
                  patch.object(daily_runner.engine, "build_pdf"), \
