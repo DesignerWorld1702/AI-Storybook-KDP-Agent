@@ -105,7 +105,7 @@ Each run creates a timestamped folder inside `output/` with:
 - `publishing_checklist.txt`.
 
 ## Limitations
-- Generating 50 images may exceed free Cloudflare Workers AI quota or have model-specific limits. This app stops on errors and preserves completed scenes so you can resume by rerunning with the same output folder if you implement resume support; the initial version restarts a run.
+- Generating 50 images plus visual-review calls may exceed free Cloudflare Workers AI quota or have model-specific limits. The runner preserves completed scenes and resumes an incomplete book from its saved output/artifact when rerun; quota errors stop the run without marking the book complete.
 - Character continuity is treated as a required quality benchmark: recurring protagonists, supporting characters, creatures and the principal villain receive canonical visual bibles; recurring characters also receive identity portraits reused in scenes where they appear. The villain's costume and styling are designed for each new book, then held consistent within that book.
 - Image models can still produce occasional visual drift. The reference portraits and prompt checks reduce this risk but cannot guarantee pixel-perfect identity; review the contact sheet and regenerate any inconsistent scene before publishing.
 - The included KDP handoff is deliberately user-in-the-loop, not a hidden or unattended publishing bot. There is no claim of a supported public KDP publishing API.
