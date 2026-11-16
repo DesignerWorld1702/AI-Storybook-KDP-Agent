@@ -1543,8 +1543,13 @@ clue discovery, argument, journey, or other event with slightly changed wording.
                     re.sub(r"[^a-z0-9 ]", "", str(item.get("beat", "")).lower()).strip()
                     for item in rows
                 }) == 50 and not missing_cast and not unknown_cast and villain_foreshadowed:
-                    parsed_outline = rows
-                    break
+                    try:
+                        validate_outline_rows(rows, registry, strict_repetition=True)
+                    except ValueError as exc:
+                        last_outline_error = str(exc)
+                    else:
+                        parsed_outline = rows
+                        break
                 if missing_cast or unknown_cast:
                     problems = []
                     if missing_cast:
