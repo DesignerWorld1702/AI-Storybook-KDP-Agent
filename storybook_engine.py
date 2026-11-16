@@ -881,12 +881,12 @@ def validate_outline_ending_progression(rows):
         return
     ending = rows[-15:]
     epilogue_patterns = (
-        r"\b(?:praised|hailed|celebrated|honou?red|awarded|recognized|recognised)\b",
+        r"\b(?:praised|hailed|celebrated|celebration|honou?red|awarded|recognized|recognised)\b",
         r"\b(?:remembered|cautionary tale|reminder of the importance)\b",
         r"\b(?:bestseller|book is published|research is published|leading authority)\b",
         r"\b(?:exhibition (?:is )?(?:extended|a huge success)|artwork is praised)\b",
         r"\b(?:city.{0,35}(?:forever changed|revitalized|comes together))\b",
-        r"\b(?:career.{0,35}(?:success|recognition)|receives? (?:a )?(?:medal|award))\b",
+        r"\b(?:career.{0,35}(?:success|recognition)|receiv(?:e|es|ed) (?:a )?(?:medals?|awards?))\b",
     )
     filler_numbers = []
     for item in ending:
