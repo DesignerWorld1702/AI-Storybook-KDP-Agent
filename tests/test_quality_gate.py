@@ -436,6 +436,43 @@ class PublicationQualityGateTests(unittest.TestCase):
         self.assertFalse(result["passed"])
         self.assertTrue(result["critical_issues"])
 
+    def test_simple_english_gate_rejects_long_sentences_and_accepts_clear_prose(self):
+        difficult = (
+            "Maya Stone and Leo Park entered the old station and searched every room for the missing key, "
+            "while the guard watched them closely from the far end of the long hallway. "
+            "They checked the locked doors and found a small mark that could lead them to the hidden box."
+        )
+        easy = (
+            "Maya found the key under the old bridge. She called Leo and showed him the mark on the map. "
+            "They hurried to the station before the guard could move the box. The door was open, but the "
+            "room was empty. Maya heard a soft sound behind the wall."
+        )
+        self.assertTrue(engine.simple_english_issues(difficult))
+        self.assertEqual(engine.simple_english_issues(easy), [])
+
+    def test_scene_page_text_repair_also_simplifies_long_sentences(self):
+        original = (
+            "Maya Stone and Leo Park entered the old station and searched every room for the missing key, "
+            "while the guard watched them closely from the far end of the long hallway. "
+            "They checked the locked doors and found a small mark that could lead them to the hidden box."
+        )
+        easy = (
+            "Maya found the key under the old bridge. She called Leo and showed him the mark on the map. "
+            "They hurried to the station before the guard could move the box. The door was open, but the "
+            "room was empty. Maya heard a soft sound behind the wall."
+        )
+        scene = {"number": 4, "heading": "The Hidden Key", "text": original}
+        plan = {
+            "title": "The Hidden Key",
+            "character_registry": [{"name": "Maya Stone"}, {"name": "Leo Park"}],
+            "principal_villain": "Rex Thorn",
+        }
+        with patch.object(engine, "cf_text", return_value=easy) as generate:
+            result = engine.repair_scene_page_text(scene, plan, 4)
+        generate.assert_called_once()
+        self.assertEqual(result["text"], easy)
+        self.assertEqual(engine.simple_english_issues(result["text"]), [])
+
     def test_page_word_count_gate_is_exactly_40_to_55_words(self):
         self.assertFalse(engine.page_text_word_count_valid("word " * 39))
         self.assertTrue(engine.page_text_word_count_valid("word " * 40))
