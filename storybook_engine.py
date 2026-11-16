@@ -860,6 +860,55 @@ def ground_editorial_issues(issues, outline):
     return supported, unverified
 
 
+
+def synchronize_book_description(plan, outline):
+    """Create KDP copy that accurately describes the final, locked outline."""
+    registry = plan.get("character_registry", [])
+    protagonist = next(
+        (str(item.get("name", "")).strip() for item in registry
+         if isinstance(item, dict) and item.get("importance") == "protagonist"),
+        ""
+    )
+    villain = str(plan.get("principal_villain", "")).strip()
+    prompt = (
+        "Write the final Amazon book description in VERY easy English. Use 100-140 words and "
+        "5-7 short, clear sentences. Describe ONLY events and facts explicitly supported by the "
+        "locked 50-scene outline below. Name the protagonist exactly as registered and name the "
+        "principal villain exactly as registered. Explain the central crime or threat, why it matters, "
+        "the key clue trail, the danger, and how the main conflict is resolved. Do not invent murders, "
+        "victims, characters, kidnappings, trials, sentences, or events that are not in the outline. "
+        "Do not use vague filler such as 'a web of deceit' without explaining the actual conflict. "
+        "Do not add a sequel cliffhanger. Return ONLY the description text, no heading or quotes.\\n\\n"
+        + json.dumps({
+            "title": plan.get("title", ""),
+            "protagonist": protagonist,
+            "principal_villain": villain,
+            "character_registry": registry,
+            "outline": outline
+        }, ensure_ascii=False)
+    )
+    last = ""
+    for attempt in range(1, 3):
+        last = cf_text(prompt, max_tokens=420).strip()
+        words = last.split()
+        if (
+            90 <= len(words) <= 155
+            and protagonist.casefold() in last.casefold()
+            and villain.casefold() in last.casefold()
+        ):
+            plan["description"] = last
+            return last
+        prompt += (
+            "\\n\\nRETRY: The last description had " + str(len(words))
+            + " words or omitted an exact registered name. Return 100-140 words, "
+            "5-7 simple sentences, and include both exact names."
+        )
+    raise ValueError(
+        "Could not create a grounded 100-140 word book description naming the protagonist "
+        "and registered villain. Last response: " + last[:300]
+    )
+
+
 def review_story_outline(plan, outline, workdir=None):
     """Editorially check plot logic and the ending before spending resources on scenes."""
     prompt = (
@@ -1278,7 +1327,7 @@ Return one compact valid JSON object, no markdown, with these keys:
  "principal_villain":"Exact name of the single principal villain",
  "art_direction":"Consistent palette, lighting and world atmosphere"
 }
-Keep the registry concise and plot-driven: create only the characters the story genuinely needs. A typical story may have one to three protagonists, supporting roles as required, and a consequential antagonist; do not pad the cast to hit a fixed count. In real-world mode every character must be human and grounded; importance must be protagonist, supporting, or villain only (never creature). In fantasy mode add creatures only if they serve the plot. Never include an outline or extra keys.
+Before writing the metadata, invent one specific, original central crime or threat with a clear victim/stakes, a believable motive, a useful first clue, and a complete resolution. Avoid generic "web of corruption" plots with no concrete crime or evidence. The principal villain must be a real, consequential person connected to the central crime from the beginning; their full name should appear in the first act through a clue or known connection, even if their face is not yet seen. Supporting characters must have distinct, necessary roles in the case. Do not create a mysterious helper halfway through the story; every recurring person must be in the registry. Keep the registry concise and plot-driven: create only the characters the story genuinely needs. A typical story may have one to three protagonists, supporting roles as required, and a consequential antagonist; do not pad the cast to hit a fixed count. In real-world mode every character must be human and grounded; importance must be protagonist, supporting, or villain only (never creature). In fantasy mode add creatures only if they serve the plot. The 100-140 word description must name the protagonist and principal villain and describe the concrete crime, stakes, and resolved outcome. Never include an outline or extra keys.
 """
         plan = extract_json(cf_text(metadata_prompt, max_tokens=2600), "compact book metadata and character registry")
         if not isinstance(plan, dict):
@@ -1513,6 +1562,7 @@ Do not add JSON, quotation marks, headings or explanatory text.
     outline = validate_principal_villain_foreshadowing(
         outline, plan.get("principal_villain", ""), max_scene=15
     )
+    plan["description"] = synchronize_book_description(plan, outline)
     outline_report = review_story_outline(plan, outline, workdir)
     for repair_attempt in range(1, 7):
         if outline_report.get("passed"):
@@ -1526,6 +1576,7 @@ Do not add JSON, quotation marks, headings or explanatory text.
         outline, repaired_description = repair_outline_from_review(plan, outline, outline_report)
         plan["outline"] = outline
         plan["description"] = repaired_description
+        plan["description"] = synchronize_book_description(plan, outline)
         if workdir:
             for cached_batch in workdir.glob("scene_batch_*.json"):
                 cached_batch.unlink(missing_ok=True)
