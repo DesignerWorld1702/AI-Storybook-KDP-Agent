@@ -203,6 +203,16 @@ class PublicationQualityGateTests(unittest.TestCase):
         self.assertIn("navy field jacket", costume)
         self.assertIn("black leather boots", costume)
 
+
+    def test_outline_accepts_minor_beat_length_variation_up_to_22_words(self):
+        rows = [
+            {"number": i, "beat": f"Scene {i} introduces a distinct event with clear action, cause, consequence, and forward movement for the story"}
+            for i in range(1, 51)
+        ]
+        rows[19]["beat"] = "Scene twenty reveals a new clue and changes the investigation while the main characters prepare their next careful move together"
+        result = engine.validate_outline_rows(rows, [])
+        self.assertEqual(len(result), 50)
+
     def test_outline_review_computes_score_and_enforces_core_dimensions(self):
         report = {
             "passed": True,
