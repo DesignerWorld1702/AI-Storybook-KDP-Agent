@@ -9,29 +9,25 @@ import daily_runner
 
 
 def valid_outline():
-    verbs = [
-        "maps", "checks", "follows", "decodes", "tests",
-        "traces", "questions", "opens", "compares", "blocks",
-    ]
-    objects = [
-        "archive", "tunnel", "ledger", "signal", "painting",
-        "bridge", "camera", "receipt", "engine", "vault",
-    ]
-    places = [
-        "harbor", "museum", "station", "market", "warehouse",
-        "library", "courthouse", "workshop", "hotel", "gallery",
-    ]
-    times = [
-        "morning", "noon", "sunset", "midnight", "dawn",
+    templates = [
+        "At {a}, Hero maps {b}, while Villain follows {c} toward {d}.",
+        "Before dawn, Villain hides {a}; Hero compares {b} with {c} and reaches {d}.",
+        "Hero questions the guard at {a}, then finds {b} beside {c} and seals {d}.",
+        "A signal from {a} sends Hero to {b}; Villain removes {c} before {d} arrives.",
+        "Villain tests {a} near {b}, but Hero discovers {c} and protects {d}.",
+        "Hero opens {a}, studies {b}, and learns Villain moved {c} toward {d}.",
+        "At {a}, Villain blocks {b}; Hero traces {c} and uncovers {d} in time.",
+        "Hero follows a trail from {a} to {b}, while Villain destroys {c} near {d}.",
+        "The clue at {a} changes the plan: Hero checks {b} before Villain reaches {c} or {d}.",
+        "Villain leaves {a} behind, and Hero links {b}, {c}, and {d} to the crime.",
     ]
     rows = []
     for i in range(50):
+        tokens = [f"zone{i:02d}", f"archive{i:02d}", f"signal{i:02d}", f"ledger{i:02d}"]
         rows.append({
             "number": i + 1,
-            "beat": (
-                f"At the {places[i % 10]} during {times[i // 10]}, Hero {verbs[i % 10]} "
-                f"the {objects[(i * 3) % 10]} while Villain {verbs[(i * 7) % 10]} "
-                f"the {objects[(i * 9) % 10]}, changing the next clue in scene {i + 1}."
+            "beat": templates[i % len(templates)].format(
+                a=tokens[0], b=tokens[1], c=tokens[2], d=tokens[3]
             ),
         })
     return rows
