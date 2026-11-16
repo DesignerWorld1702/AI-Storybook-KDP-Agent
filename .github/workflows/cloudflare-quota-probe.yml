@@ -1,4 +1,4 @@
-name: Cloudflare quota probe and one-time storybook resume # Outline title alias sanitizer QA trigger
+name: Cloudflare quota probe and one-time storybook resume # Retry current-day book after duplicate-name sanitizer fix
 
 on:
   push:
