@@ -1856,10 +1856,6 @@ No extra keys, no markdown fences, no text outside JSON.
                     )
                 scene["characters_present"] = list(dict.fromkeys(repaired_names))
             scene = repair_scene_page_text(scene, plan, number)
-            logging.info(
-                    "Repaired scene %s unregistered character names: %s",
-                    number, unknown_names
-                )
             scenes.append(scene)
 
         # Cache only a fully validated batch so interrupted/invalid responses are regenerated.
