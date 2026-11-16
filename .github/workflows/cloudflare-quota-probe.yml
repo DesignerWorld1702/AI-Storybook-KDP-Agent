@@ -1,4 +1,4 @@
-name: Cloudflare quota probe and one-time storybook resume # Retry current-day book after duplicate-name sanitizer fix
+name: Cloudflare quota probe and one-time storybook resume # Retry current-day book after outline length tolerance fix
 
 on:
   push:
