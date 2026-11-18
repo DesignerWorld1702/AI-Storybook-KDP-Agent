@@ -98,6 +98,6 @@ jobs:
               repo: context.repo.repo,
               workflow_id: "generate-final-storybook.yml",
               ref: "main",
-              inputs: { bypass_daily_guard: "true" }
+              inputs: { bypass_daily_guard: "false" }
             });
             core.notice("Cloudflare probe passed; one controlled replacement generation was dispatched.");
