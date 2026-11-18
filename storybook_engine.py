@@ -518,6 +518,52 @@ def repair_scene_page_text(scene, plan, number):
         f"Scene {number} page text could not be repaired to 40-55 words after cast normalization "
         f"({last_error})."
     )
+def normalize_registered_outline_aliases(outline, registry):
+    """Expand unambiguous first-name, surname, or nickname mentions to canonical cast names.
+
+    This is deliberately limited to tokens unique across the locked registry. It prevents
+    an otherwise correct outline from failing cast coverage merely because the model uses
+    a registered character's short name (for example, Hawk) instead of the full name.
+    """
+    aliases = {}
+    for item in registry if isinstance(registry, list) else []:
+        if not isinstance(item, dict):
+            continue
+        canonical = str(item.get("name", "")).strip()
+        if not canonical:
+            continue
+        for token in re.findall(r"[A-Za-z]+", canonical):
+            if len(token) >= 3:
+                aliases.setdefault(token.casefold(), set()).add(canonical)
+    unique_aliases = {
+        token: next(iter(names))
+        for token, names in aliases.items()
+        if len(names) == 1
+    }
+    if not isinstance(outline, list):
+        return outline
+    for row in outline:
+        if not isinstance(row, dict):
+            continue
+        beat = str(row.get("beat", ""))
+        # Protect already-canonical full names before expanding individual tokens.
+        protected = {}
+        for index, item in enumerate(registry if isinstance(registry, list) else []):
+            if not isinstance(item, dict):
+                continue
+            canonical = str(item.get("name", "")).strip()
+            if canonical and re.search(r"(?<![A-Za-z])" + re.escape(canonical) + r"(?![A-Za-z])", beat, re.IGNORECASE):
+                marker = f"ZZCANONICALCAST{index}ZZ"
+                beat = re.sub(r"(?<![A-Za-z])" + re.escape(canonical) + r"(?![A-Za-z])", marker, beat, flags=re.IGNORECASE)
+                protected[marker] = canonical
+        for token, canonical in sorted(unique_aliases.items(), key=lambda pair: len(pair[0]), reverse=True):
+            beat = re.sub(r"(?<![A-Za-z])" + re.escape(token) + r"(?![A-Za-z])", canonical, beat, flags=re.IGNORECASE)
+        for marker, canonical in protected.items():
+            beat = beat.replace(marker, canonical)
+        row["beat"] = beat
+    return outline
+
+
 def missing_registered_outline_names(outline, registry):
     """Return cast names that the outline failed to use exactly as registered."""
     outline_text = " ".join(
@@ -874,6 +920,7 @@ def ensure_concrete_story_costumes(plan):
 
 def validate_outline_cast_distribution(outline, registry):
     """Ensure every registered role has a meaningful, recurring presence in the plot."""
+    normalize_registered_outline_aliases(outline, registry)
     appearances = {}
     for item in registry:
         if not isinstance(item, dict):
