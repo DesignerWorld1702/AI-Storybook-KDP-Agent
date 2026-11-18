@@ -1195,6 +1195,7 @@ def review_story_outline(plan, outline, workdir=None):
             report["dimension_scores"] = recovered
     if not valid_dimensions(report):
         raise ValueError("Outline reviewer returned missing or invalid dimension scores after one recovery attempt.")
+    dimensions = report["dimension_scores"]
     score = round(sum(float(dimensions[key]) for key in required) / len(required) * 10, 1)
     critical, unverified_critical = ground_editorial_issues(
         report.get("critical_issues", []), outline
