@@ -724,3 +724,34 @@ class PublicationQualityGateTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+    def test_outline_reviewer_recovers_missing_dimension_scorecard_once(self):
+        plan = {"title": "Test", "description": "", "principal_villain": "The Shade",
+                "character_registry": [{"name": "Hero"}, {"name": "The Shade"}]}
+        outline = [
+            {"number": i, "beat": f"Scene {i} shows a distinct action and consequence involving the case."}
+            for i in range(1, 51)
+        ]
+        initial = {"passed": True, "critical_issues": [], "minor_issues": []}
+        scorecard = {"dimension_scores": {
+            "plot": 8, "continuity": 8, "pacing": 8,
+            "character_consistency": 8, "ending": 8
+        }}
+        with patch.object(engine, "cf_text", side_effect=[json.dumps(initial), json.dumps(scorecard)]) as mocked:
+            result = engine.review_story_outline(plan, outline)
+        self.assertTrue(result["passed"])
+        self.assertEqual(result["score"], 80.0)
+        self.assertEqual(mocked.call_count, 2)
+
+    def test_outline_reviewer_still_fails_closed_if_scorecard_recovery_is_invalid(self):
+        plan = {"title": "Test", "description": "", "principal_villain": "The Shade",
+                "character_registry": [{"name": "Hero"}, {"name": "The Shade"}]}
+        outline = [
+            {"number": i, "beat": f"Scene {i} shows a distinct action and consequence involving the case."}
+            for i in range(1, 51)
+        ]
+        initial = {"passed": True, "critical_issues": [], "minor_issues": []}
+        with patch.object(engine, "cf_text", side_effect=[json.dumps(initial), json.dumps({"dimension_scores": {"plot": 9}})]):
+            with self.assertRaisesRegex(ValueError, "after one recovery attempt"):
+                engine.review_story_outline(plan, outline)
