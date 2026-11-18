@@ -526,6 +526,7 @@ def normalize_registered_outline_aliases(outline, registry):
     a registered character's short name (for example, Hawk) instead of the full name.
     """
     aliases = {}
+    stop_tokens = {"the", "and", "for", "with", "from", "into", "onto", "sir", "lady", "lord"}
     for item in registry if isinstance(registry, list) else []:
         if not isinstance(item, dict):
             continue
@@ -533,7 +534,7 @@ def normalize_registered_outline_aliases(outline, registry):
         if not canonical:
             continue
         for token in re.findall(r"[A-Za-z]+", canonical):
-            if len(token) >= 3:
+            if len(token) >= 3 and token.casefold() not in stop_tokens:
                 aliases.setdefault(token.casefold(), set()).add(canonical)
     unique_aliases = {
         token: next(iter(names))
