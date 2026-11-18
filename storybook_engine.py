@@ -567,6 +567,7 @@ def normalize_registered_outline_aliases(outline, registry):
 
 def missing_registered_outline_names(outline, registry):
     """Return cast names that the outline failed to use exactly as registered."""
+    normalize_registered_outline_aliases(outline, registry)
     outline_text = " ".join(
         str(item.get("beat", "")) for item in outline if isinstance(item, dict)
     ).casefold()
