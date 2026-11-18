@@ -1163,17 +1163,38 @@ def review_story_outline(plan, outline, workdir=None):
             "outline": outline
         }, ensure_ascii=False)
     )
-    report = extract_json(cf_text(prompt, max_tokens=1200), "strict pre-scene outline editorial review")
+    report = extract_json(cf_text(prompt, max_tokens=1800), "strict pre-scene outline editorial review")
     if not isinstance(report, dict) or not isinstance(report.get("passed"), bool):
         raise ValueError("Outline reviewer returned an invalid report.")
-    dimensions = report.get("dimension_scores")
     required = ("plot", "continuity", "pacing", "character_consistency", "ending")
-    if not isinstance(dimensions, dict) or any(
-        key not in dimensions or not isinstance(dimensions[key], (int, float))
-        or isinstance(dimensions[key], bool) or not 0 <= dimensions[key] <= 10
-        for key in required
-    ):
-        raise ValueError("Outline reviewer returned missing or invalid dimension scores.")
+
+    def valid_dimensions(candidate):
+        dimensions = candidate.get("dimension_scores") if isinstance(candidate, dict) else None
+        return isinstance(dimensions, dict) and all(
+            key in dimensions and isinstance(dimensions[key], (int, float))
+            and not isinstance(dimensions[key], bool) and 0 <= dimensions[key] <= 10
+            for key in required
+        )
+
+    # Some model responses return the editorial verdict but omit the score object.
+    # Request only the missing structured scorecard once; never infer or fabricate scores.
+    if not valid_dimensions(report):
+        score_prompt = (
+            "Review the following 50-beat outline and return ONLY valid JSON with exactly "
+            "one key: dimension_scores. It must contain numeric scores from 0 to 10 for "
+            "plot, continuity, pacing, character_consistency, and ending. Score honestly; "
+            "do not inflate.\nOUTLINE:\n"
+            + json.dumps(outline, ensure_ascii=False)
+        )
+        scorecard = extract_json(
+            cf_text(score_prompt, max_tokens=500),
+            "outline reviewer scorecard recovery"
+        )
+        recovered = scorecard.get("dimension_scores") if isinstance(scorecard, dict) else None
+        if isinstance(recovered, dict):
+            report["dimension_scores"] = recovered
+    if not valid_dimensions(report):
+        raise ValueError("Outline reviewer returned missing or invalid dimension scores after one recovery attempt.")
     score = round(sum(float(dimensions[key]) for key in required) / len(required) * 10, 1)
     critical, unverified_critical = ground_editorial_issues(
         report.get("critical_issues", []), outline
