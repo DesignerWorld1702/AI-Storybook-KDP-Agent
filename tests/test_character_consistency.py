@@ -46,6 +46,37 @@ class CharacterContinuityTests(unittest.TestCase):
             "scenes": [],
         }
 
+    def test_outline_cast_distribution_expands_unique_registered_nicknames(self):
+        registry = [
+            {"name": "James 'Hawk' Wilson", "importance": "protagonist"},
+            {"name": "Mira Sol", "importance": "supporting"},
+            {"name": "The Warden", "importance": "villain"},
+        ]
+        outline = []
+        for number in range(1, 51):
+            names = []
+            if number <= 8:
+                names.append("Hawk")
+            if number <= 3:
+                names.append("Mira")
+            if number in (1, 12, 24, 38, 45):
+                names.append("The Warden")
+            beat = f"Scene {number} advances the investigation through a new discovery and consequence."
+            if names:
+                beat += " " + " ".join(names) + " takes a meaningful action."
+            outline.append({"number": number, "beat": beat})
+
+        engine.validate_outline_cast_distribution(outline, registry)
+
+        protagonist_mentions = sum("James 'Hawk' Wilson" in row["beat"] for row in outline)
+        supporting_mentions = sum("Mira Sol" in row["beat"] for row in outline)
+        villain_mentions = sum("The Warden" in row["beat"] for row in outline)
+        self.assertEqual(protagonist_mentions, 8)
+        self.assertEqual(supporting_mentions, 3)
+        self.assertEqual(villain_mentions, 5)
+        # Common article words must never be expanded as character aliases.
+        self.assertNotIn("The Warden Warden", " ".join(row["beat"] for row in outline))
+
     def test_prompt_includes_exact_scene_character_bibles(self):
         scene = {
             "number": 7,
