@@ -1,4 +1,4 @@
-name: Cloudflare quota probe and one-time storybook resume # One controlled generation after story-repair diagnostics and readability tests pass
+name: Cloudflare quota probe and one-time storybook resume # One controlled generation after canonical character-alias regression tests pass
 
 on:
   workflow_dispatch:
