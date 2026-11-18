@@ -2,6 +2,15 @@ name: Cloudflare quota probe and one-time storybook resume # One controlled gene
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/cloudflare-quota-probe.yml
+
+concurrency:
+  group: cloudflare-quota-preflight
+  cancel-in-progress: false
 
 permissions:
   contents: read
