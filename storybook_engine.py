@@ -1,4 +1,4 @@
-import os, json, re, time, base64, io, textwrap, logging, difflib
+import os, json, re, time, base64, io, textwrap, logging, difflib, shutil
 from datetime import datetime
 from pathlib import Path
 import requests
@@ -2448,7 +2448,7 @@ def ensure_character_library_references(force_refresh=False):
 
     created = []
     force_refresh = force_refresh or os.environ.get("REFRESH_CHARACTER_REFERENCES", "").strip() == "1"
-    backup_root = ROOT / "character_library" / "reference_backups"
+    backup_root = ROOT / "character_library" / "models" / "reference_backups"
     backup_stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     if force_refresh:
         backup_root = backup_root / backup_stamp
