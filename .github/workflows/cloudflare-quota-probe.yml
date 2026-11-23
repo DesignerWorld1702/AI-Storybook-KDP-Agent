@@ -1,4 +1,4 @@
-name: Cloudflare quota probe and one-time storybook resume# CI-gated quota probe; generation only after validation passes
+name: Cloudflare quota probe and one-time storybook resume# CI-gated quota probe; retry after outline-repair feedback changes
 
 on:
   workflow_dispatch:
