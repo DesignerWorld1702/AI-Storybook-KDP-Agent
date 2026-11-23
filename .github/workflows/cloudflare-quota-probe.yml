@@ -1,4 +1,4 @@
-name: Cloudflare quota probe and one-time storybook resume # One controlled generation after canonical character-alias regression tests pass
+name: Cloudflare quota probe and one-time storybook resume# CI-gated quota probe; generation only after validation passes
 
 on:
   workflow_dispatch:
@@ -96,6 +96,33 @@ jobs:
 
           print("Cloudflare minimal text request succeeded. No secret values were displayed.")
           PY
+
+      - name: Wait for repository validation workflows to pass
+        if: success() && steps.probe.outcome == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const required = ["Python syntax check", "Package safe Windows update"];
+            const sha = context.sha;
+            const deadline = Date.now() + 6 * 60 * 1000;
+            while (Date.now() < deadline) {
+              const runs = await github.rest.actions.listWorkflowRunsForRepo({
+                owner: context.repo.owner, repo: context.repo.repo, head_sha: sha, per_page: 30
+              });
+              const matches = required.map(name => runs.data.workflow_runs.find(run => run.name === name));
+              if (matches.every(Boolean)) {
+                if (matches.some(run => run.conclusion && run.conclusion !== "success")) {
+                  core.setFailed("A required CI validation workflow failed; generation is blocked.");
+                  return;
+                }
+                if (matches.every(run => run.status === "completed" && run.conclusion === "success")) {
+                  core.notice("Both required validation workflows passed for " + sha + ".");
+                  return;
+                }
+              }
+              await new Promise(resolve => setTimeout(resolve, 15000));
+            }
+            core.setFailed("Timed out waiting for required CI workflows; generation is blocked.");
 
       - name: Dispatch a guarded book-generation run after quota preflight
         if: success() && steps.probe.outcome == 'success'
