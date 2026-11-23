@@ -143,7 +143,7 @@ def build_one_book(book_date, config):
         else:
             story = generate_fresh_story()
 
-        if story.get("story_schema_version") != 5:
+        if story.get("story_schema_version") != 6:
             raise RuntimeError(
                 "This saved story uses an older story schema and has been left untouched. "
                 "Create a fresh book date with the updated generator; existing story files and images are preserved."
