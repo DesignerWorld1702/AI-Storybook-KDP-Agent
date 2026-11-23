@@ -4,10 +4,11 @@
   "immutable_identity": {
     "hair": "Dark auburn-black hair, naturally tied back",
     "eyes": "Steel-brown",
-    "permanent_mark": "Permanent diagonal scar on the right cheek",
+    "permanent_mark": "No scar or permanent facial mark.",
     "build": "Strong athletic build",
     "face_identity": "Preserve the exact facial identity and composed facial proportions shown in reference.png.",
     "body_identity": "Preserve the same height impression and strong athletic body proportions shown in reference.png.",
-    "skin_tone": "Match reference.png."
+    "skin_tone": "Match reference.png.",
+    "permanent_marks": "Do not add scars, moles, freckles, birthmarks, or other permanent marks."
   }
 }
