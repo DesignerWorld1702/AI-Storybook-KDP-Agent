@@ -456,7 +456,7 @@ def normalize_dialogue_line(line):
     """Normalize dialogue for duplicate detection without altering the displayed text."""
     text = str(line or "").casefold()
     text = re.sub(r"[^a-z0-9]+", " ", text)
-    return re.sub(r"\\s+", " ", text).strip()
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def validate_unique_story_dialogue(scenes):
