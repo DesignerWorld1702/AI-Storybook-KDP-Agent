@@ -2518,6 +2518,47 @@ def build_page_images(story, scenes_dir, pages_dir, trim):
         for line in body_lines:
             draw.text((x, y), line, font=body_font, fill=(255, 255, 255, 255))
             y += line_height
+        # Render authored dialogue as readable speech bubbles in the upper/middle
+        # image area, keeping the bottom caption panel separate.
+        dialogue = scene.get("dialogue", [])
+        if isinstance(dialogue, list):
+            bubble_font = _page_font(max(22, int(width * 0.020)), bold=False)
+            speaker_font = _page_font(max(20, int(width * 0.017)), bold=True)
+            bubble_top = int(height * 0.06)
+            bubble_max_width = int(width * 0.58)
+            bubble_gap = int(height * 0.018)
+            for bubble_index, item in enumerate(dialogue[:2]):
+                if not isinstance(item, dict) or not item.get("line"):
+                    continue
+                speaker = str(item.get("speaker", "")).strip()
+                line = str(item.get("line", "")).strip()
+                bubble_lines = wrap_pixels(line, bubble_font)
+                speaker_lines = wrap_pixels(speaker, speaker_font)[:1]
+                text_h = len(bubble_lines) * int(bubble_font.size * 1.25)
+                speaker_h = len(speaker_lines) * int(speaker_font.size * 1.2)
+                bubble_h = speaker_h + text_h + int(height * 0.035)
+                bubble_w = min(bubble_max_width, max(int(width * 0.24), max(
+                    draw.textbbox((0, 0), ln, font=bubble_font)[2] for ln in bubble_lines
+                ) + int(width * 0.05)))
+                bx = pad if bubble_index == 0 else width - pad - bubble_w
+                by = bubble_top + bubble_index * (bubble_h + bubble_gap)
+                if by + bubble_h >= box_top - int(height * 0.02):
+                    continue
+                draw.rounded_rectangle(
+                    (bx, by, bx + bubble_w, by + bubble_h),
+                    radius=max(18, int(width * 0.022)),
+                    fill=(255, 250, 236, 232),
+                    outline=(40, 35, 30, 210),
+                    width=max(2, int(width * 0.002))
+                )
+                tx = bx + int(width * 0.022)
+                ty = by + int(height * 0.012)
+                for ln in speaker_lines:
+                    draw.text((tx, ty), ln, font=speaker_font, fill=(85, 55, 35, 255))
+                    ty += int(speaker_font.size * 1.2)
+                for ln in bubble_lines:
+                    draw.text((tx, ty), ln, font=bubble_font, fill=(25, 25, 25, 255))
+                    ty += int(bubble_font.size * 1.25)
         page = Image.alpha_composite(page.convert("RGBA"), overlay).convert("RGB")
         page.save(target, "PNG", optimize=True)
     return pages_dir
