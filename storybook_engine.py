@@ -1742,7 +1742,19 @@ clue discovery, argument, journey, or other event with slightly changed wording.
         last_outline_error = None
         parsed_outline = None
         for outline_attempt in range(1, 6):
-            raw_outline = cf_text(outline_prompt, max_tokens=2400)
+            retry_prompt = outline_prompt
+            if outline_attempt > 1 and last_outline_error:
+                retry_prompt += (
+                    "\\n\\nREPAIR FEEDBACK FROM THE PREVIOUS OUTLINE (attempt "
+                    + str(outline_attempt - 1) + "): "
+                    + last_outline_error
+                    + "\\nCorrect this exact validation failure in the new 50-beat outline. "
+                    + "Do not merely rephrase the same outline. Ensure every registered supporting "
+                    + "character appears by exact full name in at least 3 distinct beats, with a "
+                    + "meaningful action or consequence in each appearance. Preserve the same plot, "
+                    + "cast, causal continuity, and all other requirements."
+                )
+            raw_outline = cf_text(retry_prompt, max_tokens=2400)
             rows = []
             for line in raw_outline.splitlines():
                 match = re.match(r"^\s*(\d{1,2})\s*[|.)-]\s*(.+?)\s*$", line)
