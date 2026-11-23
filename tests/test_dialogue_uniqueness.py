@@ -16,7 +16,7 @@ class DialogueUniquenessTests(unittest.TestCase):
         scenes = [
             {"number": 2, "dialogue": [{"speaker": "A", "line": "Stay here, please."}]},
             {"number": 3, "dialogue": [{"speaker": "B", "line": "STAY HERE PLEASE"}]},
-        }
+        ]
         with self.assertRaisesRegex(ValueError, "Repeated dialogue rejected"):
             engine.validate_unique_story_dialogue(scenes)
 
