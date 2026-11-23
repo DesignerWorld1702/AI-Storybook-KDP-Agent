@@ -1745,10 +1745,10 @@ clue discovery, argument, journey, or other event with slightly changed wording.
             retry_prompt = outline_prompt
             if outline_attempt > 1 and last_outline_error:
                 retry_prompt += (
-                    "\\n\\nREPAIR FEEDBACK FROM THE PREVIOUS OUTLINE (attempt "
+                    "\n\nREPAIR FEEDBACK FROM THE PREVIOUS OUTLINE (attempt "
                     + str(outline_attempt - 1) + "): "
                     + last_outline_error
-                    + "\\nRewrite the specifically identified beat(s); if the feedback identifies "
+                    + "\nRewrite the specifically identified beat(s); if the feedback identifies "
                     + "short beats, expand them to 8-45 words; if it identifies repetition, replace "
                     + "the repeated event with a genuinely different action and consequence. Do not "
                     + "reuse the same wording or event. Ensure each registered supporting character "
