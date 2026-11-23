@@ -2354,12 +2354,10 @@ def create_reference_images(story, outdir):
 
 
 def ensure_character_library_references():
-    """Create missing permanent identity portraits for the complete 12-character pool.
+    """Validate all 12 identity references and use a character-free style sample.
 
-    The first existing Adam portrait is used as the style-only benchmark. If it is
-    unavailable in a clean cloud runner, create an Adam benchmark portrait from
-    the locked visual bible, then use that same image as the style reference for
-    every remaining model.
+    Never use Character 001 (or any other character portrait) as a style reference:
+    image models can transfer distinctive facial marks and identity features.
     """
     models = sorted(load_character_library(), key=lambda item: item.get("visual_id") != "visual_001")
     if not models:
@@ -2367,9 +2365,8 @@ def ensure_character_library_references():
     if not CF_ACCOUNT or not CF_TOKEN:
         raise RuntimeError("Cloudflare credentials are required to build character references.")
 
-    first = next((m for m in models if m.get("visual_id") == "visual_001"), models[0])
-    first_path = Path(first["_reference_path"])
-    first_path.parent.mkdir(parents=True, exist_ok=True)
+    style_path = ROOT / "character_library" / "style_reference.png"
+    style_path.parent.mkdir(parents=True, exist_ok=True)
 
     def valid_reference(path):
         try:
@@ -2379,24 +2376,19 @@ def ensure_character_library_references():
         except Exception:
             return False
 
-    if not valid_reference(first_path):
-        prompt = (
-            "Create the master character reference portrait for the first character in a "
-            "unified illustrated storybook character library. This portrait will be the "
-            "style benchmark for the visual library. Show one adult human character, "
-            "full body, front three-quarter view, neutral confident standing pose, face clearly "
-            "readable, uncluttered muted cinematic background. Permanent identity: "
-            + str(first.get("immutable_identity", ""))
-            + ". Clothing: charcoal jacket over a dark shirt. Use unified 2D cinematic anime "
-            "realism: hand-painted feature-film illustration, semi-realistic adult anatomy, "
-            "natural facial proportions, expressive but restrained eyes, consistent fine linework, "
-            "painterly cel shading, detailed believable fabric and materials, controlled cinematic "
-            "colour grading. Not 3D, not chibi, not childish cartoon, not photorealistic. "
-            "No text, labels, panels, logos or watermark."
+    if not valid_reference(style_path):
+        style_prompt = (
+            "Create a CHARACTER-FREE style reference image: a cinematic misty mountain village "
+            "street at blue-hour with lantern light, believable architecture, natural stone, "
+            "wood and fabric textures, rich but restrained film colour grading, painterly 2D "
+            "anime realism, grounded perspective, semi-realistic detail, elegant fine linework, "
+            "soft painterly cel shading, atmospheric depth. Environment only; absolutely no "
+            "people, faces, creatures, silhouettes, statues, portraits, scars, or character marks. "
+            "No text, labels, logos or watermark. This image is for rendering STYLE ONLY, not identity."
         )
-        cf_image(prompt, first_path, width=1024, height=1024)
-        if not valid_reference(first_path):
-            raise RuntimeError("Could not create the Character 1 identity reference image.")
+        cf_image(style_prompt, style_path, width=1024, height=1024)
+        if not valid_reference(style_path):
+            raise RuntimeError("Could not create the character-free style reference.")
 
     created = []
     for model in models:
@@ -2405,23 +2397,21 @@ def ensure_character_library_references():
             continue
         name = f"Character {int(str(model['visual_id']).split('_')[-1])}"
         prompt = (
-            f"Create a permanent full-body character identity reference portrait for {name}. "
-            "Show exactly one character, front three-quarter view, neutral natural standing pose, "
-            "head and entire body visible, face and identifying features clearly readable, "
-            "uncluttered muted cinematic background. This is a clean continuity reference, not "
-            "an action scene or a multi-character sheet. Preserve this canonical identity exactly: "
-            + str(model.get("immutable_identity", ""))
-            + ". The character's identity, anatomy, markings, colours and proportions are fixed. "
-            "Clothing should match the character's reference outfit where specified; avoid adding "
-            "unnecessary accessories. Use the exact rendering style and colour treatment of the "
-            "first reference image, but do NOT copy the first character's face, hair, body, species "
-            "or clothing. Style only: unified 2D cinematic anime realism, hand-painted feature-film "
-            "illustration, grounded believable anatomy, natural expressions, realistic materials, "
-            "restrained purposeful fantasy, consistent fine linework, painterly cel shading, "
-            "controlled cinematic colour grading. No 3D CGI, chibi, childish cartoon, oversized "
-            "anime eyes, plastic skin or photorealism. No text, labels, panels, logos or watermark."
+            f"Create a permanent full-body identity reference portrait for {name}. Show exactly "
+            "one character, front three-quarter view, neutral standing pose, entire body visible, "
+            "face clearly readable, simple muted background. Follow ONLY this character's canonical "
+            "identity: " + str(model.get("immutable_identity", "")) + ". "
+            "Permanent marks belong exclusively to this character; do not invent or copy scars, "
+            "moles, freckles, birthmarks, or other identifying marks from any other character. "
+            "Keep anatomy, colours, proportions, species and marks fixed. Use the style of the "
+            "supplied character-free environment image only; do not derive identity, face, hair, "
+            "body, clothing or marks from it. Style: cinematic 2D anime realism, hand-painted "
+            "feature-film illustration, grounded believable anatomy, natural expressions, realistic "
+            "materials, restrained fantasy, fine linework, painterly cel shading, controlled colour. "
+            "No 3D CGI, chibi, childish cartoon, plastic skin or photorealism. No text, labels, "
+            "panels, logos or watermark."
         )
-        cf_image(prompt, path, width=1024, height=1024, reference_images=[first_path])
+        cf_image(prompt, path, width=1024, height=1024, reference_images=[style_path])
         if not valid_reference(path):
             raise RuntimeError(f"Reference image generation failed validation for {name}.")
         created.append(name)
@@ -2433,7 +2423,6 @@ def ensure_character_library_references():
     logging.info("Permanent character library ready: %s models; newly created: %s",
                  len(models), ", ".join(created) if created else "none")
     return [Path(m["_reference_path"]) for m in models]
-
 
 def wrap_text(text, font_name, font_size, max_width, c):
     words = text.split()
