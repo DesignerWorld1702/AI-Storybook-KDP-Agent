@@ -143,7 +143,7 @@ jobs:
           CLOUDFLARE_IMAGE_MODEL: "@cf/black-forest-labs/flux-2-klein-4b"
           STORY_IMAGE_MAX_SIDE: "1536"
           TZ: "Asia/Karachi"
-          REFRESH_CHARACTER_REFERENCES: "1"
+          REFRESH_CHARACTER_REFERENCES: "0"
         run: |
           # Preserve the previous book as a timestamped backup before a one-time replacement.
           if [ "${{ github.event_name == 'workflow_dispatch' && inputs.bypass_daily_guard }}" = "true" ]; then
