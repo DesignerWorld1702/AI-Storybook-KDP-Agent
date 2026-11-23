@@ -177,8 +177,16 @@ def review_and_repair_scene_images(story: dict, scenes_dir: Path, workdir: Path,
             logging.warning("Scene %s failed visual review (%s/10); regenerating: %s",
                             index, last["score"], last.get("major_defects"))
             path.unlink(missing_ok=True)
+            retry_scene = dict(scene)
+            repair_notes = str(last.get("repair_instruction", "")).strip()
+            defects = "; ".join(str(x) for x in last.get("major_defects", []) if str(x).strip())
+            retry_scene["visual_prompt"] = (
+                str(scene.get("visual_prompt", "")).strip()
+                + "\\nVISUAL REVIEW REPAIR REQUIREMENTS (must correct on this regeneration): "
+                + repair_notes + ("; " + defects if defects else "")
+            )
             engine.cf_image(
-                engine.build_scene_prompt(story, scene, engine.STYLE_LOCK),
+                engine.build_scene_prompt(story, retry_scene, engine.STYLE_LOCK),
                 path, width=width, height=height, reference_images=scene_refs
             )
             if not path.is_file():
