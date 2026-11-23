@@ -1944,7 +1944,8 @@ Return ONLY valid JSON with this exact shape:
    "expression":"specific emotion visible on face/body",
    "lighting":"cinematic lighting and atmosphere",
    "characters_present":["character names actually visible"],
-   "visual_prompt":"Detailed scene illustration prompt"
+   "visual_prompt":"Detailed scene illustration prompt",
+   "dialogue":[{"speaker":"Exact registered character name","line":"Short spoken line"}]
   }}
  ]
 }}
@@ -1976,6 +1977,15 @@ No extra keys, no markdown fences, no text outside JSON.
             scene = repair_scene_page_text(scene, plan, number)
             for key in ("shot_type", "camera_angle", "composition", "action_pose", "gaze", "expression", "lighting"):
                 scene.setdefault(key, "")
+            scene.setdefault("dialogue", [])
+            if not isinstance(scene["dialogue"], list):
+                scene["dialogue"] = []
+            scene["dialogue"] = [
+                {"speaker": str(d["speaker"]), "line": str(d["line"]).strip()[:180]}
+                for d in scene["dialogue"]
+                if isinstance(d, dict) and d.get("speaker") and d.get("line")
+                and d["speaker"] in scene.get("characters_present", [])
+            ][:2]
             scene.setdefault("characters_present", [])
             known_names = {item["name"] for item in plan.get("character_registry", [])}
             visible_names = scene.get("characters_present", [])
@@ -2054,7 +2064,7 @@ No extra keys, no markdown fences, no text outside JSON.
                 for key in (
                     "heading", "text", "shot_type", "camera_angle", "composition",
                     "action_pose", "gaze", "expression", "lighting",
-                    "characters_present", "visual_prompt"
+                    "characters_present", "visual_prompt", "dialogue"
                 ):
                     if key in repaired:
                         scene[key] = repaired[key]
