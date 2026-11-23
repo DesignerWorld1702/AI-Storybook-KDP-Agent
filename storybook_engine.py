@@ -1782,7 +1782,7 @@ clue discovery, argument, journey, or other event with slightly changed wording.
                 except ValueError as exc:
                     cast_distribution_ok = False
                     last_outline_error = str(exc)
-                if cast_distribution_ok and all(len(str(item.get("beat", "")).split()) >= 8 for item in rows) and len({
+                if cast_distribution_ok and all(8 <= len(str(item.get("beat", "")).split()) <= 45 for item in rows) and len({
                     re.sub(r"[^a-z0-9 ]", "", str(item.get("beat", "")).lower()).strip()
                     for item in rows
                 }) == 50 and not missing_cast and not unknown_cast and villain_foreshadowed:
@@ -1809,7 +1809,22 @@ clue discovery, argument, journey, or other event with slightly changed wording.
                         "in a meaningful clue or event within scenes 1-15."
                     )
                 elif not last_outline_error:
-                    last_outline_error = "Outline failed validation. Rewrite the beats with 8-45 words each, distinct physical actions, clear consequences, and no repeated or near-identical events."
+                    word_range_issues = [
+                        f"beat {item.get('number')} has {len(str(item.get('beat', '')).split())} words"
+                        for item in rows
+                        if not 8 <= len(str(item.get("beat", "")).split()) <= 45
+                    ]
+                    if word_range_issues:
+                        last_outline_error = (
+                            "STRICT LENGTH ERROR: Each numbered line must contain ONLY one scene beat "
+                            "of 8–45 words. Correct these: " + "; ".join(word_range_issues)
+                            + ". Do not put the full story, multiple scenes, or commentary in a line."
+                        )
+                    else:
+                        last_outline_error = (
+                            "Outline failed validation. Rewrite all beats with 8-45 words each, "
+                            "distinct physical actions, clear consequences, and no repeated or near-identical events."
+                        )
             else:
                 last_outline_error = f"Expected 50 numbered lines; parsed {len(rows)}."
             if outline_attempt < 5:
