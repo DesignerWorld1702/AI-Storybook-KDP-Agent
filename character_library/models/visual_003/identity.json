@@ -4,10 +4,11 @@
   "immutable_identity": {
     "hair": "Short textured dark-brown hair",
     "eyes": "Deep brown",
-    "permanent_mark": "Thin permanent diagonal scar on the chin",
+    "permanent_mark": "No scar or permanent facial mark.",
     "build": "Broad muscular athletic build",
     "face_identity": "Preserve the exact facial identity, strong jaw, facial proportions and grounded features shown in reference.png.",
     "body_identity": "Preserve the same height impression and broad athletic body proportions shown in reference.png.",
-    "skin_tone": "Match reference.png."
+    "skin_tone": "Match reference.png.",
+    "permanent_marks": "Do not add scars, moles, freckles, birthmarks, or other permanent marks."
   }
 }
