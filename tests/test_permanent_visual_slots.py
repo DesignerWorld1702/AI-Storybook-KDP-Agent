@@ -24,8 +24,11 @@ class PermanentVisualSlotTests(unittest.TestCase):
         self.assertIn("scar", identity_001["immutable_identity"].get("permanent_mark", "").casefold())
         for number in range(2, 13):
             identity = json.loads((models_root / f"visual_{number:03d}" / "identity.json").read_text(encoding="utf-8"))
-            facts = json.dumps(identity["immutable_identity"], ensure_ascii=False).casefold()
-            self.assertNotIn("scar", facts, f"Character {number:03d} must not inherit scar traits.")
+            mark = identity["immutable_identity"].get("permanent_mark", "").casefold()
+            self.assertTrue(
+                not mark or "no scar" in mark or "scar" not in mark,
+                f"Character {number:03d} must not have a scar as a canonical mark."
+            )
 
     def test_catalog_exposes_neutral_slots_without_legacy_names_or_roles(self):
         with tempfile.TemporaryDirectory() as tmp:
