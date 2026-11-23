@@ -18,6 +18,15 @@ class PermanentVisualSlotTests(unittest.TestCase):
             self.assertNotIn("character_name", identity)
             self.assertNotIn("changeable_story_identity", identity)
 
+    def test_scar_identity_is_unique_to_character_001(self):
+        models_root = engine.CHARACTER_LIBRARY_ROOT / "models"
+        identity_001 = json.loads((models_root / "visual_001" / "identity.json").read_text(encoding="utf-8"))
+        self.assertIn("scar", identity_001["immutable_identity"].get("permanent_mark", "").casefold())
+        for number in range(2, 13):
+            identity = json.loads((models_root / f"visual_{number:03d}" / "identity.json").read_text(encoding="utf-8"))
+            facts = json.dumps(identity["immutable_identity"], ensure_ascii=False).casefold()
+            self.assertNotIn("scar", facts, f"Character {number:03d} must not inherit scar traits.")
+
     def test_catalog_exposes_neutral_slots_without_legacy_names_or_roles(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
