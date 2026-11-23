@@ -2409,7 +2409,7 @@ def create_reference_images(story, outdir):
     return [style_ref, cast_ref]
 
 
-def ensure_character_library_references():
+def ensure_character_library_references(force_refresh=False):
     """Validate all 12 identity references and use a character-free style sample.
 
     Never use Character 001 (or any other character portrait) as a style reference:
@@ -2447,11 +2447,22 @@ def ensure_character_library_references():
             raise RuntimeError("Could not create the character-free style reference.")
 
     created = []
+    force_refresh = force_refresh or os.environ.get("REFRESH_CHARACTER_REFERENCES", "").strip() == "1"
+    backup_root = ROOT / "character_library" / "reference_backups"
+    backup_stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    if force_refresh:
+        backup_root = backup_root / backup_stamp
+        backup_root.mkdir(parents=True, exist_ok=True)
+        logging.warning("Forced reference refresh requested; existing portraits will be backed up to %s", backup_root)
+
     for model in models:
         path = Path(model["_reference_path"])
-        if valid_reference(path):
+        if valid_reference(path) and not force_refresh:
             continue
         name = f"Character {int(str(model['visual_id']).split('_')[-1])}"
+        backup = backup_root / f"{model['visual_id']}.png" if force_refresh else None
+        if force_refresh and valid_reference(path):
+            shutil.copy2(path, backup)
         prompt = (
             f"Create a permanent full-body identity reference portrait for {name}. Show exactly "
             "one character, front three-quarter view, neutral standing pose, entire body visible, "
@@ -2467,9 +2478,15 @@ def ensure_character_library_references():
             "No 3D CGI, chibi, childish cartoon, plastic skin or photorealism. No text, labels, "
             "panels, logos or watermark."
         )
-        cf_image(prompt, path, width=1024, height=1024, reference_images=[style_path])
-        if not valid_reference(path):
-            raise RuntimeError(f"Reference image generation failed validation for {name}.")
+        try:
+            cf_image(prompt, path, width=1024, height=1024, reference_images=[style_path])
+            if not valid_reference(path):
+                raise RuntimeError(f"Reference image generation failed validation for {name}.")
+        except Exception:
+            if backup and backup.is_file():
+                shutil.copy2(backup, path)
+                logging.warning("Restored prior reference after failed refresh for %s", name)
+            raise
         created.append(name)
         logging.info("Created permanent visual reference: %s (%s)", name, model["visual_id"])
 
