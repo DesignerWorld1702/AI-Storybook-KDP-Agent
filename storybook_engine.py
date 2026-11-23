@@ -452,6 +452,41 @@ def page_text_word_count_valid(text):
     return 40 <= len(str(text).split()) <= 55
 
 
+def normalize_dialogue_line(line):
+    """Normalize dialogue for duplicate detection without altering the displayed text."""
+    text = str(line or "").casefold()
+    text = re.sub(r"[^a-z0-9]+", " ", text)
+    return re.sub(r"\\s+", " ", text).strip()
+
+
+def validate_unique_story_dialogue(scenes):
+    """Reject repeated spoken lines across pages, including punctuation/case variants."""
+    seen = {}
+    for scene in scenes:
+        number = int(scene.get("number", 0))
+        dialogue = scene.get("dialogue", [])
+        if not isinstance(dialogue, list):
+            raise ValueError(f"Scene {number} dialogue must be a list.")
+        for item in dialogue:
+            if not isinstance(item, dict):
+                raise ValueError(f"Scene {number} contains malformed dialogue.")
+            line = str(item.get("line", "")).strip()
+            speaker = str(item.get("speaker", "")).strip()
+            if not line or not speaker:
+                raise ValueError(f"Scene {number} contains blank dialogue speaker/line.")
+            key = normalize_dialogue_line(line)
+            if not key:
+                raise ValueError(f"Scene {number} contains dialogue with no usable words.")
+            if key in seen:
+                previous_scene, previous_speaker, previous_line = seen[key]
+                raise ValueError(
+                    f"Repeated dialogue rejected: scene {number} ({speaker}) repeats "
+                    f"scene {previous_scene} ({previous_speaker}) line: {line!r}."
+                )
+            seen[key] = (number, speaker, line)
+    return {"dialogue_lines": len(seen), "unique_dialogue_lines": len(seen), "passed": True}
+
+
 def simple_english_issues(text):
     """Return deterministic readability problems for very easy storybook prose."""
     source = str(text or "").strip()
@@ -1927,7 +1962,7 @@ Specific beats to expand now:
 {json.dumps(batch_outline, ensure_ascii=False)}
 
 Expand ONLY scenes {first} through {last} into detailed illustrated-book scene records.
-Each scene page text must be 40–55 words (aim for {scene_words}), written in simple, natural English. Use common words, clear sentence order and short sentences. Avoid fancy vocabulary, vague dramatic filler and repeated phrases. Include concrete action, emotion and useful dialogue. Every scene must move the plot forward; no recap-only pages, repeated planning conversations, repeated rescues or filler endings.
+Each scene page text must be 40–55 words (aim for {scene_words}), written in simple, natural English. Use common words, clear sentence order and short sentences. Avoid fancy vocabulary, vague dramatic filler and repeated phrases. Include concrete action, emotion and useful dialogue. Every scene must move the plot forward; no recap-only pages, repeated planning conversations, repeated rescues or filler endings. Dialogue lines must be original, short, natural and distinct: NEVER repeat a spoken line anywhere in the 50 scenes, even when spoken by another character. Avoid catchphrases reused across scenes.
 For every illustration, write a director's shot plan: camera position, shot size, camera angle, nearest character, body orientation of EACH visible character, exact eyeline target of EACH visible character, foreground/background layers, and why this angle tells the story. Use varied film coverage across the book. In dialogue, speaker looks at listener and listener looks at speaker. Use over-the-shoulder, reverse, profile, rear-view and side views often. Avoid front-facing group poses and repeated eye-level medium shots. Do not repeat the same camera setup in nearby scenes. For characters with visual_id, preserve immutable_identity and permanent marks, but follow story_costume for clothing; costume stays consistent within this book. The visual_prompt must describe only scene action, camera, environment, lighting and composition. Do NOT invent or restate hair, eyes, face, age, skin tone, body type, scars, marks, or clothing; those details come only from the locked character registry and visual bible.
 Return ONLY valid JSON with this exact shape:
 {{
@@ -2095,7 +2130,7 @@ No extra keys, no markdown fences, no text outside JSON.
                 encoding="utf-8"
             )
 
-    # Final publication-boundary pass: run after every cast/name rewrite and
+    # Enforce dialogue uniqueness after all scene repairs and cache merges.\n    dialogue_report = validate_unique_story_dialogue(scenes)\n\n    # Final publication-boundary pass: run after every cast/name rewrite and
     # cached-batch merge, immediately before the deterministic quality gate.
     for final_scene in scenes:
         final_number = int(final_scene.get("number", 0))
