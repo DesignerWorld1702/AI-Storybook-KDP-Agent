@@ -1,4 +1,4 @@
-name: Cloudflare quota probe and one-time storybook resume# CI-gated quota probe; retry after outline-repair feedback changes
+name: Cloudflare quota probe and one-time storybook resume# CI-gated quota probe; run after validation-error preservation fix
 
 on:
   workflow_dispatch:
