@@ -2300,10 +2300,15 @@ def build_scene_prompt(story, scene, style):
     cast_names = scene.get("characters_present", [])
     cast = ", ".join(cast_names) or "no named character; environment-focused scene"
     registry = {item.get("name"): item for item in story.get("character_registry", [])}
-    scene_bibles = "\n".join(
+    scene_bibles = "\\n".join(
         f"{name}: immutable physical identity: {registry[name].get('immutable_identity', registry[name].get('visual_bible', ''))}; this book's costume: {registry[name].get('story_costume', 'follow visual_bible')}; full visual bible: {registry[name].get('visual_bible', '')}"
         for name in cast_names if name in registry
     )
+    dialogue = scene.get("dialogue", [])
+    dialogue_text = "\\n".join(
+        f'{item.get("speaker", "Unknown")}: "{item.get("line", "")}"'
+        for item in dialogue if isinstance(item, dict)
+    ) or "No spoken dialogue in this scene."
     direction = (
         f"Shot: {scene.get('shot_type', 'cinematic medium shot')}. "
         f"Camera: {scene.get('camera_angle', 'eye-level')}. "
@@ -2313,15 +2318,21 @@ def build_scene_prompt(story, scene, style):
         f"Expression: {scene.get('expression', '')}. "
         f"Lighting: {scene.get('lighting', '')}. "
     )
+    scene_text = str(scene.get("text", "")).strip()
     return (
         f"Art direction: {story.get('art_direction', STYLE_LOCK)}. "
         f"Global character bible: {story.get('character_bible', '')}. "
         f"Characters visible in this scene: {cast}. "
         f"Exact visual identities required for this scene: {scene_bibles}. "
-        "Match every recurring character's face, facial proportions, hair, eye shape/colour, skin tone, body proportions and permanent marks exactly. Do not merge identities or substitute one character for another. Clothing follows this book's story_costume and stays consistent unless the story shows a change. "
+        "Match every recurring character's face, facial proportions, hair, eye shape/colour, skin tone, body proportions and permanent marks exactly. Do not merge identities or substitute one character for another. Clothing follows this book's story_costume and stays consistent unless the story explicitly describes a change. "
+        "SCENE TEXT IS THE SOURCE OF TRUTH: depict the literal events, location, time, objects, character actions, positions, relationships and emotional beat described in the text below. Do not merely create a generic mood illustration. Do not omit important actions or props, invent contradictory actions, change who is doing what, or move the scene to a different place. "
+        f"Exact story text for this scene: {scene_text}. "
+        "When the text says characters are talking together in a room, visibly stage them in that room as a believable conversation: place each person in the stated position (standing, sitting, leaning, walking, etc.), facing and looking toward their conversation partner, with natural conversational gestures and clear spatial relationships. If one is standing and another sitting, show that difference explicitly. Show the room and relevant furniture/props, not an abstract background. If dialogue is present, depict the listed speakers as the people visibly speaking/listening in the scene; their positions and expressions must support the exchange. "
+        f"Dialogue for this scene (speaker and wording must match exactly; bubble text is added during page layout): {dialogue_text}. "
+        "Do not depict speech bubbles or lettering inside the generated illustration; the layout renderer will add the exact dialogue bubbles afterward. Do not visually imply a speaker is saying a line assigned to someone else. "
         f"DIRECTOR'S CAMERA COVERAGE GUIDE (adapt to the exact story beat): {director_camera_brief(scene)} "
         f"{direction} "
-        "Use the planned shot_type, camera_angle, composition, action_pose and gaze as the scene-specific director's plan when they are clear. The camera coverage guide reminds the model to vary angles; it must not force an unmotivated shot. Think of 360-degree coverage as placing the camera at different positions around the actors across scenes: front, side, rear, over-the-shoulder, high and low. "
+        "Use the planned shot_type, camera_angle, composition, action_pose and gaze as scene-specific staging when clear, but the narrative text overrides any conflicting generic camera advice. The camera coverage guide must never force an unmotivated shot. "
         "Blocking and eyeline rules: characters face and look toward the person they address, the object they handle, or the action they follow. Do not make characters face the viewer by default. No front-facing lineup, cast portrait, or everyone looking into the lens. A speaker must not look into the lens when speaking to another person. Use natural backs, profiles, over-the-shoulder views and off-camera eyelines when the shot calls for them. "
         f"Style lock: {STYLE_LOCK}. Create one composed feature-film frame with strong foreground, midground and background depth, motivated camera placement, natural anatomy and believable physical action. Preserve each character's exact identity and costume across all scenes; only camera angle, pose and expression may change. "
         f"Scene-specific visual direction: {scene.get('visual_prompt', '')}. "
