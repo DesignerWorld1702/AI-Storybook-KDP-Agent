@@ -1748,11 +1748,12 @@ clue discovery, argument, journey, or other event with slightly changed wording.
                     "\\n\\nREPAIR FEEDBACK FROM THE PREVIOUS OUTLINE (attempt "
                     + str(outline_attempt - 1) + "): "
                     + last_outline_error
-                    + "\\nCorrect this exact validation failure in the new 50-beat outline. "
-                    + "Do not merely rephrase the same outline. Ensure every registered supporting "
-                    + "character appears by exact full name in at least 3 distinct beats, with a "
-                    + "meaningful action or consequence in each appearance. Preserve the same plot, "
-                    + "cast, causal continuity, and all other requirements."
+                    + "\\nRewrite the specifically identified beat(s); if the feedback identifies "
+                    + "short beats, expand them to 8-45 words; if it identifies repetition, replace "
+                    + "the repeated event with a genuinely different action and consequence. Do not "
+                    + "reuse the same wording or event. Ensure each registered supporting character "
+                    + "appears by exact full name in at least 3 distinct beats. Preserve cast, causal "
+                    + "continuity, and all other requirements."
                 )
             raw_outline = cf_text(retry_prompt, max_tokens=2400)
             rows = []
@@ -1800,14 +1801,15 @@ clue discovery, argument, journey, or other event with slightly changed wording.
                         problems.append("introduced unregistered named people: " + ", ".join(unknown_cast))
                     last_outline_error = "Outline cast mismatch — " + "; ".join(problems)
                 elif not cast_distribution_ok:
+                    # Keep the precise cast-distribution error captured above.
                     pass
                 elif not villain_foreshadowed:
                     last_outline_error = (
                         "The exact registered principal villain must be foreshadowed by full name "
                         "in a meaningful clue or event within scenes 1-15."
                     )
-                else:
-                    last_outline_error = "Outline contains short or repeated scene beats."
+                elif not last_outline_error:
+                    last_outline_error = "Outline failed validation. Rewrite the beats with 8-45 words each, distinct physical actions, clear consequences, and no repeated or near-identical events."
             else:
                 last_outline_error = f"Expected 50 numbered lines; parsed {len(rows)}."
             if outline_attempt < 5:
