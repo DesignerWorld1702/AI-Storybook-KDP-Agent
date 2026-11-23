@@ -33,7 +33,7 @@ def valid_outline():
 
 def valid_story():
     return {
-        "story_schema_version": 5,
+        "story_schema_version": 6,
         "character_registry": [
             {"name": "Hero", "importance": "protagonist"},
             {"name": "Villain", "importance": "villain"},
