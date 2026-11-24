@@ -1910,11 +1910,11 @@ clue discovery, argument, journey, or other event with slightly changed wording.
                        if "cast mismatch" in last_outline_error.casefold() or "omitted registered names" in last_outline_error.casefold()
                        else "")
                     + (re.sub(
-                           r"Supporting character (.+?) appears in only \\d+ outline beats; at least 3 are required\\.",
-                           r"SUPPORTING-CAST REPAIR: The exact registered supporting character \\1 MUST appear "
+                           r"Supporting character (.+?) appears in only \d+ outline beats; at least 3 are required\.",
+                           r"SUPPORTING-CAST REPAIR: The exact registered supporting character \1 MUST appear "
                            r"by full name in at least THREE distinct scenes. Add them to scenes where their "
                            r"presence is plot-relevant, with a unique action/dialogue/contribution each. "
-                           r"Do not merely mention them; update scene beats.\\n",
+                           r"Do not merely mention them; update scene beats.\n",
                            last_outline_error
                        ) if "Supporting character" in last_outline_error else "")
                 )
