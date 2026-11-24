@@ -2276,7 +2276,7 @@ No extra keys, no markdown fences, no text outside JSON.
                 encoding="utf-8"
             )
 
-    # Enforce dialogue uniqueness after all scene repairs and cache merges.\n    dialogue_report = validate_unique_story_dialogue(scenes)\n    text_integrity_report = repair_story_text_integrity(scenes, plan, max_attempts=3)\n    dialogue_report = validate_unique_story_dialogue(scenes)\n\n    # Final publication-boundary pass: run after every cast/name rewrite and
+    # Enforce dialogue uniqueness after all scene repairs and cache merges.\n    dialogue_report = validate_unique_story_dialogue(scenes)\n\n    # Final publication-boundary pass: run after every cast/name rewrite and
     # cached-batch merge, immediately before the deterministic quality gate.
     for final_scene in scenes:
         final_number = int(final_scene.get("number", 0))
