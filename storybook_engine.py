@@ -524,6 +524,54 @@ def validate_story_text_integrity(scenes):
     return {"passed": True, "unique_sentences": len(seen_sentences), "pages_checked": len(scenes)}
 
 
+def repair_story_text_integrity(scenes, plan, max_attempts=3):
+    """Repair repeated or foreign-script page text, then require deterministic revalidation."""
+    last_error = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return validate_story_text_integrity(scenes)
+        except ValueError as exc:
+            last_error = str(exc)
+            numbers = sorted(set(int(n) for n in re.findall(r"scene (\\d+)", last_error, flags=re.I)))
+            if not numbers:
+                numbers = sorted(set(int(n) for n in re.findall(r"scenes (\\d+) and (\\d+)", last_error, flags=re.I)))
+            if not numbers:
+                raise
+            targets = [scene for scene in scenes if int(scene.get("number", 0)) in numbers]
+            for scene in targets:
+                prompt = (
+                    "Repair this English storybook page to remove repeated wording or unwanted non-English script. "
+                    "Write 40-55 words in 3-5 short sentences, simple English. Preserve the exact story events, "
+                    "character names, facts, and continuity. Do not invent events. Do not reuse any phrase from the "
+                    "other listed pages. Return JSON only with heading (short English), text (40-55 words), and "
+                    "dialogue (same speaker names, unique short English lines; keep empty if originally empty).\\n"
+                    f"Book: {plan.get('title','')}\\nScene: {scene.get('number')}\\n"
+                    f"Current page: {json.dumps(scene, ensure_ascii=False)}\\n"
+                    f"Conflicting scenes: {json.dumps([x for x in scenes if int(x.get('number',0)) not in numbers], ensure_ascii=False)[:12000]}\\n"
+                    f"Validation error: {last_error}"
+                )
+                try:
+                    repaired = extract_json(cf_text(prompt, max_tokens=700), "story-text integrity repair")
+                except Exception as repair_error:
+                    last_error = f"{last_error}; repair response invalid: {repair_error}"
+                    continue
+                heading = str(repaired.get("heading", "")).strip()
+                text_value = str(repaired.get("text", "")).strip()
+                dialogue = repaired.get("dialogue", scene.get("dialogue", []))
+                if not heading or not page_text_word_count_valid(text_value) or simple_english_issues(text_value):
+                    last_error = f"{last_error}; scene {scene.get('number')} repair failed word/readability validation"
+                    continue
+                if not isinstance(dialogue, list):
+                    last_error = f"{last_error}; scene {scene.get('number')} repair returned malformed dialogue"
+                    continue
+                scene["heading"] = heading
+                scene["text"] = text_value
+                scene["dialogue"] = dialogue
+                logging.warning("Repaired text-integrity issue in scene %s (attempt %s/%s).",
+                               scene.get("number"), attempt, max_attempts)
+    raise ValueError("Story text integrity failed after automatic repair attempts: " + (last_error or "unknown issue"))
+
+
 def validate_unique_story_dialogue(scenes):
     """Reject repeated spoken lines across pages, including punctuation/case variants."""
     seen = {}
@@ -2224,7 +2272,7 @@ No extra keys, no markdown fences, no text outside JSON.
                 encoding="utf-8"
             )
 
-    # Enforce dialogue uniqueness after all scene repairs and cache merges.\n    dialogue_report = validate_unique_story_dialogue(scenes)\n    text_integrity_report = validate_story_text_integrity(scenes)\n\n    # Final publication-boundary pass: run after every cast/name rewrite and
+    # Enforce dialogue uniqueness after all scene repairs and cache merges.\n    dialogue_report = validate_unique_story_dialogue(scenes)\n    text_integrity_report = repair_story_text_integrity(scenes, plan, max_attempts=3)\n    dialogue_report = validate_unique_story_dialogue(scenes)\n\n    # Final publication-boundary pass: run after every cast/name rewrite and
     # cached-batch merge, immediately before the deterministic quality gate.
     for final_scene in scenes:
         final_number = int(final_scene.get("number", 0))
