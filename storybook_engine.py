@@ -538,7 +538,7 @@ def repair_story_text_integrity(scenes, plan, max_attempts=3):
             last_error = str(exc)
             numbers = sorted(set(int(n) for n in re.findall(r"scene (\d+)", last_error, flags=re.I)))
             if not numbers:
-                numbers = sorted({int(n) for pair in re.findall(r"scenes (\\d+) and (\\d+)", last_error, flags=re.I) for n in pair})
+                numbers = sorted({int(n) for pair in re.findall(r"scenes (\d+) and (\d+)", last_error, flags=re.I) for n in pair})
             if not numbers:
                 raise
             targets = [scene for scene in scenes if int(scene.get("number", 0)) in numbers]
