@@ -1478,7 +1478,7 @@ def repair_outline_from_review(plan, outline, report):
         }, ensure_ascii=False)
     )
     last_error = None
-    for attempt in range(1, 4):
+    for attempt in range(1, 6):
         prompt = base_prompt
         if last_error:
             prompt += (
@@ -1494,7 +1494,7 @@ def repair_outline_from_review(plan, outline, report):
         except (ValueError, TypeError) as exc:
             last_error = "the model returned invalid JSON: " + str(exc)[:500]
             logging.warning(
-                "Outline repair attempt %s/3 returned invalid JSON: %s", attempt, last_error
+                "Outline repair attempt %s/5 returned invalid JSON: %s", attempt, last_error
             )
             continue
         if not isinstance(repaired, dict) or not isinstance(repaired.get("outline"), list):
@@ -1547,7 +1547,7 @@ def repair_outline_from_review(plan, outline, report):
                     raise ValueError("Could not produce a complete readable description for the repaired story.")
         return repaired_outline, description
     raise ValueError(
-        "Automatic outline repair failed after 3 attempts: "
+        "Automatic outline repair failed after 5 attempts: "
         + (last_error or "the model did not return a valid outline")
     )
 
