@@ -459,6 +459,71 @@ def normalize_dialogue_line(line):
     return re.sub(r"\s+", " ", text).strip()
 
 
+def detect_unwanted_non_english_script(text):
+    """Flag scripts that should not appear in an English-only storybook."""
+    source = str(text or "")
+    script_patterns = {
+        "Arabic": r"[\\u0600-\\u06FF]",
+        "Cyrillic": r"[\\u0400-\\u04FF]",
+        "CJK": r"[\\u3400-\\u4DBF\\u4E00-\\u9FFF]",
+        "Hangul": r"[\\uAC00-\\uD7AF]",
+        "Japanese kana": r"[\\u3040-\\u30FF]",
+        "Devanagari": r"[\\u0900-\\u097F]",
+        "Thai": r"[\\u0E00-\\u0E7F]",
+        "Greek": r"[\\u0370-\\u03FF]",
+    }
+    return [name for name, pattern in script_patterns.items() if re.search(pattern, source)]
+
+
+def validate_story_text_integrity(scenes):
+    """Publication gate for repeated page text and unexpected foreign scripts."""
+    seen_sentences = {}
+    normalized_pages = []
+    foreign = []
+    for scene in scenes:
+        number = int(scene.get("number", 0))
+        fields = [scene.get("heading", ""), scene.get("text", "")]
+        fields.extend(item.get("line", "") for item in scene.get("dialogue", []) if isinstance(item, dict))
+        combined = " ".join(str(x or "") for x in fields)
+        scripts = detect_unwanted_non_english_script(combined)
+        if scripts:
+            foreign.append(f"scene {number}: {', '.join(scripts)} script detected")
+        normalized = re.sub(r"[^a-z0-9 ]", " ", combined.casefold())
+        normalized = re.sub(r"\\s+", " ", normalized).strip()
+        normalized_pages.append(normalized)
+        sentences = [
+            re.sub(r"[^a-z0-9 ]", " ", sentence.casefold()).strip()
+            for sentence in re.split(r"(?<=[.!?])\\s+", combined)
+        ]
+        for sentence in sentences:
+            sentence = re.sub(r"\\s+", " ", sentence).strip()
+            if len(sentence.split()) < 5:
+                continue
+            if sentence in seen_sentences:
+                previous = seen_sentences[sentence]
+                raise ValueError(
+                    f"Repeated page text rejected: scene {number} repeats a sentence from "
+                    f"scene {previous}: {sentence!r}."
+                )
+            seen_sentences[sentence] = number
+    if foreign:
+        raise ValueError("Unexpected non-English script rejected: " + "; ".join(foreign))
+    for i, first in enumerate(normalized_pages):
+        if len(first.split()) < 12:
+            continue
+        for j in range(i + 1, len(normalized_pages)):
+            second = normalized_pages[j]
+            if len(second.split()) < 12:
+                continue
+            similarity = difflib.SequenceMatcher(None, first, second).ratio()
+            if similarity >= 0.88:
+                raise ValueError(
+                    f"Near-duplicate page text rejected: scenes {i + 1} and {j + 1} "
+                    f"(similarity {similarity:.2f})."
+                )
+    return {"passed": True, "unique_sentences": len(seen_sentences), "pages_checked": len(scenes)}
+
+
 def validate_unique_story_dialogue(scenes):
     """Reject repeated spoken lines across pages, including punctuation/case variants."""
     seen = {}
@@ -2159,7 +2224,7 @@ No extra keys, no markdown fences, no text outside JSON.
                 encoding="utf-8"
             )
 
-    # Enforce dialogue uniqueness after all scene repairs and cache merges.\n    dialogue_report = validate_unique_story_dialogue(scenes)\n\n    # Final publication-boundary pass: run after every cast/name rewrite and
+    # Enforce dialogue uniqueness after all scene repairs and cache merges.\n    dialogue_report = validate_unique_story_dialogue(scenes)\n    text_integrity_report = validate_story_text_integrity(scenes)\n\n    # Final publication-boundary pass: run after every cast/name rewrite and
     # cached-batch merge, immediately before the deterministic quality gate.
     for final_scene in scenes:
         final_number = int(final_scene.get("number", 0))
