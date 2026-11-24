@@ -1409,6 +1409,28 @@ def enforce_principal_villain_identity(outline, principal_villain):
     return outline
 
 
+def outline_issue_repair_instructions(report):
+    """Convert reviewer findings into concrete, scene-specific rewrite requirements."""
+    issues = report.get("critical_issues", []) if isinstance(report, dict) else []
+    lines = []
+    for issue in issues:
+        if isinstance(issue, dict):
+            scene = issue.get("number", issue.get("scene_number", "?"))
+            reason = str(issue.get("reason", "")).strip()
+            quote = str(issue.get("evidence_quote", "")).strip()
+        else:
+            scene, reason, quote = "?", str(issue), ""
+        if not reason:
+            continue
+        lines.append(
+            f"SCENE {scene}: Rewrite this exact beat to fix: {reason}. "
+            + (f"Original beat (quote): {quote}. " if quote else "")
+            + "Replace vague summary with a concrete action, its cause, and its consequence; "
+              "do not merely restate or add a generic emotional reaction."
+        )
+    return "\\n".join(lines) or "No reviewer issue-specific instructions were supplied."
+
+
 def repair_outline_from_review(plan, outline, report):
     """Repair an outline, retrying model outputs that still contain repeated beats."""
     base_prompt = (
@@ -1441,6 +1463,12 @@ def repair_outline_from_review(plan, outline, report):
         "(an array of exactly 50 objects, each with number 1–50 and beat 8–45 words). Never make the "
         "description shorter than 100 words. No extra keys.\\n\\nEDITORIAL REVIEW:\\n"
         + json.dumps(report, ensure_ascii=False)
+        + "\\n\\nMANDATORY SCENE-BY-SCENE REPAIRS (do these explicitly):\\n"
+        + outline_issue_repair_instructions(report)
+        + "\\nFor kidnapping: state a specific motive and show the threat/trigger that makes the kidnapping happen. "
+        + "For injury: make the injury alter the next action, limit, decision, or risk in a later beat. "
+        + "For return/rescue: show the actual rescue/return action and a distinct consequence, not just 'returns to normal'. "
+        + "If a repair affects multiple scenes, rewrite all linked beats so the cause and effect is visible. "
         + "\\n\\nLOCKED BOOK AND CAST:\\n"
         + json.dumps({
             "title": plan.get("title", ""),
