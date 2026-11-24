@@ -2293,6 +2293,8 @@ No extra keys, no markdown fences, no text outside JSON.
                 f"Final page-text normalization failed the easy-English gate for scene "
                 f"{final_number}: " + "; ".join(final_readability_issues)
             )
+    text_integrity_report = repair_story_text_integrity(scenes, plan, max_attempts=3)
+    dialogue_report = validate_unique_story_dialogue(scenes)
     plan["scenes"] = scenes
     plan["art_direction"] = f"{STYLE_LOCK}\n{plan.get('art_direction', '')}"
     plan["quality_review"] = review_story_quality(plan, outline, workdir)
