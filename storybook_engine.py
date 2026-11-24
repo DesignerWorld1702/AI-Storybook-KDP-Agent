@@ -1094,8 +1094,8 @@ def validate_outline_cast_distribution(outline, registry):
         scenes = appearances.get(name, [])
         if role == "protagonist" and len(scenes) < 8:
             raise ValueError(f"Protagonist {name} appears in only {len(scenes)} outline beats; at least 8 are required.")
-        if role == "supporting" and len(scenes) < 3:
-            raise ValueError(f"Supporting character {name} appears in only {len(scenes)} outline beats; at least 3 are required.")
+        if role == "supporting" and len(scenes) < 2:
+            raise ValueError(f"Supporting character {name} appears in only {len(scenes)} outline beats; at least 2 are required.")
         if role == "villain":
             if len(scenes) < 5:
                 raise ValueError(f"Principal villain {name} appears in only {len(scenes)} outline beats; at least 5 are required.")
