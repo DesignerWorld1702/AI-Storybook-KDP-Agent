@@ -1,4 +1,4 @@
-name: Cloudflare quota probe and one-time storybook resume# CI-gated quota probe; run after strict outline beat-length validation fix
+name: Cloudflare quota probe and one-time storybook resume# CI-gated quota probe; one guarded book resume after strict outline and text-QC gates pass
 
 on:
   workflow_dispatch:
