@@ -497,10 +497,10 @@ def validate_story_text_integrity(scenes):
         for field_text in sentence_sources:
             sentences = [
                 re.sub(r"[^a-z0-9 ]", " ", sentence.casefold()).strip()
-                for sentence in re.split(r"(?<=[.!?])\\s+", str(field_text or ""))
+                for sentence in re.split(r"(?<=[.!?])\s+", str(field_text or ""))
             ]
             for sentence in sentences:
-                sentence = re.sub(r"\\s+", " ", sentence).strip()
+                sentence = re.sub(r"\s+", " ", sentence).strip()
                 if len(sentence.split()) < 5:
                     continue
                 if sentence in seen_sentences:
