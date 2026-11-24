@@ -1865,7 +1865,7 @@ clue discovery, argument, journey, or other event with slightly changed wording.
                     "\n\nREPAIR FEEDBACK FROM THE PREVIOUS OUTLINE (attempt "
                     + str(outline_attempt - 1) + "): "
                     + last_outline_error
-                    + "\nRewrite the specifically identified beat(s); if the feedback identifies "
+                    + "\nIf this error concerns the principal villain\\u2019s final-ten-scene presence, rewrite at least two distinct beats among scenes 41-50. Include the villain\\u2019s exact full name and a concrete on-page action, confrontation, evidence exposure, capture, confession, escape attempt, sabotage, or final consequence. Do not make the villain passive, absent, or only discussed by others. Explicitly show how the villain\\u2019s actions affect the protagonist and how the case concludes.\\nRewrite the specifically identified beat(s); if the feedback identifies "
                     + "short beats, expand them to 8-45 words; if it identifies repetition, replace "
                     + "the repeated event with a genuinely different action and consequence. Do not "
                     + "reuse the same wording or event. Ensure each registered supporting character "
