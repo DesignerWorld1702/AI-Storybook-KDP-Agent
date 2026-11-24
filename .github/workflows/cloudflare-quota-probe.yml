@@ -8,6 +8,7 @@ on:
     paths:
       - .github/workflows/cloudflare-quota-probe.yml
       - tests/test_outline_villain_final_act.py
+      - tests/test_outline_repair_instructions.py
       - storybook_engine.py
 
 concurrency:
