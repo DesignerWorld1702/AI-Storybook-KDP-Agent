@@ -6,8 +6,8 @@ import storybook_engine as engine
 class StoryTextIntegrityTests(unittest.TestCase):
     def test_detects_repeated_full_sentence_across_pages(self):
         scenes = [
-            {"number": 1, "heading": "A new clue", "text": "The guard opened the old door slowly. They found a hidden note."},
-            {"number": 2, "heading": "A second clue", "text": "The guard opened the old door slowly. They found a silver key."},
+            {"number": 1, "heading": "A new clue", "text": "The guard opened the old door slowly. A bright lantern warmed the room. A silver cup sat near the window."},
+            {"number": 2, "heading": "A second clue", "text": "The guard opened the old door slowly. Three birds flew above the river. A farmer waved beside the path."},
         ]
         with self.assertRaisesRegex(ValueError, "Repeated page text"):
             engine.validate_story_text_integrity(scenes)
