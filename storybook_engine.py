@@ -1993,7 +1993,7 @@ clue discovery, argument, journey, or other event with slightly changed wording.
             if outline_attempt < 5:
                 targeted_repetition = ""
                 near_match = re.search(
-                    r"Outline beats (\\d+) and (\\d+) are near-identical",
+                    r"Outline beats (\d+) and (\d+) are near-identical",
                     last_outline_error
                 )
                 if near_match:
