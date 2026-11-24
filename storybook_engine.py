@@ -491,21 +491,25 @@ def validate_story_text_integrity(scenes):
         normalized = re.sub(r"[^a-z0-9 ]", " ", combined.casefold())
         normalized = re.sub(r"\s+", " ", normalized).strip()
         normalized_pages.append(normalized)
-        sentences = [
-            re.sub(r"[^a-z0-9 ]", " ", sentence.casefold()).strip()
-            for sentence in re.split(r"(?<=[.!?])\s+", combined)
-        ]
-        for sentence in sentences:
-            sentence = re.sub(r"\s+", " ", sentence).strip()
-            if len(sentence.split()) < 5:
-                continue
-            if sentence in seen_sentences:
-                previous = seen_sentences[sentence]
-                raise ValueError(
-                    f"Repeated page text rejected: scene {number} repeats a sentence from "
-                    f"scene {previous}: {sentence!r}."
-                )
-            seen_sentences[sentence] = number
+        # Compare fields independently so headings do not merge with prose into fake sentences.
+        sentence_sources = [scene.get("heading", ""), scene.get("text", "")]
+        sentence_sources.extend(item.get("line", "") for item in scene.get("dialogue", []) if isinstance(item, dict))
+        for field_text in sentence_sources:
+            sentences = [
+                re.sub(r"[^a-z0-9 ]", " ", sentence.casefold()).strip()
+                for sentence in re.split(r"(?<=[.!?])\\s+", str(field_text or ""))
+            ]
+            for sentence in sentences:
+                sentence = re.sub(r"\\s+", " ", sentence).strip()
+                if len(sentence.split()) < 5:
+                    continue
+                if sentence in seen_sentences:
+                    previous = seen_sentences[sentence]
+                    raise ValueError(
+                        f"Repeated page text rejected: scene {number} repeats a sentence from "
+                        f"scene {previous}: {sentence!r}."
+                    )
+                seen_sentences[sentence] = number
     if foreign:
         raise ValueError("Unexpected non-English script rejected: " + "; ".join(foreign))
     for i, first in enumerate(normalized_pages):
@@ -516,7 +520,7 @@ def validate_story_text_integrity(scenes):
             if len(second.split()) < 12:
                 continue
             similarity = difflib.SequenceMatcher(None, first, second).ratio()
-            if similarity >= 0.88:
+            if similarity >= 0.80:
                 raise ValueError(
                     f"Near-duplicate page text rejected: scenes {i + 1} and {j + 1} "
                     f"(similarity {similarity:.2f})."
