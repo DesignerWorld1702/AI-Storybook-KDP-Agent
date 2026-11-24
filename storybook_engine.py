@@ -1187,7 +1187,7 @@ def validate_outline_rows(rows, registry, strict_repetition=True):
                 similarity = difflib.SequenceMatcher(
                     None, normalized[first_index], normalized[second_index]
                 ).ratio()
-                if similarity >= 0.86:
+                if similarity >= 0.88:
                     raise ValueError(
                         f"Outline beats {first_index + 1} and {second_index + 1} are near-identical "
                         f"(similarity {similarity:.2f})."
