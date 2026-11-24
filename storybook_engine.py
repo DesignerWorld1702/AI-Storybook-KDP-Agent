@@ -1484,7 +1484,10 @@ def repair_outline_from_review(plan, outline, report):
             prompt += (
                 "\\n\\nREPAIR RETRY " + str(attempt) + ": The previous answer was rejected because "
                 + last_error + ". Rewrite all 50 beats again. Ensure every beat is distinct and pass "
-                "the full cast and numbering rules."
+                "the full cast and numbering rules. Do not preserve rejected duplicate wording. For any "
+                "named conflicting beat, make it a different concrete action, setting, discovery, decision, "
+                "or consequence that advances the plot. Avoid repeating aftermath, praise, rebuilding, or "
+                "accountability events in the ending."
             )
         try:
             repaired = extract_json(
