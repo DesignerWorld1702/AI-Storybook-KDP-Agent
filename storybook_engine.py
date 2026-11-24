@@ -1787,7 +1787,7 @@ REQUIRED CAUSAL STORY DESIGN:
   for a sudden reveal near the end.
 - Connect every registered supporting character to the central case with a clear goal and useful action.
   The protagonist must appear in at least 8 beats, each supporting character in at least 3 beats,
-  and the villain in at least 5 beats including one of the final ten. Do not introduce a helpful stranger
+  and the villain in at least 5 beats including a meaningful active role by full name in at least one of scenes 41-50. Do not introduce a helpful stranger
   or new named person halfway through the story.
 - Every clue must be found for a believable reason, point to the next step, and later receive a payoff.
 - If the protagonist goes undercover, state the exact evidence or access they need, how they prepare,
