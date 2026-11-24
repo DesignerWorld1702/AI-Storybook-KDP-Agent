@@ -1991,9 +1991,28 @@ clue discovery, argument, journey, or other event with slightly changed wording.
             else:
                 last_outline_error = f"Expected 50 numbered lines; parsed {len(rows)}."
             if outline_attempt < 5:
+                targeted_repetition = ""
+                near_match = re.search(
+                    r"Outline beats (\\d+) and (\\d+) are near-identical",
+                    last_outline_error
+                )
+                if near_match:
+                    first_no, second_no = map(int, near_match.groups())
+                    first_text = str(rows[first_no - 1].get("beat", ""))
+                    second_text = str(rows[second_no - 1].get("beat", ""))
+                    targeted_repetition = (
+                        f"\nCRITICAL REPETITION FIX: Beats {first_no:02d} and {second_no:02d} "
+                        "were rejected as near-duplicates. Rewrite BOTH beats, not just one. "
+                        "Make them different locations, different physical actions, different "
+                        "information revealed, and different consequences. Do not reuse their "
+                        "sentence structure or main verbs.\n"
+                        f"Rejected beat {first_no:02d}: {first_text}\n"
+                        f"Rejected beat {second_no:02d}: {second_text}\n"
+                    )
                 outline_prompt += f"""
 
 RETRY {outline_attempt}: {last_outline_error}
+{targeted_repetition}
 You MUST use every registered character's exact full name from the cast registry above.
 Do not substitute aliases or invent any named person. Remove every unregistered named person
 from the outline; use an unnamed extra only when a one-scene background person is essential.
