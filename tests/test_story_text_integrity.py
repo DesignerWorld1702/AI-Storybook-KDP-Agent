@@ -24,7 +24,7 @@ class StoryTextIntegrityTests(unittest.TestCase):
 
     def test_detects_near_duplicate_page_paragraphs(self):
         first = "Maya walks beside the river and checks the map. A red mark shines beside the stone bridge. The team follows the path and finds a locked gate."
-        second = "Maya walks beside the river and checks the map. She sees a red mark beside the stone bridge. The team follows the path and finds a closed gate."
+        second = "Maya follows the riverside trail while checking her map. She sees a red mark beside the stone bridge. The team follows the path and finds a closed gate."
         with self.assertRaisesRegex(ValueError, "Near-duplicate"):
             engine.validate_story_text_integrity([
                 {"number": 1, "heading": "River", "text": first},
