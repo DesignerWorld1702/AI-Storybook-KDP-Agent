@@ -463,14 +463,14 @@ def detect_unwanted_non_english_script(text):
     """Flag scripts that should not appear in an English-only storybook."""
     source = str(text or "")
     script_patterns = {
-        "Arabic": r"[\\u0600-\\u06FF]",
-        "Cyrillic": r"[\\u0400-\\u04FF]",
-        "CJK": r"[\\u3400-\\u4DBF\\u4E00-\\u9FFF]",
-        "Hangul": r"[\\uAC00-\\uD7AF]",
-        "Japanese kana": r"[\\u3040-\\u30FF]",
-        "Devanagari": r"[\\u0900-\\u097F]",
-        "Thai": r"[\\u0E00-\\u0E7F]",
-        "Greek": r"[\\u0370-\\u03FF]",
+        "Arabic": r"[\u0600-\u06FF]",
+        "Cyrillic": r"[\u0400-\u04FF]",
+        "CJK": r"[\u3400-\u4DBF\u4E00-\u9FFF]",
+        "Hangul": r"[\uAC00-\uD7AF]",
+        "Japanese kana": r"[\u3040-\u30FF]",
+        "Devanagari": r"[\u0900-\u097F]",
+        "Thai": r"[\u0E00-\u0E7F]",
+        "Greek": r"[\u0370-\u03FF]",
     }
     return [name for name, pattern in script_patterns.items() if re.search(pattern, source)]
 
@@ -489,14 +489,14 @@ def validate_story_text_integrity(scenes):
         if scripts:
             foreign.append(f"scene {number}: {', '.join(scripts)} script detected")
         normalized = re.sub(r"[^a-z0-9 ]", " ", combined.casefold())
-        normalized = re.sub(r"\\s+", " ", normalized).strip()
+        normalized = re.sub(r"\s+", " ", normalized).strip()
         normalized_pages.append(normalized)
         sentences = [
             re.sub(r"[^a-z0-9 ]", " ", sentence.casefold()).strip()
-            for sentence in re.split(r"(?<=[.!?])\\s+", combined)
+            for sentence in re.split(r"(?<=[.!?])\s+", combined)
         ]
         for sentence in sentences:
-            sentence = re.sub(r"\\s+", " ", sentence).strip()
+            sentence = re.sub(r"\s+", " ", sentence).strip()
             if len(sentence.split()) < 5:
                 continue
             if sentence in seen_sentences:
