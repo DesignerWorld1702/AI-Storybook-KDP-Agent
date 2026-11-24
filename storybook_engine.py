@@ -1898,7 +1898,17 @@ clue discovery, argument, journey, or other event with slightly changed wording.
                     + "the repeated event with a genuinely different action and consequence. Do not "
                     + "reuse the same wording or event. Ensure each registered supporting character "
                     + "appears by exact full name in at least 3 distinct beats. Preserve cast, causal "
-                    + "continuity, and all other requirements."
+                    + "continuity, and all other requirements.\n\n"
+                    + ("For a near-identical-beat error, rewrite BOTH numbered scenes named in the error "
+                       "as completely different events with different locations/actions/plot consequences; "
+                       "do not merely change adjectives or names.\n"
+                       if "near-identical" in last_outline_error.casefold() or "repeat" in last_outline_error.casefold()
+                       else "")
+                    + ("For a cast mismatch, copy the missing registered character name(s) EXACTLY, "
+                       "letter-for-letter, into at least three relevant beats; do not invent spellings, "
+                       "aliases, or substitute characters.\n"
+                       if "cast mismatch" in last_outline_error.casefold() or "omitted registered names" in last_outline_error.casefold()
+                       else "")
                 )
             raw_outline = cf_text(retry_prompt, max_tokens=2400)
             rows = []
