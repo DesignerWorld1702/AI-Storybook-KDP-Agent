@@ -1003,13 +1003,6 @@ def ensure_concrete_story_costumes(plan):
         for item in costumes if isinstance(item, dict)
     }
     expected_names = [str(item.get("name", "")).strip() for item in registry]
-    missing_costumes = [name for name in expected_names if name not in mapping]
-    if missing_costumes:
-        logging.warning("Costume designer omitted exact entries for %s; filling with deterministic role-based outfits.", missing_costumes)
-        for item in registry:
-            name = str(item.get("name", "")).strip()
-            if name in missing_costumes:
-                mapping[name] = fallback_costume(item)
     garment_terms = (
         "jacket", "coat", "shirt", "blouse", "trousers", "pants", "jeans", "skirt",
         "dress", "boots", "shoes", "uniform", "blazer", "sweater", "vest", "robe",
@@ -1054,6 +1047,13 @@ def ensure_concrete_story_costumes(plan):
             "black leather shoes, and a simple brown leather wristwatch."
         )
 
+    missing_costumes = [name for name in expected_names if name not in mapping]
+    if missing_costumes:
+        logging.warning("Costume designer omitted exact entries for %s; filling with deterministic role-based outfits.", missing_costumes)
+        for item in registry:
+            name = str(item.get("name", "")).strip()
+            if name in missing_costumes:
+                mapping[name] = fallback_costume(item)
     for item in registry:
         name = str(item.get("name", "")).strip()
         costume = mapping[name]
