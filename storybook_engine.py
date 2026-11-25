@@ -1889,7 +1889,7 @@ clue discovery, argument, journey, or other event with slightly changed wording.
 """
         last_outline_error = None
         parsed_outline = None
-        for outline_attempt in range(1, 6):
+        for outline_attempt in range(1, 8):
             retry_prompt = outline_prompt
             if outline_attempt > 1 and last_outline_error:
                 retry_prompt += (
@@ -1994,7 +1994,7 @@ clue discovery, argument, journey, or other event with slightly changed wording.
                         )
             else:
                 last_outline_error = f"Expected 50 numbered lines; parsed {len(rows)}."
-            if outline_attempt < 5:
+            if outline_attempt < 7:
                 targeted_repetition = ""
                 near_match = re.search(
                     r"Outline beats (\d+) and (\d+) are near-identical",
@@ -2007,9 +2007,13 @@ clue discovery, argument, journey, or other event with slightly changed wording.
                     targeted_repetition = (
                         f"\nCRITICAL REPETITION FIX: Beats {first_no:02d} and {second_no:02d} "
                         "were rejected as near-duplicates. Rewrite BOTH beats, not just one. "
-                        "Make them different locations, different physical actions, different "
-                        "information revealed, and different consequences. Do not reuse their "
-                        "sentence structure or main verbs.\n"
+                        "Assign them different narrative functions and story phases (for example: "
+                        "one may establish a clue, while the other must use that clue to make a "
+                        "a decision or trigger a new consequence). Change location, physical action, "
+                        "information revealed, outcome, sentence structure, and main verbs. They "
+                        "must not both be travel, search, meeting, confrontation, rescue, discovery, "
+                        "or aftermath beats. If necessary, delete one repeated event and replace it "
+                        "with a plot-critical action that has not occurred anywhere else.\n"
                         f"Rejected beat {first_no:02d}: {first_text}\n"
                         f"Rejected beat {second_no:02d}: {second_text}\n"
                     )
@@ -2027,7 +2031,7 @@ Every registered supporting character must be necessary to the case; do not intr
 Do not add JSON, quotation marks, headings or explanatory text.
 """
         if parsed_outline is None:
-            raise ValueError(f"Outline generation failed after 5 attempts: {last_outline_error}")
+            raise ValueError(f"Outline generation failed after 7 attempts: {last_outline_error}")
         plan["outline"] = parsed_outline
         plan["character_bible"] = "\n".join(
             f'{item.get("name", "")}: {item.get("visual_bible", "")}'
