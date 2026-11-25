@@ -2199,7 +2199,7 @@ Return ONLY valid JSON with this exact shape:
    "lighting":"cinematic lighting and atmosphere",
    "characters_present":["character names actually visible"],
    "visual_prompt":"Detailed scene illustration prompt",
-   "dialogue":[{"speaker":"Exact registered character name","line":"Short spoken line"}]
+   "dialogue":[{{"speaker":"Exact registered character name","line":"Short spoken line"}}]
   }}
  ]
 }}
