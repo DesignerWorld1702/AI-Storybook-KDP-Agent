@@ -4,6 +4,20 @@ import storybook_engine as engine
 
 
 class StoryTextIntegrityTests(unittest.TestCase):
+    def test_scene_text_repair_uses_neutral_bridge_after_model_undershoots(self):
+        candidate = (
+            "Mira checks the map beside the gate. The guard points toward the old tower. "
+            "Their team follows the marked path and listens for a signal. "
+            "A small light shines beyond the trees, but no one can see its source."
+        )
+        self.assertEqual(len(candidate.split()), 35)
+        with unittest.mock.patch.object(engine, "cf_text", return_value=candidate):
+            scene = {"heading": "The tower", "text": "short"}
+            result = engine.repair_scene_page_text(scene, {"title": "Test", "character_registry": []}, 2)
+        self.assertGreaterEqual(len(result["text"].split()), 40)
+        self.assertLessEqual(len(result["text"].split()), 55)
+        self.assertIn(candidate, result["text"])
+
     def test_detects_repeated_full_sentence_across_pages(self):
         scenes = [
             {"number": 1, "heading": "A new clue", "text": "The guard opened the old door slowly. A bright lantern warmed the room. A silver cup sat near the window."},
