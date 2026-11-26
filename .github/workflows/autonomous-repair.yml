@@ -1,0 +1,95 @@
+name: Autonomous AI repair (guarded)
+
+on:
+  workflow_dispatch:
+    inputs:
+      failed_run_id:
+        description: Failed storybook workflow run ID
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: autonomous-ai-repair
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    if: ${{ secrets.OPENAI_API_KEY != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Collect failure logs and ask AI for a narrow patch
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          FAILED_RUN_ID: ${{ inputs.failed_run_id }}
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request, subprocess, re
+          repo=os.environ["REPOSITORY"]
+          run_id=os.environ["FAILED_RUN_ID"]
+          token=os.environ["GH_TOKEN"]
+          headers={"Authorization":f"Bearer {token}","Accept":"application/vnd.github+json"}
+          def get(url):
+            req=urllib.request.Request(url,headers=headers)
+            return json.loads(urllib.request.urlopen(req,timeout=30).read())
+          jobs=get(f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/jobs?per_page=50")["jobs"]
+          chunks=[]
+          for job in jobs:
+            if job["conclusion"]!="failure": continue
+            log_url=f"https://api.github.com/repos/{repo}/actions/jobs/{job['id']}/logs"
+            try:
+              req=urllib.request.Request(log_url,headers=headers)
+              raw=urllib.request.urlopen(req,timeout=30).read().decode("utf-8","replace")
+              chunks.append(f"JOB {job['name']}\n"+raw[-12000:])
+            except Exception as e: chunks.append(f"JOB {job['name']}: logs unavailable ({type(e).__name__})")
+          # Keep scope limited to engine and tests; never expose secrets from logs.
+          safe_logs="\n\n".join(chunks)
+          safe_logs=re.sub(r"(Bearer\s+)[^\s]+",r"\1[REDACTED]",safe_logs,flags=re.I)
+          safe_logs=re.sub(r"(api[_-]?key|token|secret)\s*[=:]\s*[^\s]+",r"\1=[REDACTED]",safe_logs,flags=re.I)
+          paths=["storybook_engine.py"]
+          for p in ["tests/test_outline_villain_final_act.py","tests/test_outline_repair_instructions.py","tests/test_scene_prompt_consistency.py"]:
+            if os.path.exists(p): paths.append(p)
+          source={p:open(p,encoding="utf-8").read() for p in paths}
+          prompt={
+            "task":"Diagnose the failed CI/storybook run and propose one minimal, safe patch. Return ONLY a unified diff. Modify only storybook_engine.py or tests/*.py. Do not change workflows, secrets, credentials, quota gates, publication controls, image generation budgets, or KDP approval gates. Do not weaken tests or QC thresholds. If the failure is quota-related, missing credentials, external service outage, or needs human judgment, return exactly NO_PATCH.",
+            "logs":safe_logs[-30000:],
+            "files":source
+          }
+          payload={"model":"gpt-4.1-mini","input":[{"role":"user","content":[{"type":"input_text","text":json.dumps(prompt)}]}],"max_output_tokens":5000}
+          req=urllib.request.Request("https://api.openai.com/v1/responses",data=json.dumps(payload).encode(),headers={"Authorization":"Bearer "+os.environ["OPENAI_API_KEY"],"Content-Type":"application/json"})
+          result=json.loads(urllib.request.urlopen(req,timeout=120).read())
+          out=""
+          for item in result.get("output",[]):
+            for c in item.get("content",[]):
+              if c.get("type")=="output_text": out+=c.get("text","")
+          out=out.strip()
+          if out=="NO_PATCH" or not out.startswith("---"):
+            print("AI declined a safe patch; no files changed.")
+            raise SystemExit(0)
+          open("/tmp/repair.patch","w").write(out+"\n")
+          PY
+      - name: Apply narrowly scoped patch and run tests
+        run: |
+          if [ ! -s /tmp/repair.patch ]; then echo "No patch generated."; exit 0; fi
+          git apply --check /tmp/repair.patch
+          git apply /tmp/repair.patch
+          python -m compileall -q .
+          if [ -d tests ]; then python -m pytest -q tests; fi
+      - name: Commit validated repair
+        if: success()
+        run: |
+          if git diff --quiet; then echo "No validated changes to commit."; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add storybook_engine.py tests
+          git commit -m "Autonomous AI repair: validated targeted fix"
+          git push origin HEAD:main
