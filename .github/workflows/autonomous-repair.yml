@@ -18,10 +18,17 @@ concurrency:
 
 jobs:
   repair:
-    if: ${{ secrets.OPENAI_API_KEY != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - name: Check API credential availability
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "OPENAI_API_KEY secret is not configured. Safe repair is skipped."
+            exit 1
+          fi
       - uses: actions/checkout@v4
         with:
           ref: main
