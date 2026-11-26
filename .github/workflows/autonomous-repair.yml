@@ -26,8 +26,8 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           if [ -z "$OPENAI_API_KEY" ]; then
-            echo "OPENAI_API_KEY secret is not configured. Safe repair is skipped."
-            exit 1
+            echo "::notice::OPENAI_API_KEY secret is not configured. Safe repair is skipped without failing."
+            exit 0
           fi
       - uses: actions/checkout@v4
         with:
