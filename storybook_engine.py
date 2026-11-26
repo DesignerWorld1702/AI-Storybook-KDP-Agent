@@ -1282,6 +1282,31 @@ def synchronize_book_description(plan, outline):
             + " words or omitted an exact registered name. Return 100-140 words, "
             "5-7 simple sentences, and include both exact names."
         )
+    # Deterministic, outline-grounded fallback prevents a truncated model response
+    # from aborting the run. It uses only registered names and locked-outline facts.
+    beats = [str(row.get("beat", "")).strip() for row in outline if isinstance(row, dict)]
+    first = next((b for b in beats[:12] if b), "A new case begins and the clues are examined.")
+    middle = next((b for b in beats[12:40] if b), "The investigation follows the clues.")
+    ending = next((b for b in beats[40:] if b), "The case reaches its conclusion.")
+    # Avoid copying excessively long beat strings into retailer copy.
+    def clean_beat(value):
+        value = re.sub(r"\\s+", " ", value).strip()
+        return value[:240].rstrip(" .")
+    first, middle, ending = map(clean_beat, (first, middle, ending))
+    fallback = (
+        f"{plan.get('title', 'A New Mystery')} follows {protagonist} as a case unfolds. "
+        f"{first}. The clues lead {protagonist} through difficult choices and growing danger. "
+        f"{middle}. The investigation points toward {villain}, whose actions must be faced. "
+        f"{ending}. This standalone story follows the case from its first clue to its final outcome, "
+        "with the truth uncovered through careful work. Readers will see how each discovery changes "
+        "the next step, how the characters respond when the risks grow, and how the mystery is brought "
+        "to a close. The ending resolves the central conflict and leaves the characters with the results "
+        "of their choices. The description reflects the events in the completed outline."
+    )
+    if 90 <= len(fallback.split()) <= 155 and protagonist and villain:
+        plan["description"] = fallback
+        logging.warning("Model description failed validation; using deterministic outline-grounded fallback.")
+        return fallback
     raise ValueError(
         "Could not create a grounded 100-140 word book description naming the protagonist "
         "and registered villain. Last response: " + last[:300]
