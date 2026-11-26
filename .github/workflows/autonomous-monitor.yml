@@ -92,6 +92,11 @@ jobs:
             }).catch(() => ({ data: null }));
             const previous = file ? Buffer.from(file.content, "base64").toString().trim() : "";
             if (previous === runId) { core.notice("Already dispatched for this run."); return; }
+            const { execSync } = require("child_process");
+            execSync("git config user.name github-actions[bot]");
+            execSync("git config user.email 41898282+github-actions[bot]@users.noreply.github.com");
+            execSync("mkdir -p state && printf %s \\n " + runId + " > state/last_autonomous_repair_run.txt");
+            execSync("git add state/last_autonomous_repair_run.txt && git commit -m \\n " + JSON.stringify("Record autonomous repair dispatch " + runId) + " && git push origin HEAD:main");
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner, repo: context.repo.repo,
               workflow_id: "autonomous-repair.yml", ref: "main", inputs: { failed_run_id: runId }
