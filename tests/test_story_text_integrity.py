@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 import storybook_engine as engine
 
@@ -6,12 +7,12 @@ import storybook_engine as engine
 class StoryTextIntegrityTests(unittest.TestCase):
     def test_scene_text_repair_uses_neutral_bridge_after_model_undershoots(self):
         candidate = (
-            "Mira checks the map beside the gate. The guard points toward the old tower. "
-            "Their team follows the marked path and listens for a signal. "
-            "A small light shines beyond the trees, but no one can see its source."
+            "Mira checks the map beside the gate. The guard points toward the tower. "
+            "Their team follows the path and listens. A light shines beyond trees, "
+            "but no one can see its source."
         )
-        self.assertEqual(len(candidate.split()), 35)
-        with unittest.mock.patch.object(engine, "cf_text", return_value=candidate):
+        self.assertEqual(len(candidate.split()), 32)
+        with patch.object(engine, "cf_text", return_value=candidate):
             scene = {"heading": "The tower", "text": "short"}
             result = engine.repair_scene_page_text(scene, {"title": "Test", "character_registry": []}, 2)
         self.assertGreaterEqual(len(result["text"].split()), 40)
