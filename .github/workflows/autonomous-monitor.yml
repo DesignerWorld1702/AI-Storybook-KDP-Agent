@@ -1,0 +1,91 @@
+name: Autonomous agent monitor (5-minute, quota-aware)
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/autonomous-monitor.yml
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: autonomous-monitor
+  cancel-in-progress: false
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check quota pause marker (skip remote checks while paused)
+        id: pause
+        shell: bash
+        run: |
+          today="$(TZ=Asia/Karachi date +%F)"
+          marker="state/image_quota_pause_until.txt"
+          pause_until="$(cat "$marker" 2>/dev/null || true)"
+          if [ -n "$pause_until" ] && [[ "$pause_until" > "$today" || "$pause_until" == "$today" ]]; then
+            echo "paused=true" >> "$GITHUB_OUTPUT"
+            echo "Quota pause active through $pause_until Pakistan time; skip all checks."
+          else
+            echo "paused=false" >> "$GITHUB_OUTPUT"
+            if [ -f "$marker" ]; then rm -f "$marker"; fi
+          fi
+      - name: Inspect recent failed book run for quota exhaustion
+        if: steps.pause.outputs.paused != 'true'
+        id: detect
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner, repo: context.repo.repo,
+              workflow_id: "generate-final-storybook.yml", branch: "main", per_page: 5
+            });
+            const run = runs.data.workflow_runs.find(r => r.status === "completed" && ["failure", "timed_out"].includes(r.conclusion));
+            if (!run) { core.notice("No recent failed generation run."); return; }
+            const jobs = await github.rest.actions.listJobsForWorkflowRun({
+              owner: context.repo.owner, repo: context.repo.repo, run_id: run.id, per_page: 50
+            });
+            const failed = jobs.data.jobs.filter(j => j.conclusion === "failure");
+            const patterns = [
+              /daily.{0,30}(quota|limit|allowance).{0,30}(exhaust|exceed|reach|limit)/i,
+              /(quota|rate.?limit).{0,40}(exhaust|exceed|insufficient|429)/i,
+              /too many requests.{0,40}(daily|quota|limit)/i,
+              /exceeded.{0,30}(daily|quota|limit)/i,
+              /insufficient credits|no credits remaining/i
+            ];
+            let quotaHit = false;
+            for (const job of failed) {
+              try {
+                const response = await github.rest.actions.downloadJobLogsForWorkflowRun({
+                  owner: context.repo.owner, repo: context.repo.repo, job_id: job.id
+                });
+                if (patterns.some(p => p.test(String(response.data || "")))) quotaHit = true;
+              } catch (e) { core.warning("Could not read job log; quota status unchanged."); }
+            }
+            core.setOutput("quota_hit", quotaHit ? "true" : "false");
+            if (quotaHit) core.warning("Daily image quota exhaustion detected.");
+      - name: Pause generation until next Pakistan date
+        if: steps.pause.outputs.paused != 'true' && steps.detect.outputs.quota_hit == 'true'
+        shell: bash
+        run: |
+          tomorrow="$(TZ=Asia/Karachi date -d 'tomorrow' +%F)"
+          mkdir -p state
+          echo "$tomorrow" > state/image_quota_pause_until.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state/image_quota_pause_until.txt
+          git commit -m "Pause image generation until quota renewal ($tomorrow)"
+          git push origin HEAD:main
+      - name: Status
+        if: always()
+        run: |
+          if [ "${{ steps.pause.outputs.paused }}" = "true" ]; then
+            echo "Quota pause is active; skipped remote monitoring."
+          elif [ "${{ steps.detect.outputs.quota_hit }}" = "true" ]; then
+            echo "Quota exhaustion detected and pause recorded."
+          else
+            echo "No quota exhaustion detected."
+          fi
