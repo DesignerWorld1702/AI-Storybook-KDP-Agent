@@ -9,7 +9,7 @@ on:
       - .github/workflows/autonomous-monitor.yml
 permissions:
   contents: write
-  actions: read
+  actions: write
 concurrency:
   group: autonomous-monitor
   cancel-in-progress: false
@@ -66,6 +66,7 @@ jobs:
               } catch (e) { core.warning("Could not read job log; quota status unchanged."); }
             }
             core.setOutput("quota_hit", quotaHit ? "true" : "false");
+            core.setOutput("failed_run_id", String(run.id));
             if (quotaHit) core.warning("Daily image quota exhaustion detected.");
       - name: Pause generation until next Pakistan date
         if: steps.pause.outputs.paused != 'true' && steps.detect.outputs.quota_hit == 'true'
@@ -79,6 +80,23 @@ jobs:
           git add state/image_quota_pause_until.txt
           git commit -m "Pause image generation until quota renewal ($tomorrow)"
           git push origin HEAD:main
+      - name: Dispatch AI repair for non-quota failures (once per run)
+        if: steps.pause.outputs.paused != 'true' && steps.detect.outputs.quota_hit != 'true' && steps.detect.outputs.failed_run_id != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runId = String("${{ steps.detect.outputs.failed_run_id }}");
+            const markerPath = "state/last_autonomous_repair_run.txt";
+            const { data: file } = await github.rest.repos.getContent({
+              owner: context.repo.owner, repo: context.repo.repo, path: markerPath
+            }).catch(() => ({ data: null }));
+            const previous = file ? Buffer.from(file.content, "base64").toString().trim() : "";
+            if (previous === runId) { core.notice("Already dispatched for this run."); return; }
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner, repo: context.repo.repo,
+              workflow_id: "autonomous-repair.yml", ref: "main", inputs: { failed_run_id: runId }
+            });
+            core.notice("Dispatched repair workflow for failed run " + runId);
       - name: Status
         if: always()
         run: |
