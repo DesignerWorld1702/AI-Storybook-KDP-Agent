@@ -33,8 +33,13 @@ jobs:
           today="$(TZ=Asia/Karachi date +%F)"
           marker="state/last_successful_book_date.txt"
           marker_date="$(cat "$marker" 2>/dev/null || true)"
+          quota_pause="state/image_quota_pause_until.txt"
+          quota_until="$(cat "$quota_pause" 2>/dev/null || true)"
           bypass="${{ github.event_name == 'workflow_dispatch' && inputs.bypass_daily_guard }}"
-          if [ "$bypass" = "true" ]; then
+          if [ -n "$quota_until" ] && [[ "$quota_until" > "$today" || "$quota_until" == "$today" ]]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Image quota pause active through $quota_until Pakistan time. Generation is blocked to protect quota."
+          elif [ "$bypass" = "true" ]; then
             echo "skip=false" >> "$GITHUB_OUTPUT"
             echo "One-time manual replacement override approved for $today; existing output will be preserved."
           elif [ -f "$marker" ] && [ "$marker_date" = "$today" ]; then
