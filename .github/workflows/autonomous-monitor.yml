@@ -90,7 +90,7 @@ jobs:
           previous="$(cat "$marker" 2>/dev/null || true)"
           if [ "$previous" = "$RUN_ID" ]; then echo "Repair already dispatched for this run."; exit 0; fi
           mkdir -p state
-          printf '%s\\n' "$RUN_ID" > "$marker"
+          printf '%s\n' "$RUN_ID" > "$marker"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add "$marker"
